@@ -170,6 +170,7 @@ defmodule DynamicForm.DirectUpload do
           <div
             :for={entry <- @upload_config.entries}
             class="px-4 py-3 border-t flex items-center gap-3"
+            :if={entry.progress && entry.progress < 100}
           >
             <div class="flex-1">
               <div class="flex items-center justify-between mb-1">
