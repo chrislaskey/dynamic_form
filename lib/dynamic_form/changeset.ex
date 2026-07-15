@@ -11,7 +11,7 @@ defmodule DynamicForm.Changeset do
   @doc """
   Creates a changeset from a DynamicForm.Instance configuration.
 
-  Only form fields are included in the changeset. Elements (headings, paragraphs, etc.)
+  Only form questions are included in the changeset. Elements (panels, HTML, etc.)
   are filtered out as they don't collect user input.
 
   ## Parameters
@@ -39,51 +39,54 @@ defmodule DynamicForm.Changeset do
       changeset = DynamicForm.Changeset.create_changeset(instance, params)
   """
   def create_changeset(%Instance{} = instance, params \\ %{}) do
-    fields = get_fields(instance.items)
-    types = build_types_map(fields)
-    required_fields = get_required_fields(fields, params)
+    questions = get_questions(instance.elements)
+    types = build_types_map(questions)
+    required_fields = get_required_fields(questions, params)
 
-    # Decode JSON-encoded direct_upload fields
-    decoded_params = decode_upload_params(params, fields)
+    # Decode JSON-encoded file upload fields
+    decoded_params =
+      params
+      |> decode_upload_params(questions)
+      |> normalize_array_params(questions)
 
     {%{}, types}
     |> Ecto.Changeset.cast(decoded_params, Map.keys(types), empty_values: [])
     |> Ecto.Changeset.validate_required(required_fields)
-    |> apply_custom_validations(fields)
+    |> apply_custom_validations(questions)
   end
 
   @doc """
-  Extracts only Field structs from the items list, filtering out Elements.
+  Extracts only Question structs from the elements list, filtering out Elements.
 
-  Recursively extracts fields from group elements that contain nested items.
+  Recursively extracts questions from panel elements that contain nested elements.
 
   ## Example
 
-      iex> items = [
-      ...>   %DynamicForm.Instance.Element{id: "h1", type: "heading"},
-      ...>   %DynamicForm.Instance.Field{id: "email", name: "email", type: "email"},
+      iex> elements = [
+      ...>   %DynamicForm.Instance.Element{name: "intro", type: "html"},
+      ...>   %DynamicForm.Instance.Question{name: "email", type: "text"},
       ...>   %DynamicForm.Instance.Element{
-      ...>     id: "group-1",
-      ...>     type: "group",
-      ...>     items: [
-      ...>       %DynamicForm.Instance.Field{id: "city", name: "city", type: "string"}
+      ...>     name: "address-panel",
+      ...>     type: "panel",
+      ...>     elements: [
+      ...>       %DynamicForm.Instance.Question{name: "city", type: "text"}
       ...>     ]
       ...>   }
       ...> ]
-      iex> DynamicForm.Changeset.get_fields(items)
+      iex> DynamicForm.Changeset.get_questions(elements)
       [
-        %DynamicForm.Instance.Field{id: "email", name: "email", type: "email"},
-        %DynamicForm.Instance.Field{id: "city", name: "city", type: "string"}
+        %DynamicForm.Instance.Question{name: "email", type: "text"},
+        %DynamicForm.Instance.Question{name: "city", type: "text"}
       ]
   """
-  def get_fields(items) when is_list(items) do
-    Enum.flat_map(items, fn item ->
-      case item do
-        %Instance.Field{} = field ->
-          [field]
+  def get_questions(elements) when is_list(elements) do
+    Enum.flat_map(elements, fn element ->
+      case element do
+        %Instance.Question{} = question ->
+          [question]
 
-        %Instance.Element{items: nested_items} when is_list(nested_items) ->
-          get_fields(nested_items)
+        %Instance.Element{elements: nested_elements} when is_list(nested_elements) ->
+          get_questions(nested_elements)
 
         %Instance.Element{} ->
           []
@@ -92,42 +95,42 @@ defmodule DynamicForm.Changeset do
   end
 
   @doc """
-  Builds a map of field names to their Ecto types.
+  Builds a map of question names to their Ecto types.
 
   ## Example
 
-      iex> fields = [
-      ...>   %DynamicForm.Instance.Field{id: "1", name: "email", type: "string"},
-      ...>   %DynamicForm.Instance.Field{id: "2", name: "age", type: "decimal"}
+      iex> questions = [
+      ...>   %DynamicForm.Instance.Question{name: "email", type: "text"},
+      ...>   %DynamicForm.Instance.Question{name: "age", type: "text", inputType: "number"}
       ...> ]
-      iex> DynamicForm.Changeset.build_types_map(fields)
+      iex> DynamicForm.Changeset.build_types_map(questions)
       %{email: :string, age: :decimal}
   """
-  def build_types_map(fields) when is_list(fields) do
-    Enum.reduce(fields, %{}, fn field, acc ->
-      # Convert field name to atom for Ecto
-      field_atom = String.to_atom(field.name)
-      Map.put(acc, field_atom, map_field_type(field.type))
+  def build_types_map(questions) when is_list(questions) do
+    Enum.reduce(questions, %{}, fn question, acc ->
+      # Convert question name to atom for Ecto
+      field_atom = String.to_atom(question.name)
+      Map.put(acc, field_atom, map_question_type(question))
     end)
   end
 
-  # Maps DynamicForm field types (strings) to Ecto types (atoms)
-  defp map_field_type("string"), do: :string
-  defp map_field_type("email"), do: :string
-  defp map_field_type("textarea"), do: :string
-  defp map_field_type("decimal"), do: :decimal
-  defp map_field_type("boolean"), do: :boolean
-  defp map_field_type("select"), do: :string
-  defp map_field_type("radio"), do: :string
-  defp map_field_type("radio-group"), do: :string
-  defp map_field_type("direct_upload"), do: {:array, :map}
-  defp map_field_type(type) when is_binary(type), do: String.to_atom(type)
-  defp map_field_type(type) when is_atom(type), do: type
+  # Maps SurveyJS question types to Ecto types
+  defp map_question_type(%Instance.Question{type: "text", inputType: "number"}), do: :decimal
+  defp map_question_type(%Instance.Question{type: "text"}), do: :string
+  defp map_question_type(%Instance.Question{type: "comment"}), do: :string
+  defp map_question_type(%Instance.Question{type: "dropdown"}), do: :string
+  defp map_question_type(%Instance.Question{type: "radiogroup"}), do: :string
+  defp map_question_type(%Instance.Question{type: "boolean"}), do: :boolean
+  defp map_question_type(%Instance.Question{type: "file"}), do: {:array, :map}
+  defp map_question_type(%Instance.Question{type: "checkbox"}), do: {:array, :string}
+  defp map_question_type(%Instance.Question{type: "tagbox"}), do: {:array, :string}
+  defp map_question_type(%Instance.Question{type: "rating"}), do: :integer
+  defp map_question_type(%Instance.Question{type: type}) when is_binary(type), do: :string
 
-  defp decode_upload_params(params, fields) do
+  defp decode_upload_params(params, questions) do
     upload_fields =
-      fields
-      |> Enum.filter(&(&1.type == "direct_upload"))
+      questions
+      |> Enum.filter(&(&1.type == "file"))
       |> Enum.map(& &1.name)
 
     Enum.reduce(upload_fields, params, fn field_name, acc ->
@@ -146,60 +149,134 @@ defmodule DynamicForm.Changeset do
     end)
   end
 
-  defp get_required_fields(fields, params) do
-    fields
-    |> Enum.filter(fn field ->
-      field.required && DynamicForm.Visibility.field_visible?(field, params)
+  # Checkbox groups submit a hidden empty entry under `name[]` so that clearing
+  # every box still submits the field. Strip those empty strings from
+  # array-valued params before casting; an all-empty selection becomes nil so
+  # validate_required still applies to empty checkbox groups.
+  defp normalize_array_params(params, questions) do
+    array_fields =
+      questions
+      |> Enum.filter(&(&1.type in ["checkbox", "tagbox"]))
+      |> Enum.map(& &1.name)
+
+    Enum.reduce(array_fields, params, fn field_name, acc ->
+      case Map.get(acc, field_name) do
+        values when is_list(values) ->
+          case Enum.reject(values, &(&1 == "")) do
+            [] -> Map.put(acc, field_name, nil)
+            selected -> Map.put(acc, field_name, selected)
+          end
+
+        _ ->
+          acc
+      end
+    end)
+  end
+
+  defp get_required_fields(questions, params) do
+    questions
+    |> Enum.filter(fn question ->
+      required =
+        question.isRequired ||
+          DynamicForm.Visibility.condition_met?(question.requiredIf, params, default: false)
+
+      required && DynamicForm.Visibility.question_visible?(question, params)
     end)
     |> Enum.map(&String.to_atom(&1.name))
   end
 
-  defp apply_custom_validations(changeset, fields) do
-    Enum.reduce(fields, changeset, fn field, acc ->
-      apply_field_validations(acc, field)
+  defp apply_custom_validations(changeset, questions) do
+    Enum.reduce(questions, changeset, fn question, acc ->
+      apply_question_validations(acc, question)
     end)
   end
 
-  defp apply_field_validations(changeset, field) do
-    validations = field.validations || []
-    field_atom = String.to_atom(field.name)
+  defp apply_question_validations(changeset, question) do
+    validators = question.validators || []
+    field_atom = String.to_atom(question.name)
 
-    Enum.reduce(validations, changeset, fn validation, acc ->
-      apply_validation(acc, field_atom, validation)
+    # Also apply email validation for text inputs with inputType: "email"
+    changeset =
+      if question.type == "text" && question.inputType == "email" do
+        Ecto.Changeset.validate_format(changeset, field_atom, ~r/^[^\s]+@[^\s]+\.[^\s]+$/)
+      else
+        changeset
+      end
+
+    # Apply rating range validation from rateMin/rateMax (SurveyJS defaults: 1..5)
+    changeset =
+      if question.type == "rating" do
+        Ecto.Changeset.validate_number(changeset, field_atom,
+          greater_than_or_equal_to: question.rateMin || 1,
+          less_than_or_equal_to: question.rateMax || 5
+        )
+      else
+        changeset
+      end
+
+    Enum.reduce(validators, changeset, fn validator, acc ->
+      apply_validator(acc, field_atom, validator)
     end)
   end
 
-  # Apply specific validation types (string-based)
-  defp apply_validation(changeset, field_name, %Instance.Validation{
-         type: "min_length",
-         value: min
-       }) do
-    Ecto.Changeset.validate_length(changeset, field_name, min: min)
-  end
-
-  defp apply_validation(changeset, field_name, %Instance.Validation{
-         type: "max_length",
-         value: max
-       }) do
-    Ecto.Changeset.validate_length(changeset, field_name, max: max)
-  end
-
-  defp apply_validation(changeset, field_name, %Instance.Validation{type: "email_format"}) do
-    Ecto.Changeset.validate_format(changeset, field_name, ~r/^[^\s]+@[^\s]+\.[^\s]+$/)
-  end
-
-  defp apply_validation(changeset, field_name, %Instance.Validation{
-         type: "numeric_range",
-         min: min,
-         max: max
-       }) do
+  # Apply SurveyJS validator types. A validator's `text` property provides a
+  # custom error message.
+  defp apply_validator(changeset, field_name, %Instance.Validator{type: "text"} = validator) do
     changeset
-    |> Ecto.Changeset.validate_number(field_name, greater_than_or_equal_to: min)
-    |> Ecto.Changeset.validate_number(field_name, less_than_or_equal_to: max)
+    |> maybe_validate_length(field_name, :min, validator.minLength, validator.text)
+    |> maybe_validate_length(field_name, :max, validator.maxLength, validator.text)
   end
 
-  # Fallback for unknown validation types
-  defp apply_validation(changeset, _field_name, _validation) do
+  defp apply_validator(changeset, field_name, %Instance.Validator{type: "email"} = validator) do
+    opts = message_opts(validator.text)
+    Ecto.Changeset.validate_format(changeset, field_name, ~r/^[^\s]+@[^\s]+\.[^\s]+$/, opts)
+  end
+
+  defp apply_validator(changeset, field_name, %Instance.Validator{type: "numeric"} = validator) do
+    changeset
+    |> maybe_validate_number(
+      field_name,
+      :greater_than_or_equal_to,
+      validator.minValue,
+      validator.text
+    )
+    |> maybe_validate_number(
+      field_name,
+      :less_than_or_equal_to,
+      validator.maxValue,
+      validator.text
+    )
+  end
+
+  defp apply_validator(
+         changeset,
+         field_name,
+         %Instance.Validator{type: "regex", regex: pattern} = validator
+       )
+       when not is_nil(pattern) do
+    opts = message_opts(validator.text)
+    Ecto.Changeset.validate_format(changeset, field_name, Regex.compile!(pattern), opts)
+  end
+
+  # Fallback for unknown validator types
+  defp apply_validator(changeset, _field_name, _validator) do
     changeset
   end
+
+  defp maybe_validate_length(changeset, _field_name, _key, nil, _message), do: changeset
+
+  defp maybe_validate_length(changeset, field_name, key, value, message) do
+    opts = [{key, value} | message_opts(message)]
+    Ecto.Changeset.validate_length(changeset, field_name, opts)
+  end
+
+  defp maybe_validate_number(changeset, _field_name, _key, nil, _message), do: changeset
+
+  defp maybe_validate_number(changeset, field_name, key, value, message) do
+    opts = [{key, value} | message_opts(message)]
+    Ecto.Changeset.validate_number(changeset, field_name, opts)
+  end
+
+  defp message_opts(nil), do: []
+  defp message_opts(message) when is_binary(message), do: [message: message]
 end

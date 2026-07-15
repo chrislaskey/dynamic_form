@@ -979,4 +979,77 @@ defmodule DynamicForm.CoreComponents do
     </div>
     """
   end
+
+  @doc """
+  Renders a labeled group of checkboxes bound to an array-valued field.
+
+  Selected values are submitted as a list under `name[]`. A hidden empty
+  entry is included so clearing every checkbox still submits the field.
+
+  ## Examples
+
+      <.input_checkbox_group
+        field={@form[:toppings]}
+        label="Toppings"
+        options={[{"Cheese", "cheese"}, {"Mushrooms", "mushrooms"}]}
+        style={:vertical}
+      />
+
+  """
+  attr(:id, :any, default: nil)
+  attr(:name, :any)
+  attr(:label, :string, default: nil)
+  attr(:value, :any)
+  attr(:field, Phoenix.HTML.FormField)
+  attr(:errors, :list, default: [])
+  attr(:options, :list, required: true, doc: "List of {label, value} tuples for checkbox options")
+  attr(:style, :atom, default: :vertical, doc: "Layout style: :vertical or :horizontal")
+  attr(:rest, :global, include: ~w(disabled))
+
+  def input_checkbox_group(%{field: %Phoenix.HTML.FormField{} = field} = assigns) do
+    errors = if Phoenix.Component.used_input?(field), do: field.errors, else: []
+
+    assigns
+    |> assign(field: nil, id: assigns.id || field.id)
+    |> assign(:errors, Enum.map(errors, &translate_error(&1)))
+    |> assign_new(:name, fn -> field.name <> "[]" end)
+    |> assign_new(:value, fn -> field.value end)
+    |> input_checkbox_group()
+  end
+
+  def input_checkbox_group(assigns) do
+    assigns = assign(assigns, :selected, Enum.map(List.wrap(assigns.value), &to_string/1))
+
+    ~H"""
+    <div>
+      <.label for={@id}>{@label}</.label>
+      <input type="hidden" name={@name} value="" disabled={@rest[:disabled]} />
+      <div class={[
+        "flex gap-4 mt-2",
+        @style == :vertical && "flex-col",
+        @style == :horizontal && "flex-row items-center"
+      ]}>
+        <%= for {text, value} <- @options do %>
+          <label class="flex items-center text-sm leading-6 text-zinc-600">
+            <input
+              type="checkbox"
+              id={"#{@id}-#{value}"}
+              name={@name}
+              value={value}
+              checked={to_string(value) in @selected}
+              class={[
+                "size-5 mr-2 rounded border-zinc-300 text-zinc-900 hover:border-zinc-900",
+                "disabled:cursor-default disabled:border-zinc-400 disabled:bg-zinc-400",
+                "focus:outline-none focus:ring-1 focus:ring-zinc-900"
+              ]}
+              {@rest}
+            />
+            {text}
+          </label>
+        <% end %>
+      </div>
+      <.error :for={msg <- @errors}>{msg}</.error>
+    </div>
+    """
+  end
 end

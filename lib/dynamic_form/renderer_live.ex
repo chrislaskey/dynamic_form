@@ -169,7 +169,12 @@ defmodule DynamicForm.RendererLive do
     instance = decode_instance(assigns.instance)
 
     form_name = Map.get(assigns, :form_name, "dynamic_form")
-    initial_params = Map.get(assigns, :params, %{})
+
+    initial_params =
+      assigns
+      |> Map.get(:params, %{})
+      |> apply_default_values(instance)
+
     gettext = Map.get(assigns, :gettext, DynamicForm.Gettext)
     changeset = Changeset.create_changeset(instance, initial_params)
     form = to_form(changeset, as: form_name)
@@ -336,6 +341,21 @@ defmodule DynamicForm.RendererLive do
   end
 
   # Helpers - Data
+
+  # Seed initial params with each question's defaultValue. Explicitly provided
+  # params always win over defaults.
+  defp apply_default_values(params, instance) do
+    params = recursively_convert_to_string_keys(params)
+
+    instance.elements
+    |> Changeset.get_questions()
+    |> Enum.reduce(params, fn question, acc ->
+      case question.defaultValue do
+        nil -> acc
+        default -> Map.put_new(acc, question.name, default)
+      end
+    end)
+  end
 
   defp merge_data(initial_params, changeset_data) do
     # Merging data helps solve a few different scenarios:
@@ -537,26 +557,26 @@ defmodule DynamicForm.RendererLive do
     end)
   end
 
-  # Helper to humanize field names by looking up the label in the instance
+  # Helper to humanize field names by looking up the title in the instance
   defp humanize_field_name(field_atom, instance) do
     field_name = to_string(field_atom)
 
-    # Search through instance items to find the field and get its label
-    case find_field_by_name(instance.items, field_name) do
-      %{label: label} when is_binary(label) and label != "" -> label
+    # Search through instance elements to find the question and get its title
+    case find_question_by_name(instance.elements, field_name) do
+      %{title: title} when is_binary(title) and title != "" -> title
       _ -> humanize_atom(field_atom)
     end
   end
 
-  # Helper to find a field by name in the instance items
-  defp find_field_by_name(items, name) when is_list(items) do
-    Enum.find_value(items, fn item ->
-      case item do
-        %Instance.Field{name: ^name} = field ->
-          field
+  # Helper to find a question by name in the instance elements
+  defp find_question_by_name(elements, name) when is_list(elements) do
+    Enum.find_value(elements, fn element ->
+      case element do
+        %Instance.Question{name: ^name} = question ->
+          question
 
-        %Instance.Element{items: nested_items} when is_list(nested_items) ->
-          find_field_by_name(nested_items, name)
+        %Instance.Element{elements: nested_elements} when is_list(nested_elements) ->
+          find_question_by_name(nested_elements, name)
 
         _ ->
           nil
@@ -564,7 +584,7 @@ defmodule DynamicForm.RendererLive do
     end)
   end
 
-  defp find_field_by_name(_, _), do: nil
+  defp find_question_by_name(_, _), do: nil
 
   # Helper to humanize an atom (fallback when label not found)
   defp humanize_atom(atom) do
@@ -576,17 +596,17 @@ defmodule DynamicForm.RendererLive do
     |> Enum.join(" ")
   end
 
-  # Helper to set up uploads for direct_upload fields
+  # Helper to set up uploads for file upload questions
   defp allow_uploads_for_direct_upload_fields(socket, instance) do
-    direct_upload_fields = find_direct_upload_fields(instance.items)
+    file_upload_questions = find_file_upload_questions(instance.elements)
 
-    Enum.reduce(direct_upload_fields, socket, fn field, acc_socket ->
-      metadata = field.metadata || %{}
+    Enum.reduce(file_upload_questions, socket, fn question, acc_socket ->
+      metadata = question.metadata || %{}
       max_entries = get_in(metadata, ["max_entries"]) || 3
       max_file_size = get_in(metadata, ["max_file_size"]) || 10_000_000
       accept = get_in(metadata, ["accept"]) || :any
 
-      upload_name = String.to_atom("upload_#{field.name}")
+      upload_name = String.to_atom("upload_#{question.name}")
 
       allow_upload(acc_socket, upload_name,
         accept: accept,
@@ -594,23 +614,23 @@ defmodule DynamicForm.RendererLive do
         max_file_size: max_file_size,
         auto_upload: true,
         external: fn entry, socket ->
-          presign_upload_entry(entry, socket, field, metadata)
+          presign_upload_entry(entry, socket, question, metadata)
         end,
         progress: fn _upload_name, entry, socket ->
-          handle_upload_progress(entry, socket, field)
+          handle_upload_progress(entry, socket, question)
         end
       )
     end)
   end
 
-  defp find_direct_upload_fields(items) do
-    Enum.flat_map(items, fn item ->
-      case item do
-        %Instance.Field{type: "direct_upload"} ->
-          [item]
+  defp find_file_upload_questions(elements) do
+    Enum.flat_map(elements, fn element ->
+      case element do
+        %Instance.Question{type: "file"} ->
+          [element]
 
-        %Instance.Element{items: nested_items} when is_list(nested_items) ->
-          find_direct_upload_fields(nested_items)
+        %Instance.Element{elements: nested_elements} when is_list(nested_elements) ->
+          find_file_upload_questions(nested_elements)
 
         _ ->
           []
@@ -618,7 +638,7 @@ defmodule DynamicForm.RendererLive do
     end)
   end
 
-  defp presign_upload_entry(entry, socket, field, metadata) do
+  defp presign_upload_entry(entry, socket, question, metadata) do
     presigner_config = get_in(metadata, ["presigner"]) || %{}
     presigner_module = get_in(presigner_config, ["module"])
     presigner_function = get_in(presigner_config, ["function"]) || "sign"
@@ -627,7 +647,7 @@ defmodule DynamicForm.RendererLive do
     context = %{
       bucket: get_in(metadata, ["bucket"]),
       prefix: get_in(metadata, ["object_name_prefix"]) || "",
-      field_name: field.name
+      field_name: question.name
     }
 
     # Generate presigned URL
@@ -640,7 +660,7 @@ defmodule DynamicForm.RendererLive do
         require Logger
 
         Logger.warning(
-          "No presigner configured for direct_upload field '#{field.name}'. Upload will fail."
+          "No presigner configured for file upload question '#{question.name}'. Upload will fail."
         )
 
         ""
@@ -649,14 +669,14 @@ defmodule DynamicForm.RendererLive do
     {:ok, %{uploader: "GoogleStorage", url: url}, socket}
   end
 
-  defp handle_upload_progress(entry, socket, field) do
+  defp handle_upload_progress(entry, socket, question) do
     if entry.done? do
-      # Get current uploaded files for this field
-      field_atom = String.to_atom(field.name)
+      # Get current uploaded files for this question
+      field_atom = String.to_atom(question.name)
       current_files = Phoenix.HTML.Form.input_value(socket.assigns.form, field_atom) || []
 
       # Add new file metadata
-      metadata = field.metadata || %{}
+      metadata = question.metadata || %{}
       bucket = get_in(metadata, ["bucket"])
       prefix = get_in(metadata, ["object_name_prefix"]) || ""
       object_name = "#{prefix}#{entry.client_name}"

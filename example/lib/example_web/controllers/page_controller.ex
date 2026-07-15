@@ -2,12 +2,12 @@ defmodule ExampleWeb.PageController do
   use ExampleWeb, :controller
 
   def home(conn, _params) do
-    # Create a simple test instance
+    # Create a simple test instance using SurveyJS format
     test_instance = %DynamicForm.Instance{
       id: "test-1",
-      name: "Test Form",
+      title: "Test Form",
       description: "A test form to verify library loading",
-      items: [],
+      elements: [],
       backend: %DynamicForm.Instance.Backend{
         module: Example.TestBackend,
         function: :submit,

@@ -25,6 +25,7 @@ defmodule ExampleWeb.Router do
     live "/showcase-form", ShowcaseFormLive
     live "/section-form", SectionFormLive
     live "/builder-mockups", BuilderMockupsLive
+    live "/surveyjs-test", SurveyjsTestLive
   end
 
   # Other scopes may use custom stacks.

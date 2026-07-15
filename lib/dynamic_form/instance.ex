@@ -1,28 +1,33 @@
 defmodule DynamicForm.Instance do
   @moduledoc """
-  Configuration struct that defines the complete form structure, including backend configuration.
+  Configuration struct that defines the complete form structure using SurveyJS-compatible format.
 
-  An Instance represents a complete form definition with all its items (fields and elements),
-  validations, and backend submission configuration.
+  An Instance represents a complete form definition with all its elements (questions and panels),
+  validators, and backend submission configuration.
+
+  ## SurveyJS Compatibility
+
+  This library uses SurveyJS-compatible JSON format for form definitions. See:
+  https://surveyjs.io/form-library/documentation
 
   ## Example
 
       iex> instance = %DynamicForm.Instance{
       ...>   id: "contact-form",
-      ...>   name: "Contact Form",
+      ...>   title: "Contact Form",
       ...>   description: "Get in touch with us",
-      ...>   items: [
+      ...>   elements: [
       ...>     %DynamicForm.Instance.Element{
-      ...>       id: "section-heading",
-      ...>       type: "heading",
-      ...>       content: "Contact Information"
+      ...>       name: "intro",
+      ...>       type: "html",
+      ...>       html: "<h2>Contact Information</h2>"
       ...>     },
-      ...>     %DynamicForm.Instance.Field{
-      ...>       id: "email",
+      ...>     %DynamicForm.Instance.Question{
       ...>       name: "email",
-      ...>       type: "email",
-      ...>       label: "Email Address",
-      ...>       required: true
+      ...>       type: "text",
+      ...>       inputType: "email",
+      ...>       title: "Email Address",
+      ...>       isRequired: true
       ...>     }
       ...>   ],
       ...>   backend: %DynamicForm.Instance.Backend{
@@ -46,12 +51,12 @@ defmodule DynamicForm.Instance do
       instance = DynamicForm.Instance.decode!(map)
   """
 
-  @enforce_keys [:id, :items]
+  @enforce_keys [:id, :elements]
   defstruct [
     :id,
-    :name,
+    :title,
     :description,
-    :items,
+    :elements,
     :backend,
     :metadata,
     inserted_at: nil,
@@ -60,9 +65,9 @@ defmodule DynamicForm.Instance do
 
   @type t :: %__MODULE__{
           id: String.t(),
-          name: String.t() | nil,
+          title: String.t() | nil,
           description: String.t() | nil,
-          items: [Field.t() | Element.t()],
+          elements: [Question.t() | Element.t()],
           backend: Backend.t() | nil,
           metadata: map(),
           inserted_at: DateTime.t() | nil,
@@ -74,13 +79,13 @@ defmodule DynamicForm.Instance do
 
   ## Examples
 
-      iex> json = ~s({"id": "my-form", "name": "My Form", "items": []})
+      iex> json = ~s({"id": "my-form", "title": "My Form", "elements": []})
       iex> DynamicForm.Instance.decode!(json)
-      %DynamicForm.Instance{id: "my-form", name: "My Form", items: []}
+      %DynamicForm.Instance{id: "my-form", title: "My Form", elements: []}
 
-      iex> map = %{"id" => "my-form", "name" => "My Form", "items" => []}
+      iex> map = %{"id" => "my-form", "title" => "My Form", "elements" => []}
       iex> DynamicForm.Instance.decode!(map)
-      %DynamicForm.Instance{id: "my-form", name: "My Form", items: []}
+      %DynamicForm.Instance{id: "my-form", title: "My Form", elements: []}
   """
   def decode!(data) when is_binary(data) do
     data
@@ -92,141 +97,155 @@ defmodule DynamicForm.Instance do
     DynamicForm.Instance.Decoder.decode_instance(data)
   end
 
-  defmodule Field do
+  defmodule Question do
     @moduledoc """
-    Represents a single form field with its configuration and validation rules.
+    Represents a form question (input field) using SurveyJS-compatible format.
 
-    ## Disabled Fields
+    ## SurveyJS Question Types
 
-    Fields can be marked as `disabled: true` to prevent user editing while still
-    displaying the field value. This is commonly used in edit forms where certain
+    Supported types:
+    - `"text"` - Single-line text input (use `inputType` for email, number, etc.)
+    - `"comment"` - Multi-line text area
+    - `"dropdown"` - Select dropdown
+    - `"radiogroup"` - Radio button group
+    - `"boolean"` - Checkbox/toggle
+    - `"file"` - File upload
+
+    ## Read-Only Questions
+
+    Questions can be marked as `readOnly: true` to prevent user editing while still
+    displaying the value. This is commonly used in edit forms where certain
     fields (like IDs, creation timestamps, or verified emails) should be visible
     but immutable.
 
-    **Important**: Disabled HTML fields are not submitted by browsers. The
-    `DynamicForm.RendererLive` component automatically preserves disabled field
+    **Important**: Read-only HTML fields are not submitted by browsers. The
+    `DynamicForm.RendererLive` component automatically preserves read-only field
     values by merging the initial params with form submissions.
 
     ### Example
 
-        %Field{
-          id: "user_id",
+        %Question{
           name: "user_id",
-          type: "string",
-          label: "User ID",
-          disabled: true
+          type: "text",
+          title: "User ID",
+          readOnly: true
         }
 
     ## Conditional Visibility
 
-    Fields can be conditionally shown based on the value of another field using the
-    `visible_when` option. When `visible_when` is `nil`, the field is always visible.
+    Questions can be conditionally shown based on the value of another question using the
+    `visibleIf` expression. When `visibleIf` is `nil`, the question is always visible.
 
-    ### Supported Operators
+    ### Expression Syntax
 
-    - `"equals"` - Field value must equal the specified value
-    - `"valid"` - Field must be valid (has a value and passes all validations)
+    - `"{field} = 'value'"` - Show when field equals value
+    - `"{field} notempty"` - Show when field has a value
+    - `"{field} empty"` - Show when field is empty
 
     ### Examples
 
-        # Show field when payment_method equals "credit_card"
-        %Field{
-          id: "credit_card_number",
+        # Show when payment_method equals "credit_card"
+        %Question{
           name: "credit_card_number",
-          type: "string",
-          label: "Credit Card Number",
-          visible_when: %{
-            field: "payment_method",
-            operator: "equals",
-            value: "credit_card"
-          }
+          type: "text",
+          title: "Credit Card Number",
+          visibleIf: "{payment_method} = 'credit_card'"
         }
 
-        # Show field when email is valid (filled and passes email validation)
-        %Field{
-          id: "email_preferences",
+        # Show when email has a value
+        %Question{
           name: "email_preferences",
-          type: "select",
-          label: "Email Preferences",
-          visible_when: %{
-            field: "email",
-            operator: "valid"
-          }
+          type: "dropdown",
+          title: "Email Preferences",
+          visibleIf: "{email} notempty"
         }
     """
 
-    @enforce_keys [:id, :name, :type]
+    @enforce_keys [:name, :type]
     defstruct [
-      :id,
       :name,
       :type,
-      :label,
+      :inputType,
+      :title,
       :placeholder,
-      :help_text,
-      :default_value,
-      :options,
-      :validations,
-      :required,
-      :disabled,
-      :visible_when,
-      :metadata,
-      __type__: "Field"
+      :description,
+      :defaultValue,
+      :choices,
+      :validators,
+      :isRequired,
+      :requiredIf,
+      :readOnly,
+      :enableIf,
+      :visibleIf,
+      :rateMin,
+      :rateMax,
+      :rateStep,
+      :metadata
     ]
 
-    @type condition :: %{
-            field: String.t(),
-            operator: String.t(),
-            value: any()
-          }
-
     @type t :: %__MODULE__{
-            id: String.t(),
             name: String.t(),
             type: String.t(),
-            label: String.t() | nil,
+            inputType: String.t() | nil,
+            title: String.t() | nil,
             placeholder: String.t() | nil,
-            help_text: String.t() | nil,
-            default_value: any(),
-            options: list() | nil,
-            validations: [Validation.t()] | nil,
-            required: boolean() | nil,
-            disabled: boolean() | nil,
-            visible_when: condition() | nil,
-            metadata: map() | nil,
-            __type__: String.t()
+            description: String.t() | nil,
+            defaultValue: any(),
+            choices: list() | nil,
+            validators: [Validator.t()] | nil,
+            isRequired: boolean() | nil,
+            requiredIf: String.t() | nil,
+            readOnly: boolean() | nil,
+            enableIf: String.t() | nil,
+            visibleIf: String.t() | nil,
+            rateMin: integer() | nil,
+            rateMax: integer() | nil,
+            rateStep: integer() | nil,
+            metadata: map() | nil
           }
   end
 
-  defimpl Jason.Encoder, for: Field do
-    def encode(field, opts) do
-      Jason.Encode.map(
+  defimpl Jason.Encoder, for: Question do
+    def encode(question, opts) do
+      # Build map with only non-nil values to match SurveyJS format
+      map =
         %{
-          id: field.id,
-          name: field.name,
-          type: field.type,
-          label: field.label,
-          placeholder: field.placeholder,
-          help_text: field.help_text,
-          default_value: field.default_value,
-          options: encode_options(field.options),
-          validations: field.validations,
-          required: field.required,
-          disabled: field.disabled,
-          visible_when: field.visible_when,
-          metadata: field.metadata,
-          __type__: field.__type__
-        },
-        opts
-      )
+          name: question.name,
+          type: question.type
+        }
+        |> maybe_put(:inputType, question.inputType)
+        |> maybe_put(:title, question.title)
+        |> maybe_put(:placeholder, question.placeholder)
+        |> maybe_put(:description, question.description)
+        |> maybe_put(:defaultValue, question.defaultValue)
+        |> maybe_put(:choices, encode_choices(question.choices))
+        |> maybe_put(:validators, question.validators)
+        |> maybe_put(:isRequired, question.isRequired)
+        |> maybe_put(:requiredIf, question.requiredIf)
+        |> maybe_put(:readOnly, question.readOnly)
+        |> maybe_put(:enableIf, question.enableIf)
+        |> maybe_put(:visibleIf, question.visibleIf)
+        |> maybe_put(:rateMin, question.rateMin)
+        |> maybe_put(:rateMax, question.rateMax)
+        |> maybe_put(:rateStep, question.rateStep)
+        |> maybe_put(:metadata, question.metadata)
+
+      Jason.Encode.map(map, opts)
     end
 
-    # Convert tuple options {label, value} to arrays [label, value] for JSON
-    defp encode_options(nil), do: nil
-    defp encode_options([]), do: []
+    defp maybe_put(map, _key, nil), do: map
+    defp maybe_put(map, key, value), do: Map.put(map, key, value)
 
-    defp encode_options(options) when is_list(options) do
-      Enum.map(options, fn
-        {label, value} -> [label, value]
+    # Encode choices in SurveyJS format
+    defp encode_choices(nil), do: nil
+    defp encode_choices([]), do: []
+
+    defp encode_choices(choices) when is_list(choices) do
+      Enum.map(choices, fn
+        {text, value} -> %{"value" => value, "text" => text}
+        %{value: value, text: text} -> %{"value" => value, "text" => text}
+        %{"value" => _, "text" => _} = choice -> choice
+        value when is_binary(value) -> value
         other -> other
       end)
     end
@@ -234,108 +253,117 @@ defmodule DynamicForm.Instance do
 
   defmodule Element do
     @moduledoc """
-    Represents a non-input element in a form, such as headings, paragraphs, dividers, or groups.
+    Represents a non-input element in a form using SurveyJS-compatible format.
 
     Elements are used to add structure and information to forms without collecting user input.
-    They support conditional visibility just like fields.
+    They support conditional visibility just like questions.
 
-    ## Supported Types
+    ## SurveyJS Element Types
 
-    - `"heading"` - Section heading (h1-h6)
-    - `"paragraph"` - Text paragraph for instructions or information
-    - `"divider"` - Horizontal line to separate sections
-    - `"group"` - Container for grouping fields together with layout options
+    - `"html"` - HTML content (headings, paragraphs, dividers, etc.)
+    - `"panel"` - Container for grouping questions together
+    - `"image"` - Display an image (`imageLink`, `imageWidth`, `imageHeight`, `imageFit`)
 
     ## Examples
 
-        # Heading element
+        # HTML element with heading
         %Element{
-          id: "section-1",
-          type: "heading",
-          content: "Personal Information",
-          position: 1,
-          metadata: %{"level" => "h2"}
+          name: "section-heading",
+          type: "html",
+          html: "<h2>Personal Information</h2>"
         }
 
-        # Paragraph element
+        # HTML element with paragraph
         %Element{
-          id: "privacy-notice",
-          type: "paragraph",
-          content: "We take your privacy seriously. Your data will never be shared.",
-          position: 2,
-          metadata: %{"class" => "text-gray-600"}
+          name: "privacy-notice",
+          type: "html",
+          html: "<p class='text-gray-600'>We take your privacy seriously.</p>"
         }
 
-        # Divider element
+        # Panel element with nested questions
         %Element{
-          id: "divider-1",
-          type: "divider",
-          position: 3
-        }
-
-        # Group element with nested fields
-        %Element{
-          id: "address-group",
-          type: "group",
-          content: "Shipping Address",
-          position: 4,
-          metadata: %{"layout" => "grid-2"},
-          items: [
-            %Field{
-              id: "street",
+          name: "address-panel",
+          type: "panel",
+          title: "Shipping Address",
+          elements: [
+            %Question{
               name: "street",
-              type: "string",
-              label: "Street"
+              type: "text",
+              title: "Street"
             },
-            %Field{
-              id: "city",
+            %Question{
               name: "city",
-              type: "string",
-              label: "City"
+              type: "text",
+              title: "City"
             }
           ]
         }
 
         # Conditional element (only show when terms accepted)
         %Element{
-          id: "thank-you-message",
-          type: "paragraph",
-          content: "Thank you for accepting our terms!",
-          visible_when: %{
-            field: "accept_terms",
-            operator: "equals",
-            value: true
-          }
+          name: "thank-you-message",
+          type: "html",
+          html: "<p>Thank you for accepting our terms!</p>",
+          visibleIf: "{accept_terms} = true"
         }
     """
 
-    @derive Jason.Encoder
-    @enforce_keys [:id, :type]
+    @enforce_keys [:name, :type]
     defstruct [
-      :id,
+      :name,
       :type,
-      :content,
-      :items,
-      :visible_when,
-      :metadata,
-      __type__: "Element"
+      :title,
+      :html,
+      :elements,
+      :visibleIf,
+      :enableIf,
+      :imageLink,
+      :imageWidth,
+      :imageHeight,
+      :imageFit,
+      :metadata
     ]
 
-    @type condition :: %{
-            field: String.t(),
-            operator: String.t(),
-            value: any()
-          }
-
     @type t :: %__MODULE__{
-            id: String.t(),
+            name: String.t(),
             type: String.t(),
-            content: String.t() | nil,
-            items: [Field.t() | t()] | nil,
-            visible_when: condition() | nil,
-            metadata: map() | nil,
-            __type__: String.t()
+            title: String.t() | nil,
+            html: String.t() | nil,
+            elements: [Question.t() | t()] | nil,
+            visibleIf: String.t() | nil,
+            enableIf: String.t() | nil,
+            imageLink: String.t() | nil,
+            imageWidth: String.t() | nil,
+            imageHeight: String.t() | nil,
+            imageFit: String.t() | nil,
+            metadata: map() | nil
           }
+  end
+
+  defimpl Jason.Encoder, for: Element do
+    def encode(element, opts) do
+      # Build map with only non-nil values to match SurveyJS format
+      map =
+        %{
+          name: element.name,
+          type: element.type
+        }
+        |> maybe_put(:title, element.title)
+        |> maybe_put(:html, element.html)
+        |> maybe_put(:elements, element.elements)
+        |> maybe_put(:visibleIf, element.visibleIf)
+        |> maybe_put(:enableIf, element.enableIf)
+        |> maybe_put(:imageLink, element.imageLink)
+        |> maybe_put(:imageWidth, element.imageWidth)
+        |> maybe_put(:imageHeight, element.imageHeight)
+        |> maybe_put(:imageFit, element.imageFit)
+        |> maybe_put(:metadata, element.metadata)
+
+      Jason.Encode.map(map, opts)
+    end
+
+    defp maybe_put(map, _key, nil), do: map
+    defp maybe_put(map, key, value), do: Map.put(map, key, value)
   end
 
   defmodule Backend do
@@ -397,27 +425,52 @@ defmodule DynamicForm.Instance do
     defp encode_config(config), do: config
   end
 
-  defmodule Validation do
+  defmodule Validator do
     @moduledoc """
-    Represents a validation rule for a form field.
+    Represents a validation rule for a form question using SurveyJS-compatible format.
+
+    ## SurveyJS Validator Types
+
+    - `"text"` - Text length validation (minLength, maxLength)
+    - `"numeric"` - Numeric range validation (minValue, maxValue)
+    - `"email"` - Email format validation
+    - `"regex"` - Regular expression validation
+
+    ## Examples
+
+        # Text length validator
+        %Validator{type: "text", minLength: 2, maxLength: 100}
+
+        # Numeric range validator
+        %Validator{type: "numeric", minValue: 1, maxValue: 10}
+
+        # Email format validator
+        %Validator{type: "email"}
+
+        # Custom error message
+        %Validator{type: "text", minLength: 5, text: "Must be at least 5 characters"}
     """
 
     @derive Jason.Encoder
     @enforce_keys [:type]
     defstruct [
       :type,
-      :value,
-      :min,
-      :max,
-      :message
+      :minLength,
+      :maxLength,
+      :minValue,
+      :maxValue,
+      :regex,
+      :text
     ]
 
     @type t :: %__MODULE__{
             type: String.t(),
-            value: any() | nil,
-            min: number() | nil,
-            max: number() | nil,
-            message: String.t() | nil
+            minLength: integer() | nil,
+            maxLength: integer() | nil,
+            minValue: number() | nil,
+            maxValue: number() | nil,
+            regex: String.t() | nil,
+            text: String.t() | nil
           }
   end
 
@@ -427,9 +480,9 @@ defmodule DynamicForm.Instance do
       Jason.Encode.map(
         %{
           id: instance.id,
-          name: instance.name,
+          title: instance.title,
           description: instance.description,
-          items: instance.items,
+          elements: instance.elements,
           backend: instance.backend,
           metadata: instance.metadata,
           inserted_at: encode_datetime(instance.inserted_at),

@@ -279,26 +279,25 @@ defmodule ExampleWeb.SectionFormLive do
           </div>
 
           <div>
-            <p class="mb-2 font-semibold">Example of defining a section in your form instance:</p>
+            <p class="mb-2 font-semibold">Example of defining a panel in your form instance:</p>
             <pre class="bg-gray-100 p-4 rounded overflow-x-auto text-xs font-mono"><code>
               &#37;Instance.Element&lbrace;
-                id: "personal-section",
-                type: "section",
-                content: "Personal Information",
-                items: [
-                  &#37;Instance.Field&lbrace;
-                    id: "first_name",
+                name: "personal-panel",
+                type: "panel",
+                title: "Personal Information",
+                elements: [
+                  &#37;Instance.Question&lbrace;
                     name: "first_name",
-                    type: "string",
-                    label: "First Name",
-                    required: true
+                    type: "text",
+                    title: "First Name",
+                    isRequired: true
                   &rbrace;,
-                  &#37;Instance.Field&lbrace;
-                    id: "email",
+                  &#37;Instance.Question&lbrace;
                     name: "email",
-                    type: "email",
-                    label: "Email",
-                    required: true
+                    type: "text",
+                    inputType: "email",
+                    title: "Email",
+                    isRequired: true
                   &rbrace;
                 ]
               &rbrace;

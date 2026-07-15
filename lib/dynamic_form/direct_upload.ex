@@ -10,17 +10,16 @@ defmodule DynamicForm.DirectUpload do
   The component requires a presigner callback function that generates presigned URLs
   for uploading files to cloud storage. This is configured via the field's metadata.
 
-  ## Field Configuration
+  ## Question Configuration
 
-  Add a `direct_upload` field to your form instance:
+  Add a `file` question to your form instance:
 
-      %DynamicForm.Instance.Field{
-        id: "documents",
+      %DynamicForm.Instance.Question{
         name: "documents",
-        type: "direct_upload",
-        label: "Upload Documents",
-        help_text: "Upload supporting documents (max 10MB per file)",
-        required: true,
+        type: "file",
+        title: "Upload Documents",
+        description: "Upload supporting documents (max 10MB per file)",
+        isRequired: true,
         metadata: %{
           "max_entries" => 3,
           "max_file_size" => 10_000_000,
@@ -105,14 +104,14 @@ defmodule DynamicForm.DirectUpload do
     ~H"""
     <div class="mb-4">
       <label class="block text-sm font-medium leading-6 text-zinc-900">
-        <%= @field.label || String.capitalize(@field.name) %>
-        <%= if @field.required do %>
+        <%= @field.title || String.capitalize(@field.name) %>
+        <%= if @field.isRequired do %>
           <span class="text-red-500">*</span>
         <% end %>
       </label>
 
-      <%= if @field.help_text do %>
-        <p class="mt-1 text-sm text-gray-500"><%= @field.help_text %></p>
+      <%= if @field.description do %>
+        <p class="mt-1 text-sm text-gray-500"><%= @field.description %></p>
       <% end %>
 
       <%= if @upload_config do %>
@@ -130,7 +129,7 @@ defmodule DynamicForm.DirectUpload do
                   <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
-                  <span class="text-sm font-semibold"><%= @field.label || "Files" %></span>
+                  <span class="text-sm font-semibold"><%= @field.title || "Files" %></span>
                 </div>
                 <.upload_button upload={@upload_config} />
               </div>

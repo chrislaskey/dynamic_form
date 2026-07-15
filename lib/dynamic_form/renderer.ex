@@ -1,6 +1,6 @@
 defmodule DynamicForm.Renderer do
   @moduledoc """
-  A pure functional component that renders dynamic forms.
+  A pure functional component that renders dynamic forms using SurveyJS-compatible format.
 
   This component renders the form HTML based on a DynamicForm.Instance configuration.
   Use this for advanced cases where you want custom state management.
@@ -78,7 +78,7 @@ defmodule DynamicForm.Renderer do
 
   attr(:uploads, :map,
     default: %{},
-    doc: "Upload configurations for direct_upload fields"
+    doc: "Upload configurations for file fields"
   )
 
   attr(:parent_id, :string,
@@ -109,8 +109,8 @@ defmodule DynamicForm.Renderer do
       phx-change={@phx_change}
       phx-target={@target}
     >
-      <%= for item <- visible_items(@instance.items, @form) do %>
-        <%= render_item(item, f, disabled: @disabled, gettext: @gettext, uploads: @uploads, parent_id: @parent_id) %>
+      <%= for element <- visible_elements(@instance.elements, @form) do %>
+        <%= render_element(element, f, disabled: @disabled, gettext: @gettext, uploads: @uploads, parent_id: @parent_id) %>
       <% end %>
 
       <div :if={!@hide_submit} class="mt-6 flex items-center justify-end gap-x-6">
@@ -130,201 +130,98 @@ defmodule DynamicForm.Renderer do
     """
   end
 
-  # Filter items (fields and elements) based on visibility conditions
-  defp visible_items(items, form) do
-    Enum.filter(items, fn item ->
-      should_display_item?(item, form)
+  # Filter elements (questions and panels) based on visibility conditions
+  defp visible_elements(elements, form) do
+    Enum.filter(elements, fn element ->
+      should_display_element?(element, form)
     end)
   end
 
-  # Item with no visibility condition is always visible
-  defp should_display_item?(%Instance.Field{visible_when: nil}, _form), do: true
-  defp should_display_item?(%Instance.Element{visible_when: nil}, _form), do: true
-
-  # Item with visibility condition - check if condition is met
-  defp should_display_item?(%Instance.Field{visible_when: condition}, form) do
-    evaluate_condition(condition, form)
+  defp should_display_element?(%Instance.Question{} = question, form) do
+    DynamicForm.Visibility.question_visible?(question, get_form_params(form))
   end
 
-  defp should_display_item?(%Instance.Element{visible_when: condition}, form) do
-    evaluate_condition(condition, form)
+  defp should_display_element?(%Instance.Element{} = element, form) do
+    DynamicForm.Visibility.element_visible?(element, get_form_params(form))
   end
 
-  # Evaluate "equals" operator with atom keys
-  defp evaluate_condition(%{field: field_name, operator: "equals", value: expected}, form) do
-    field_atom = String.to_existing_atom(field_name)
-    current_value = Phoenix.HTML.Form.input_value(form, field_atom)
-    current_value == expected
+  # Get current params from form
+  defp get_form_params(form) do
+    form.source.changes
   rescue
-    ArgumentError -> false
+    _ -> %{}
   end
 
-  # Evaluate "equals" operator with string keys (from JSON decoding)
-  defp evaluate_condition(
-         %{"field" => field_name, "operator" => "equals", "value" => expected},
-         form
-       ) do
-    field_atom = String.to_existing_atom(field_name)
-    current_value = Phoenix.HTML.Form.input_value(form, field_atom)
-    current_value == expected
-  rescue
-    ArgumentError -> false
+  # Dispatch to appropriate renderer based on element type
+  defp render_element(%Instance.Question{} = question, form, opts) do
+    render_question(question, form, opts)
   end
 
-  # Evaluate "valid" operator with atom keys
-  defp evaluate_condition(%{field: field_name, operator: "valid"}, form) do
-    field_atom = String.to_existing_atom(field_name)
-    current_value = Phoenix.HTML.Form.input_value(form, field_atom)
-
-    # Check if field has a value (not nil, not empty string)
-    has_value = current_value != nil and current_value != ""
-
-    # Check if field has no errors in the changeset
-    has_no_errors =
-      case Keyword.get(form.errors || [], field_atom) do
-        nil -> true
-        _ -> false
-      end
-
-    has_value and has_no_errors
-  rescue
-    ArgumentError -> false
+  defp render_element(%Instance.Element{} = element, form, opts) do
+    render_panel_or_html(element, form, opts)
   end
 
-  # Evaluate "valid" operator with string keys (from JSON decoding)
-  defp evaluate_condition(%{"field" => field_name, "operator" => "valid"}, form) do
-    field_atom = String.to_existing_atom(field_name)
-    current_value = Phoenix.HTML.Form.input_value(form, field_atom)
+  # Render HTML elements
+  defp render_panel_or_html(%Instance.Element{type: "html"} = element, _form, _opts) do
+    html_content = element.html || ""
 
-    # Check if field has a value (not nil, not empty string)
-    has_value = current_value != nil and current_value != ""
-
-    # Check if field has no errors in the changeset
-    has_no_errors =
-      case Keyword.get(form.errors || [], field_atom) do
-        nil -> true
-        _ -> false
-      end
-
-    has_value and has_no_errors
-  rescue
-    ArgumentError -> false
-  end
-
-  # Dispatch to appropriate renderer based on item type
-  defp render_item(%Instance.Field{} = field, form, opts) do
-    render_field(field, form, opts)
-  end
-
-  defp render_item(%Instance.Element{} = element, form, opts) do
-    render_element(element, form, opts)
-  end
-
-  # Render element types
-  defp render_element(%Instance.Element{type: "heading"} = element, _form, _opts) do
-    level = get_in(element.metadata || %{}, ["level"]) || "h2"
-    content = element.content || ""
-
-    assigns = %{level: level, content: content, element: element}
-
-    ~H"""
-    <div class="mb-6">
-      <%= case @level do %>
-        <% "h1" -> %>
-          <h1 class="text-3xl font-bold text-gray-900"><%= @content %></h1>
-        <% "h2" -> %>
-          <h2 class="text-2xl font-semibold text-gray-900"><%= @content %></h2>
-        <% "h3" -> %>
-          <h3 class="text-xl font-semibold text-gray-900"><%= @content %></h3>
-        <% "h4" -> %>
-          <h4 class="text-lg font-semibold text-gray-900"><%= @content %></h4>
-        <% "h5" -> %>
-          <h5 class="text-base font-semibold text-gray-900"><%= @content %></h5>
-        <% "h6" -> %>
-          <h6 class="text-sm font-semibold text-gray-900"><%= @content %></h6>
-        <% _ -> %>
-          <h2 class="text-2xl font-semibold text-gray-900"><%= @content %></h2>
-      <% end %>
-    </div>
-    """
-  end
-
-  defp render_element(%Instance.Element{type: "paragraph"} = element, _form, _opts) do
-    content = element.content || ""
-    custom_class = get_in(element.metadata || %{}, ["class"]) || "text-gray-700"
-
-    assigns = %{content: content, custom_class: custom_class}
+    assigns = %{html: html_content}
 
     ~H"""
     <div class="mb-4">
-      <p class={@custom_class}><%= @content %></p>
+      <%= Phoenix.HTML.raw(@html) %>
     </div>
     """
   end
 
-  defp render_element(%Instance.Element{type: "divider"}, _form, _opts) do
-    assigns = %{}
+  # Render image elements
+  defp render_panel_or_html(%Instance.Element{type: "image"} = element, _form, _opts) do
+    assigns = %{element: element}
 
     ~H"""
-    <div class="my-6">
-      <hr class="border-gray-300" />
+    <div class="mb-4">
+      <img
+        src={@element.imageLink}
+        alt={@element.title || @element.name}
+        style={image_style(@element)}
+        class="rounded-md max-w-full"
+      />
     </div>
     """
   end
 
-  defp render_element(%Instance.Element{type: "group"} = element, form, opts) do
-    layout = get_in(element.metadata || %{}, ["layout"]) || "horizontal"
-    content = element.content
-    items = element.items || []
+  # Render panel elements (containers)
+  defp render_panel_or_html(%Instance.Element{type: "panel"} = element, form, opts) do
+    title = element.title
+    elements = element.elements || []
+
+    # A disabled panel (enableIf false) disables every question inside it
+    opts =
+      if DynamicForm.Visibility.condition_met?(element.enableIf, get_form_params(form)) do
+        opts
+      else
+        Keyword.put(opts, :disabled, true)
+      end
+
+    # Filter visible elements within the panel
+    visible_panel_elements = visible_elements(elements, form)
 
     assigns = %{
       element: element,
-      content: content,
-      layout: layout,
-      items: items,
+      title: title,
+      elements: visible_panel_elements,
       form: form,
       opts: opts
     }
 
     ~H"""
-    <CoreComponents.group title={@content} layout={@layout}>
-      <%= for item <- @items do %>
+    <CoreComponents.section title={@title}>
+      <%= for item <- @elements do %>
         <%= case item do %>
-          <% %Instance.Field{} = field -> %>
-            <%= render_field(field, @form, @opts) %>
+          <% %Instance.Question{} = question -> %>
+            <%= render_question(question, @form, @opts) %>
           <% %Instance.Element{} = nested_element -> %>
-            <%= render_element(nested_element, @form, @opts) %>
-        <% end %>
-      <% end %>
-    </CoreComponents.group>
-    """
-  end
-
-  defp render_element(%Instance.Element{type: "section"} = element, form, opts) do
-    content = element.content
-    items = element.items || []
-    custom_class = get_in(element.metadata || %{}, ["class"])
-
-    # Filter visible items within the section
-    visible_section_items = visible_items(items, form)
-
-    assigns = %{
-      element: element,
-      content: content,
-      custom_class: custom_class,
-      items: visible_section_items,
-      form: form,
-      opts: opts
-    }
-
-    ~H"""
-    <CoreComponents.section title={@content} class={@custom_class}>
-      <%= for item <- @items do %>
-        <%= case item do %>
-          <% %Instance.Field{} = field -> %>
-            <%= render_field(field, @form, @opts) %>
-          <% %Instance.Element{} = nested_element -> %>
-            <%= render_element(nested_element, @form, @opts) %>
+            <%= render_panel_or_html(nested_element, @form, @opts) %>
         <% end %>
       <% end %>
     </CoreComponents.section>
@@ -332,7 +229,7 @@ defmodule DynamicForm.Renderer do
   end
 
   # Fallback for unknown element types
-  defp render_element(element, _form, _opts) do
+  defp render_panel_or_html(element, _form, _opts) do
     assigns = %{element: element}
 
     ~H"""
@@ -341,7 +238,7 @@ defmodule DynamicForm.Renderer do
         <div class="ml-3">
           <h3 class="text-sm font-medium text-yellow-800">Unknown element type</h3>
           <div class="mt-2 text-sm text-yellow-700">
-            <p>Element "<%= @element.id %>" has unsupported type: <%= @element.type %></p>
+            <p>Element "<%= @element.name %>" has unsupported type: <%= @element.type %></p>
           </div>
         </div>
       </div>
@@ -349,104 +246,50 @@ defmodule DynamicForm.Renderer do
     """
   end
 
-  # Render a string/text input field
-  defp render_field(%Instance.Field{type: "string"} = field, form, opts) do
-    form_disabled = Keyword.get(opts, :disabled, false)
-    disabled = form_disabled || field.disabled || false
-    field_atom = String.to_atom(field.name)
+  # Render a text input question
+  defp render_question(%Instance.Question{type: "text"} = question, form, opts) do
+    disabled = question_disabled?(question, form, opts)
+    field_atom = String.to_atom(question.name)
 
-    # Build label with required indicator
-    label =
-      if field.required do
-        Phoenix.HTML.raw(
-          "#{field.label || String.capitalize(field.name)} <span class=\"text-red-500\">*</span>"
-        )
-      else
-        field.label || String.capitalize(field.name)
-      end
+    # Determine input type
+    input_type = question.inputType || "text"
+
+    label = question_label(question)
 
     assigns = %{
-      field: field,
+      question: question,
       form: form,
       field_atom: field_atom,
       disabled: disabled,
-      label: label
+      label: label,
+      input_type: input_type
     }
 
     ~H"""
     <div class="mb-4">
       <CoreComponents.input
         field={@form[@field_atom]}
-        type="text"
+        type={@input_type}
         label={@label}
-        placeholder={@field.placeholder}
+        placeholder={@question.placeholder}
         disabled={@disabled}
       />
-      <%= if @field.help_text do %>
-        <p class="mt-2 text-sm text-gray-500"><%= @field.help_text %></p>
+      <%= if @question.description do %>
+        <p class="mt-2 text-sm text-gray-500"><%= @question.description %></p>
       <% end %>
     </div>
     """
   end
 
-  # Render an email input field
-  defp render_field(%Instance.Field{type: "email"} = field, form, opts) do
-    form_disabled = Keyword.get(opts, :disabled, false)
-    disabled = form_disabled || field.disabled || false
-    field_atom = String.to_atom(field.name)
+  # Render a comment/textarea question
+  defp render_question(%Instance.Question{type: "comment"} = question, form, opts) do
+    disabled = question_disabled?(question, form, opts)
+    field_atom = String.to_atom(question.name)
 
-    # Build label with required indicator
-    label =
-      if field.required do
-        Phoenix.HTML.raw(
-          "#{field.label || String.capitalize(field.name)} <span class=\"text-red-500\">*</span>"
-        )
-      else
-        field.label || String.capitalize(field.name)
-      end
+    label = question_label(question)
 
     assigns = %{
-      field: field,
-      form: form,
-      field_atom: field_atom,
-      disabled: disabled,
-      label: label
-    }
-
-    ~H"""
-    <div class="mb-4">
-      <CoreComponents.input
-        field={@form[@field_atom]}
-        type="email"
-        label={@label}
-        placeholder={@field.placeholder}
-        disabled={@disabled}
-      />
-      <%= if @field.help_text do %>
-        <p class="mt-2 text-sm text-gray-500"><%= @field.help_text %></p>
-      <% end %>
-    </div>
-    """
-  end
-
-  # Render a textarea field
-  defp render_field(%Instance.Field{type: "textarea"} = field, form, opts) do
-    form_disabled = Keyword.get(opts, :disabled, false)
-    disabled = form_disabled || field.disabled || false
-    field_atom = String.to_atom(field.name)
-
-    # Build label with required indicator
-    label =
-      if field.required do
-        Phoenix.HTML.raw(
-          "#{field.label || String.capitalize(field.name)} <span class=\"text-red-500\">*</span>"
-        )
-      else
-        field.label || String.capitalize(field.name)
-      end
-
-    assigns = %{
-      field: field,
+      question: question,
       form: form,
       field_atom: field_atom,
       disabled: disabled,
@@ -459,38 +302,31 @@ defmodule DynamicForm.Renderer do
         field={@form[@field_atom]}
         type="textarea"
         label={@label}
-        placeholder={@field.placeholder}
+        placeholder={@question.placeholder}
         disabled={@disabled}
         rows="4"
       />
-      <%= if @field.help_text do %>
-        <p class="mt-2 text-sm text-gray-500"><%= @field.help_text %></p>
+      <%= if @question.description do %>
+        <p class="mt-2 text-sm text-gray-500"><%= @question.description %></p>
       <% end %>
     </div>
     """
   end
 
-  # Render a decimal/number input field
-  defp render_field(%Instance.Field{type: "decimal"} = field, form, opts) do
-    form_disabled = Keyword.get(opts, :disabled, false)
-    disabled = form_disabled || field.disabled || false
-    field_atom = String.to_atom(field.name)
+  # Render a dropdown/select question
+  defp render_question(%Instance.Question{type: "dropdown"} = question, form, opts) do
+    disabled = question_disabled?(question, form, opts)
+    field_atom = String.to_atom(question.name)
+    choices = normalize_choices(question.choices)
 
-    # Build label with required indicator
-    label =
-      if field.required do
-        Phoenix.HTML.raw(
-          "#{field.label || String.capitalize(field.name)} <span class=\"text-red-500\">*</span>"
-        )
-      else
-        field.label || String.capitalize(field.name)
-      end
+    label = question_label(question)
 
     assigns = %{
-      field: field,
+      question: question,
       form: form,
       field_atom: field_atom,
       disabled: disabled,
+      choices: choices,
       label: label
     }
 
@@ -498,37 +334,80 @@ defmodule DynamicForm.Renderer do
     <div class="mb-4">
       <CoreComponents.input
         field={@form[@field_atom]}
-        type="number"
+        type="select"
         label={@label}
-        placeholder={@field.placeholder}
+        options={@choices}
+        prompt="Select an option..."
         disabled={@disabled}
-        step="0.01"
       />
-      <%= if @field.help_text do %>
-        <p class="mt-2 text-sm text-gray-500"><%= @field.help_text %></p>
+      <%= if @question.description do %>
+        <p class="mt-2 text-sm text-gray-500"><%= @question.description %></p>
       <% end %>
     </div>
     """
   end
 
-  # Render a boolean/checkbox field
-  defp render_field(%Instance.Field{type: "boolean"} = field, form, opts) do
-    form_disabled = Keyword.get(opts, :disabled, false)
-    disabled = form_disabled || field.disabled || false
-    field_atom = String.to_atom(field.name)
+  # Render a radiogroup question
+  defp render_question(%Instance.Question{type: "radiogroup"} = question, form, opts) do
+    disabled = question_disabled?(question, form, opts)
+    field_atom = String.to_atom(question.name)
+    choices = normalize_choices(question.choices)
 
-    # For checkboxes, the label is displayed inline, so include help_text if present
+    # Get style from metadata
+    style =
+      case get_in(question.metadata || %{}, ["style"]) do
+        "horizontal" -> :horizontal
+        "vertical" -> :vertical
+        :horizontal -> :horizontal
+        :vertical -> :vertical
+        _ -> :vertical
+      end
+
+    label = question_label(question)
+
+    assigns = %{
+      question: question,
+      form: form,
+      field_atom: field_atom,
+      disabled: disabled,
+      choices: choices,
+      label: label,
+      style: style
+    }
+
+    ~H"""
+    <div class="mb-4">
+      <CoreComponents.input_radio_group
+        field={@form[@field_atom]}
+        label={@label}
+        options={@choices}
+        style={@style}
+        disabled={@disabled}
+      />
+      <%= if @question.description do %>
+        <p class="mt-2 text-sm text-gray-500"><%= @question.description %></p>
+      <% end %>
+    </div>
+    """
+  end
+
+  # Render a boolean/checkbox question
+  defp render_question(%Instance.Question{type: "boolean"} = question, form, opts) do
+    disabled = question_disabled?(question, form, opts)
+    field_atom = String.to_atom(question.name)
+
+    # For checkboxes, the label is displayed inline, so include description if present
     label =
-      if field.help_text do
+      if question.description do
         Phoenix.HTML.raw(
-          "#{field.label || String.capitalize(field.name)}<br><span class=\"text-gray-500\">#{field.help_text}</span>"
+          "#{question.title || String.capitalize(question.name)}<br><span class=\"text-gray-500\">#{question.description}</span>"
         )
       else
-        field.label || String.capitalize(field.name)
+        question.title || String.capitalize(question.name)
       end
 
     assigns = %{
-      field: field,
+      question: question,
       form: form,
       field_atom: field_atom,
       disabled: disabled,
@@ -547,155 +426,14 @@ defmodule DynamicForm.Renderer do
     """
   end
 
-  # Render a select/dropdown field
-  defp render_field(%Instance.Field{type: "select"} = field, form, opts) do
-    form_disabled = Keyword.get(opts, :disabled, false)
-    disabled = form_disabled || field.disabled || false
-    field_atom = String.to_atom(field.name)
-    options = field.options || []
-
-    # Build label with required indicator
-    label =
-      if field.required do
-        Phoenix.HTML.raw(
-          "#{field.label || String.capitalize(field.name)} <span class=\"text-red-500\">*</span>"
-        )
-      else
-        field.label || String.capitalize(field.name)
-      end
-
-    assigns = %{
-      field: field,
-      form: form,
-      field_atom: field_atom,
-      disabled: disabled,
-      options: options,
-      label: label
-    }
-
-    ~H"""
-    <div class="mb-4">
-      <CoreComponents.input
-        field={@form[@field_atom]}
-        type="select"
-        label={@label}
-        options={@options}
-        prompt="Select an option..."
-        disabled={@disabled}
-      />
-      <%= if @field.help_text do %>
-        <p class="mt-2 text-sm text-gray-500"><%= @field.help_text %></p>
-      <% end %>
-    </div>
-    """
-  end
-
-  # Render a radio-group field
-  defp render_field(%Instance.Field{type: "radio-group"} = field, form, opts) do
-    form_disabled = Keyword.get(opts, :disabled, false)
-    disabled = form_disabled || field.disabled || false
-    field_atom = String.to_atom(field.name)
-    options = field.options || []
-
-    # Get style from metadata and convert to atom if needed
-    style =
-      case get_in(field.metadata || %{}, ["style"]) do
-        "horizontal" -> :horizontal
-        "vertical" -> :vertical
-        :horizontal -> :horizontal
-        :vertical -> :vertical
-        _ -> :vertical
-      end
-
-    # Build label with required indicator
-    label =
-      if field.required do
-        Phoenix.HTML.raw(
-          "#{field.label || String.capitalize(field.name)} <span class=\"text-red-500\">*</span>"
-        )
-      else
-        field.label || String.capitalize(field.name)
-      end
-
-    assigns = %{
-      field: field,
-      form: form,
-      field_atom: field_atom,
-      disabled: disabled,
-      options: options,
-      label: label,
-      style: style
-    }
-
-    ~H"""
-    <div class="mb-4">
-      <CoreComponents.input_radio_group
-        field={@form[@field_atom]}
-        label={@label}
-        options={@options}
-        style={@style}
-        disabled={@disabled}
-      />
-      <%= if @field.help_text do %>
-        <p class="mt-2 text-sm text-gray-500"><%= @field.help_text %></p>
-      <% end %>
-    </div>
-    """
-  end
-
-  # Render a standalone radio field (for custom layouts)
-  defp render_field(%Instance.Field{type: "radio"} = field, form, opts) do
-    form_disabled = Keyword.get(opts, :disabled, false)
-    disabled = form_disabled || field.disabled || false
-    field_atom = String.to_atom(field.name)
-    value = field.default_value || get_in(field.metadata || %{}, ["value"]) || ""
-    current_value = Phoenix.HTML.Form.input_value(form, field_atom)
-    checked = to_string(current_value) == to_string(value)
-
-    label = field.label || String.capitalize(field.name)
-
-    # Get id for the radio input
-    id = "#{field.id}-#{value}"
-    name = field.name
-
-    assigns = %{
-      field: field,
-      disabled: disabled,
-      label: label,
-      value: value,
-      checked: checked,
-      id: id,
-      name: name
-    }
-
-    ~H"""
-    <div class="mb-4">
-      <label class="flex items-center text-sm leading-6 text-zinc-600">
-        <CoreComponents.input_radio
-          id={@id}
-          name={@name}
-          value={@value}
-          checked={@checked}
-          disabled={@disabled}
-        />
-        {@label}
-      </label>
-      <%= if @field.help_text do %>
-        <p class="mt-2 ml-7 text-sm text-gray-500"><%= @field.help_text %></p>
-      <% end %>
-    </div>
-    """
-  end
-
-  # Render a direct_upload field (file upload to cloud storage)
-  defp render_field(%Instance.Field{type: "direct_upload"} = field, form, opts) do
-    form_disabled = Keyword.get(opts, :disabled, false)
-    disabled = form_disabled || field.disabled || false
+  # Render a file upload question
+  defp render_question(%Instance.Question{type: "file"} = question, form, opts) do
+    disabled = question_disabled?(question, form, opts)
     uploads = Keyword.get(opts, :uploads, %{})
     parent_id = Keyword.get(opts, :parent_id)
 
     assigns = %{
-      field: field,
+      question: question,
       form: form,
       disabled: disabled,
       uploads: uploads,
@@ -705,8 +443,8 @@ defmodule DynamicForm.Renderer do
     ~H"""
     <.live_component
       module={DynamicForm.DirectUpload}
-      id={"#{@field.id}-upload-component"}
-      field={@field}
+      id={"#{@question.name}-upload-component"}
+      field={@question}
       form={@form}
       disabled={@disabled}
       uploads={@uploads}
@@ -715,17 +453,131 @@ defmodule DynamicForm.Renderer do
     """
   end
 
-  # Fallback for unknown field types
-  defp render_field(field, _form, _opts) do
-    assigns = %{field: field}
+  # Render a checkbox question (multi-select checkbox group)
+  defp render_question(%Instance.Question{type: "checkbox"} = question, form, opts) do
+    disabled = question_disabled?(question, form, opts)
+    field_atom = String.to_atom(question.name)
+    choices = normalize_choices(question.choices)
+    label = question_label(question)
+
+    style =
+      case get_in(question.metadata || %{}, ["style"]) do
+        "horizontal" -> :horizontal
+        :horizontal -> :horizontal
+        _ -> :vertical
+      end
+
+    assigns = %{
+      question: question,
+      form: form,
+      field_atom: field_atom,
+      disabled: disabled,
+      choices: choices,
+      label: label,
+      style: style
+    }
+
+    ~H"""
+    <div class="mb-4">
+      <CoreComponents.input_checkbox_group
+        field={@form[@field_atom]}
+        label={@label}
+        options={@choices}
+        style={@style}
+        disabled={@disabled}
+      />
+      <%= if @question.description do %>
+        <p class="mt-2 text-sm text-gray-500"><%= @question.description %></p>
+      <% end %>
+    </div>
+    """
+  end
+
+  # Render a tagbox question (multi-select dropdown)
+  defp render_question(%Instance.Question{type: "tagbox"} = question, form, opts) do
+    disabled = question_disabled?(question, form, opts)
+    field_atom = String.to_atom(question.name)
+    choices = normalize_choices(question.choices)
+    label = question_label(question)
+
+    assigns = %{
+      question: question,
+      form: form,
+      field_atom: field_atom,
+      disabled: disabled,
+      choices: choices,
+      label: label
+    }
+
+    ~H"""
+    <div class="mb-4">
+      <CoreComponents.input
+        field={@form[@field_atom]}
+        type="select"
+        label={@label}
+        options={@choices}
+        multiple={true}
+        disabled={@disabled}
+      />
+      <%= if @question.description do %>
+        <p class="mt-2 text-sm text-gray-500"><%= @question.description %></p>
+      <% end %>
+    </div>
+    """
+  end
+
+  # Render a rating question as a horizontal group of numeric radio buttons
+  defp render_question(%Instance.Question{type: "rating"} = question, form, opts) do
+    disabled = question_disabled?(question, form, opts)
+    field_atom = String.to_atom(question.name)
+    label = question_label(question)
+
+    rate_min = question.rateMin || 1
+    rate_max = question.rateMax || 5
+    rate_step = question.rateStep || 1
+
+    choices =
+      rate_min
+      |> Stream.iterate(&(&1 + rate_step))
+      |> Enum.take_while(&(&1 <= rate_max))
+      |> Enum.map(&{to_string(&1), &1})
+
+    assigns = %{
+      question: question,
+      form: form,
+      field_atom: field_atom,
+      disabled: disabled,
+      choices: choices,
+      label: label
+    }
+
+    ~H"""
+    <div class="mb-4">
+      <CoreComponents.input_radio_group
+        field={@form[@field_atom]}
+        label={@label}
+        options={@choices}
+        style={:horizontal}
+        disabled={@disabled}
+      />
+      <%= if @question.description do %>
+        <p class="mt-2 text-sm text-gray-500"><%= @question.description %></p>
+      <% end %>
+    </div>
+    """
+  end
+
+  # Fallback for unknown question types
+  defp render_question(question, _form, _opts) do
+    assigns = %{question: question}
 
     ~H"""
     <div class="mb-4 rounded-md bg-red-50 p-4">
       <div class="flex">
         <div class="ml-3">
-          <h3 class="text-sm font-medium text-red-800">Unknown field type</h3>
+          <h3 class="text-sm font-medium text-red-800">Unknown question type</h3>
           <div class="mt-2 text-sm text-red-700">
-            <p>Field "<%= @field.name %>" has unsupported type: <%= @field.type %></p>
+            <p>Question "<%= @question.name %>" has unsupported type: <%= @question.type %></p>
           </div>
         </div>
       </div>
@@ -738,5 +590,44 @@ defmodule DynamicForm.Renderer do
 
   defp decode_instance(data) when is_binary(data) or is_map(data) do
     Instance.decode!(data)
+  end
+
+  # Build label with required indicator
+  defp question_label(question) do
+    if question.isRequired do
+      Phoenix.HTML.raw(
+        "#{question.title || String.capitalize(question.name)} <span class=\"text-red-500\">*</span>"
+      )
+    else
+      question.title || String.capitalize(question.name)
+    end
+  end
+
+  # A question is disabled when the form is disabled, it is read-only, or its
+  # enableIf expression evaluates to false
+  defp question_disabled?(question, form, opts) do
+    Keyword.get(opts, :disabled, false) || question.readOnly ||
+      not DynamicForm.Visibility.condition_met?(question.enableIf, get_form_params(form))
+  end
+
+  # Normalize decoded choices to {label, value} tuples for form components
+  defp normalize_choices(nil), do: []
+
+  defp normalize_choices(choices) when is_list(choices) do
+    Enum.map(choices, fn
+      {text, value} -> {text, value}
+      value when is_binary(value) -> {value, value}
+      value -> {to_string(value), value}
+    end)
+  end
+
+  defp image_style(element) do
+    [
+      element.imageWidth && "width: #{element.imageWidth};",
+      element.imageHeight && "height: #{element.imageHeight};",
+      element.imageFit && "object-fit: #{element.imageFit};"
+    ]
+    |> Enum.filter(& &1)
+    |> Enum.join(" ")
   end
 end

@@ -32,7 +32,7 @@ defmodule ExampleWeb.FormTestLive do
       </div>
 
       <div class="rounded-lg bg-white shadow-sm ring-1 ring-gray-900/5 p-6">
-        <h2 class="text-xl font-semibold text-gray-900 mb-6">{@form_instance.name}</h2>
+        <h2 class="text-xl font-semibold text-gray-900 mb-6">{@form_instance.title}</h2>
         <%= if @form_instance.description do %>
           <p class="text-gray-600 mb-6">{@form_instance.description}</p>
         <% end %>
@@ -61,8 +61,8 @@ defmodule ExampleWeb.FormTestLive do
         <h3 class="text-lg font-semibold text-gray-900 mb-4">Form Configuration</h3>
         <div class="text-sm text-gray-800">
           <p class="mb-2">
-            <span class="font-semibold">Number of fields:</span>
-            {length(@form_instance.fields)}
+            <span class="font-semibold">Number of questions:</span>
+            {length(DynamicForm.Changeset.get_questions(@form_instance.elements))}
           </p>
           <p class="mb-4">
             <span class="font-semibold">Backend:</span>
@@ -107,21 +107,21 @@ defmodule ExampleWeb.FormTestLive do
         # Submit via backend
         instance = socket.assigns.form_instance
         backend_module = instance.backend.module
+        backend_function = instance.backend.function
         backend_config = instance.backend.config
+        form_data = Ecto.Changeset.apply_changes(changeset)
 
-        case backend_module.submit(changeset, backend_config) do
-          {:ok, result} ->
-            form_data = Ecto.Changeset.apply_changes(changeset)
-
+        case apply(backend_module, backend_function, [form_data, changeset, backend_config]) do
+          {:cont, result} ->
             {:noreply,
              socket
              |> assign(:submitted_data, form_data)
-             |> put_flash(:info, result.message || "Form submitted successfully!")}
+             |> put_flash(:info, result[:message] || "Form submitted successfully!")}
 
-          {:error, error} ->
+          {:halt, _error} ->
             {:noreply,
              socket
-             |> put_flash(:error, error.message || "Failed to submit form")}
+             |> put_flash(:error, "Failed to submit form")}
         end
 
       false ->

@@ -21,6 +21,7 @@ defmodule DynamicForm.MixProject do
     [
       {:phoenix_live_view, "~> 1.0"},
       {:phoenix_html, "~> 4.0"},
+      {:phoenix_ecto, "~> 4.4"},
       {:ecto, "~> 3.0"},
       {:gettext, "~> 0.26"},
       {:jason, "~> 1.4"},

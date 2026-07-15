@@ -73,7 +73,7 @@ defmodule ExampleWeb.RenderLive do
     <!-- The Form -->
       <div class="rounded-lg bg-white shadow-sm ring-1 ring-gray-900/5 p-6">
         <%= if @mode == :create do %>
-          <h2 class="text-xl font-semibold text-gray-900 mb-2">{@create_form.name}</h2>
+          <h2 class="text-xl font-semibold text-gray-900 mb-2">{@create_form.title}</h2>
           <%= if @create_form.description do %>
             <p class="text-gray-600 mb-6">{@create_form.description}</p>
           <% end %>
@@ -89,7 +89,7 @@ defmodule ExampleWeb.RenderLive do
         <% end %>
 
         <%= if @mode == :edit do %>
-          <h2 class="text-xl font-semibold text-gray-900 mb-2">{@edit_form.name}</h2>
+          <h2 class="text-xl font-semibold text-gray-900 mb-2">{@edit_form.title}</h2>
           <%= if @edit_form.description do %>
             <p class="text-gray-600 mb-6">{@edit_form.description}</p>
           <% end %>
@@ -150,7 +150,7 @@ defmodule ExampleWeb.RenderLive do
             <p class="mt-1 text-xs text-gray-600">
               The same DynamicForm.RendererLive component handles both cases automatically.
               In edit mode, certain fields (like ID and Email) are marked as
-              <code class="bg-white px-1 rounded">disabled: true</code>
+              <code class="bg-white px-1 rounded">readOnly: true</code>
               to prevent modification while still displaying the values.
             </p>
           </div>
@@ -221,33 +221,34 @@ defmodule ExampleWeb.RenderLive do
     }
   end
 
-  # Transform function to add disabled: true to the email field
+  # Transform function to add readOnly: true to the email field
   defp disable_email_field(%Instance{} = instance) do
-    %{instance | items: transform_items(instance.items)}
+    %{instance | elements: transform_elements(instance.elements)}
   end
 
-  # Transform items list, handling both Fields and Elements
-  defp transform_items(items) when is_list(items) do
-    Enum.map(items, &transform_item/1)
+  # Transform elements list, handling both Questions and Elements
+  defp transform_elements(elements) when is_list(elements) do
+    Enum.map(elements, &transform_element/1)
   end
 
-  # Transform a single Field - add disabled: true if it's the email field
-  defp transform_item(%Instance.Field{id: "email"} = field) do
-    %{field | disabled: true}
+  # Transform a single Question - add readOnly: true if it's the email field
+  defp transform_element(%Instance.Question{name: "email"} = question) do
+    %{question | readOnly: true}
   end
 
-  # Transform a single Field - leave other fields unchanged
-  defp transform_item(%Instance.Field{} = field) do
-    field
+  # Transform a single Question - leave other questions unchanged
+  defp transform_element(%Instance.Question{} = question) do
+    question
   end
 
-  # Transform an Element - recursively transform nested items if they exist
-  defp transform_item(%Instance.Element{items: items} = element) when is_list(items) do
-    %{element | items: transform_items(items)}
+  # Transform an Element - recursively transform nested elements if they exist
+  defp transform_element(%Instance.Element{elements: elements} = element)
+       when is_list(elements) do
+    %{element | elements: transform_elements(elements)}
   end
 
-  # Transform an Element without nested items - leave unchanged
-  defp transform_item(%Instance.Element{} = element) do
+  # Transform an Element without nested elements - leave unchanged
+  defp transform_element(%Instance.Element{} = element) do
     element
   end
 end

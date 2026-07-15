@@ -32,7 +32,7 @@ defmodule ExampleWeb.PaymentFormLive do
       </div>
 
       <div class="rounded-lg bg-white shadow-sm ring-1 ring-gray-900/5 p-6">
-        <h2 class="text-xl font-semibold text-gray-900 mb-6">{@form_instance.name}</h2>
+        <h2 class="text-xl font-semibold text-gray-900 mb-6">{@form_instance.title}</h2>
         <%= if @form_instance.description do %>
           <p class="text-gray-600 mb-6">{@form_instance.description}</p>
         <% end %>
@@ -70,8 +70,8 @@ defmodule ExampleWeb.PaymentFormLive do
             <li><strong>PayPal</strong> - Shows PayPal email field</li>
           </ul>
           <p class="mt-4">
-            Each conditional field has a <code class="bg-blue-100 px-1 rounded">visible_when</code>
-            attribute that checks the payment method value.
+            Each conditional field has a <code class="bg-blue-100 px-1 rounded">visibleIf</code>
+            expression that checks the payment method value, e.g. <code class="bg-blue-100 px-1 rounded">&lbrace;payment_method&rbrace; = 'credit_card'</code>.
           </p>
         </div>
       </div>
@@ -80,12 +80,15 @@ defmodule ExampleWeb.PaymentFormLive do
         <h3 class="text-lg font-semibold text-gray-900 mb-4">Form Configuration</h3>
         <div class="text-sm text-gray-800">
           <p class="mb-2">
-            <span class="font-semibold">Total fields:</span>
-            {length(@form_instance.fields)}
+            <span class="font-semibold">Total questions:</span>
+            {length(DynamicForm.Changeset.get_questions(@form_instance.elements))}
           </p>
           <p class="mb-2">
-            <span class="font-semibold">Conditional fields:</span>
-            {Enum.count(@form_instance.fields, fn f -> f.visible_when != nil end)}
+            <span class="font-semibold">Conditional questions:</span>
+            {Enum.count(
+              DynamicForm.Changeset.get_questions(@form_instance.elements),
+              fn q -> q.visibleIf != nil end
+            )}
           </p>
           <p class="mb-4">
             <span class="font-semibold">Backend:</span>
@@ -130,21 +133,21 @@ defmodule ExampleWeb.PaymentFormLive do
         # Submit via backend
         instance = socket.assigns.form_instance
         backend_module = instance.backend.module
+        backend_function = instance.backend.function
         backend_config = instance.backend.config
+        form_data = Ecto.Changeset.apply_changes(changeset)
 
-        case backend_module.submit(changeset, backend_config) do
-          {:ok, result} ->
-            form_data = Ecto.Changeset.apply_changes(changeset)
-
+        case apply(backend_module, backend_function, [form_data, changeset, backend_config]) do
+          {:cont, result} ->
             {:noreply,
              socket
              |> assign(:submitted_data, form_data)
-             |> put_flash(:info, result.message || "Payment submitted successfully!")}
+             |> put_flash(:info, result[:message] || "Payment submitted successfully!")}
 
-          {:error, error} ->
+          {:halt, _error} ->
             {:noreply,
              socket
-             |> put_flash(:error, error.message || "Failed to submit payment")}
+             |> put_flash(:error, "Failed to submit payment")}
         end
 
       false ->

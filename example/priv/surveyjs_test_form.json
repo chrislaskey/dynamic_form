@@ -1,0 +1,210 @@
+{
+  "id": "surveyjs-test-form",
+  "title": "SurveyJS Format Test Form",
+  "description": "A test form demonstrating all supported SurveyJS question types",
+  "elements": [
+    {
+      "type": "html",
+      "name": "intro-heading",
+      "html": "<h2 class=\"text-2xl font-semibold text-gray-900 mb-2\">Contact Information</h2>"
+    },
+    {
+      "type": "html",
+      "name": "intro-text",
+      "html": "<p class=\"text-gray-600 mb-4\">Please fill out the form below. Fields marked with * are required.</p>"
+    },
+    {
+      "type": "text",
+      "name": "name",
+      "title": "Full Name",
+      "placeholder": "John Doe",
+      "description": "Enter your full name as it appears on official documents",
+      "isRequired": true,
+      "validators": [
+        { "type": "text", "minLength": 2 }
+      ]
+    },
+    {
+      "type": "text",
+      "name": "email",
+      "inputType": "email",
+      "title": "Email Address",
+      "placeholder": "john@example.com",
+      "description": "We'll never share your email with anyone else",
+      "isRequired": true,
+      "validators": [
+        { "type": "email" }
+      ]
+    },
+    {
+      "type": "panel",
+      "name": "contact-prefs-panel",
+      "title": "Contact Preferences",
+      "elements": [
+        {
+          "type": "text",
+          "name": "phone",
+          "title": "Phone Number",
+          "placeholder": "(555) 123-4567"
+        },
+        {
+          "type": "dropdown",
+          "name": "preferred_contact",
+          "title": "Preferred Contact Method",
+          "choices": [
+            { "value": "email", "text": "Email" },
+            { "value": "phone", "text": "Phone" },
+            { "value": "either", "text": "Either" }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "html",
+      "name": "divider-1",
+      "html": "<hr class=\"my-6 border-gray-300\" />"
+    },
+    {
+      "type": "html",
+      "name": "inquiry-heading",
+      "html": "<h3 class=\"text-xl font-semibold text-gray-900 mb-2\">Your Inquiry</h3>"
+    },
+    {
+      "type": "dropdown",
+      "name": "subject",
+      "title": "Subject",
+      "description": "Choose the topic that best matches your inquiry",
+      "isRequired": true,
+      "choices": [
+        { "value": "general", "text": "General Inquiry" },
+        { "value": "support", "text": "Technical Support" },
+        { "value": "sales", "text": "Sales" },
+        { "value": "feedback", "text": "Feedback" }
+      ]
+    },
+    {
+      "type": "comment",
+      "name": "message",
+      "title": "Message",
+      "placeholder": "Tell us how we can help you...",
+      "description": "Please provide as much detail as possible",
+      "isRequired": true,
+      "validators": [
+        { "type": "text", "minLength": 10, "maxLength": 1000 }
+      ]
+    },
+    {
+      "type": "text",
+      "name": "priority",
+      "inputType": "number",
+      "title": "Priority (1-10)",
+      "placeholder": "5",
+      "description": "Rate the urgency of your request from 1 (low) to 10 (high)",
+      "validators": [
+        { "type": "numeric", "minValue": 1, "maxValue": 10 }
+      ]
+    },
+    {
+      "type": "html",
+      "name": "divider-2",
+      "html": "<hr class=\"my-6 border-gray-300\" />"
+    },
+    {
+      "type": "boolean",
+      "name": "subscribe",
+      "title": "Subscribe to newsletter",
+      "description": "Receive updates about new features and announcements"
+    },
+    {
+      "type": "dropdown",
+      "name": "newsletter_frequency",
+      "title": "Newsletter Frequency",
+      "description": "How often would you like to receive our newsletter?",
+      "visibleIf": "{email} notempty",
+      "choices": [
+        { "value": "daily", "text": "Daily" },
+        { "value": "weekly", "text": "Weekly" },
+        { "value": "monthly", "text": "Monthly" }
+      ]
+    },
+    {
+      "type": "radiogroup",
+      "name": "notification_method",
+      "title": "Notification Method",
+      "description": "Choose how you'd like to receive notifications",
+      "isRequired": true,
+      "metadata": { "style": "vertical" },
+      "choices": [
+        { "value": "email", "text": "Email Only" },
+        { "value": "sms", "text": "SMS Only" },
+        { "value": "both", "text": "Both Email and SMS" },
+        { "value": "none", "text": "None" }
+      ]
+    },
+    {
+      "type": "html",
+      "name": "divider-3",
+      "html": "<hr class=\"my-6 border-gray-300\" />"
+    },
+    {
+      "type": "html",
+      "name": "extras-heading",
+      "html": "<h3 class=\"text-xl font-semibold text-gray-900 mb-2\">More Question Types</h3>"
+    },
+    {
+      "type": "checkbox",
+      "name": "interests",
+      "title": "Areas of Interest",
+      "description": "Select all that apply",
+      "choices": [
+        { "value": "product", "text": "Product Updates" },
+        { "value": "events", "text": "Events" },
+        { "value": "research", "text": "Research" }
+      ]
+    },
+    {
+      "type": "tagbox",
+      "name": "languages",
+      "title": "Programming Languages",
+      "description": "Select all languages you use",
+      "choices": ["Elixir", "Erlang", "JavaScript", "Python", "Rust"]
+    },
+    {
+      "type": "rating",
+      "name": "satisfaction",
+      "title": "How satisfied are you with our service?",
+      "rateMin": 1,
+      "rateMax": 5
+    },
+    {
+      "type": "comment",
+      "name": "dissatisfaction_reason",
+      "title": "What could we do better?",
+      "description": "Shown and required only for low satisfaction ratings",
+      "visibleIf": "{satisfaction} anyof [1, 2]",
+      "requiredIf": "{satisfaction} anyof [1, 2]"
+    },
+    {
+      "type": "file",
+      "name": "attachments",
+      "title": "Attachments",
+      "description": "Upload any supporting files (max 2 files, 5MB each)",
+      "metadata": {
+        "max_entries": 2,
+        "max_file_size": 5000000,
+        "presigner": {
+          "module": "Example.MockUrlPresigner",
+          "function": "sign"
+        },
+        "bucket": "example-bucket",
+        "object_name_prefix": "surveyjs-test/"
+      }
+    },
+    {
+      "type": "html",
+      "name": "thank-you-message",
+      "html": "<p class=\"text-green-600 font-semibold\">Thank you for providing your message!</p>",
+      "visibleIf": "{message} notempty"
+    }
+  ]
+}

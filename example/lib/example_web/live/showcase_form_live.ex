@@ -110,18 +110,18 @@ defmodule ExampleWeb.ShowcaseFormLive do
         <h3 class="text-lg font-semibold text-gray-900 mb-4">Form Configuration</h3>
         <div class="text-sm text-gray-800">
           <p class="mb-2">
-            <span class="font-semibold">Total items:</span>
-            {length(@form_instance.items)}
+            <span class="font-semibold">Total elements:</span>
+            {length(@form_instance.elements)}
           </p>
           <p class="mb-2">
-            <span class="font-semibold">Elements:</span>
-            {Enum.count(@form_instance.items, fn item ->
-              match?(%DynamicForm.Instance.Element{}, item)
+            <span class="font-semibold">Non-question elements:</span>
+            {Enum.count(@form_instance.elements, fn element ->
+              match?(%DynamicForm.Instance.Element{}, element)
             end)}
           </p>
           <p class="mb-2">
-            <span class="font-semibold">Fields (including nested):</span>
-            {length(DynamicForm.Changeset.get_fields(@form_instance.items))}
+            <span class="font-semibold">Questions (including nested):</span>
+            {length(DynamicForm.Changeset.get_questions(@form_instance.elements))}
           </p>
           <details class="mt-4">
             <summary class="cursor-pointer font-semibold text-gray-700 hover:text-gray-900">
@@ -162,21 +162,21 @@ defmodule ExampleWeb.ShowcaseFormLive do
         # Submit via backend
         instance = socket.assigns.form_instance
         backend_module = instance.backend.module
+        backend_function = instance.backend.function
         backend_config = instance.backend.config
+        form_data = Ecto.Changeset.apply_changes(changeset)
 
-        case backend_module.submit(changeset, backend_config) do
-          {:ok, result} ->
-            form_data = Ecto.Changeset.apply_changes(changeset)
-
+        case apply(backend_module, backend_function, [form_data, changeset, backend_config]) do
+          {:cont, result} ->
             {:noreply,
              socket
              |> assign(:submitted_data, form_data)
-             |> put_flash(:info, result.message || "Form submitted successfully!")}
+             |> put_flash(:info, result[:message] || "Form submitted successfully!")}
 
-          {:error, error} ->
+          {:halt, _error} ->
             {:noreply,
              socket
-             |> put_flash(:error, error.message || "Failed to submit form")}
+             |> put_flash(:error, "Failed to submit form")}
         end
 
       false ->

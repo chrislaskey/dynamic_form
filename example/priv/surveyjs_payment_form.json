@@ -1,0 +1,161 @@
+{
+  "id": "payment-form",
+  "title": "Payment Form",
+  "description": "Complete your payment information below",
+  "elements": [
+    {
+      "type": "html",
+      "name": "payment-heading",
+      "html": "<h2 class=\"text-2xl font-semibold text-gray-900 mb-2\">Payment Method Selection</h2>"
+    },
+    {
+      "type": "html",
+      "name": "payment-intro",
+      "html": "<p class=\"text-gray-600 mb-4\">Select your preferred payment method and enter the required details below.</p>"
+    },
+    {
+      "type": "dropdown",
+      "name": "payment_method",
+      "title": "Payment Method",
+      "description": "Choose how you would like to pay",
+      "isRequired": true,
+      "choices": [
+        { "value": "credit_card", "text": "Credit Card" },
+        { "value": "bank_transfer", "text": "Bank Transfer" },
+        { "value": "paypal", "text": "PayPal" }
+      ]
+    },
+    {
+      "type": "html",
+      "name": "divider-1",
+      "html": "<hr class=\"my-6 border-gray-300\" />"
+    },
+    {
+      "type": "text",
+      "name": "card_number",
+      "title": "Card Number",
+      "placeholder": "1234 5678 9012 3456",
+      "description": "Enter your 16-digit card number",
+      "visibleIf": "{payment_method} = 'credit_card'",
+      "validators": [
+        { "type": "text", "minLength": 13 }
+      ]
+    },
+    {
+      "type": "text",
+      "name": "card_expiry",
+      "title": "Expiry Date",
+      "placeholder": "MM/YY",
+      "description": "Card expiration date",
+      "visibleIf": "{payment_method} = 'credit_card'"
+    },
+    {
+      "type": "text",
+      "name": "card_cvv",
+      "title": "CVV",
+      "placeholder": "123",
+      "description": "3-digit security code on the back of your card",
+      "visibleIf": "{payment_method} = 'credit_card'",
+      "validators": [
+        { "type": "text", "minLength": 3, "maxLength": 4 }
+      ]
+    },
+    {
+      "type": "text",
+      "name": "account_number",
+      "title": "Account Number",
+      "placeholder": "1234567890",
+      "description": "Your bank account number",
+      "visibleIf": "{payment_method} = 'bank_transfer'"
+    },
+    {
+      "type": "text",
+      "name": "routing_number",
+      "title": "Routing Number",
+      "placeholder": "021000021",
+      "description": "9-digit routing number for your bank",
+      "visibleIf": "{payment_method} = 'bank_transfer'",
+      "validators": [
+        { "type": "text", "minLength": 9, "maxLength": 9 }
+      ]
+    },
+    {
+      "type": "text",
+      "name": "paypal_email",
+      "inputType": "email",
+      "title": "PayPal Email",
+      "placeholder": "you@example.com",
+      "description": "Email address associated with your PayPal account",
+      "visibleIf": "{payment_method} = 'paypal'",
+      "validators": [
+        { "type": "email" }
+      ]
+    },
+    {
+      "type": "html",
+      "name": "divider-2",
+      "html": "<hr class=\"my-6 border-gray-300\" />"
+    },
+    {
+      "type": "text",
+      "name": "amount",
+      "inputType": "number",
+      "title": "Amount",
+      "placeholder": "100.00",
+      "description": "Enter the payment amount in USD",
+      "isRequired": true,
+      "validators": [
+        { "type": "numeric", "minValue": 0.01, "maxValue": 10000 }
+      ]
+    },
+    {
+      "type": "boolean",
+      "name": "save_method",
+      "title": "Save this payment method for future use",
+      "description": "Securely store your payment details"
+    },
+    {
+      "type": "html",
+      "name": "billing-heading",
+      "html": "<h3 class=\"text-xl font-semibold text-gray-900 mt-6 mb-2\">Billing Information</h3>"
+    },
+    {
+      "type": "panel",
+      "name": "billing-panel",
+      "title": "Billing Address",
+      "elements": [
+        {
+          "type": "text",
+          "name": "billing_street",
+          "title": "Street Address",
+          "placeholder": "123 Main St",
+          "isRequired": true
+        },
+        {
+          "type": "text",
+          "name": "billing_city",
+          "title": "City",
+          "placeholder": "San Francisco",
+          "isRequired": true
+        },
+        {
+          "type": "text",
+          "name": "billing_state",
+          "title": "State",
+          "placeholder": "CA",
+          "isRequired": true
+        },
+        {
+          "type": "text",
+          "name": "billing_zip",
+          "title": "ZIP Code",
+          "placeholder": "94102",
+          "isRequired": true,
+          "validators": [
+            { "type": "text", "minLength": 5, "maxLength": 10 }
+          ]
+        }
+      ]
+    }
+  ]
+}

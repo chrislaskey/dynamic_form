@@ -3,88 +3,82 @@ defmodule Example.FormInstances do
   Shared form instance configurations for testing DynamicForm renderers.
 
   This module provides reusable form instances that can be used across
-  multiple test pages and examples.
+  multiple test pages and examples, using SurveyJS-compatible format.
   """
 
   alias DynamicForm.Instance
 
   @doc """
-  Returns a contact form instance with various field types.
+  Returns a contact form instance with various question types.
 
   This form includes:
-  - Elements (heading, paragraph, divider)
-  - String field (name)
-  - Email field with format validation
-  - Select field (subject)
-  - Textarea field (message) with length validation
-  - Decimal field (priority) with numeric range validation
-  - Boolean field (subscribe)
-  - Grouped contact preference fields
+  - HTML elements (headings, paragraphs, dividers)
+  - Text question (name)
+  - Email text question with inputType
+  - Dropdown question (subject)
+  - Comment/textarea question (message) with length validators
+  - Number input with numeric validators
+  - Boolean question (subscribe)
+  - Panel with grouped questions
   """
   def contact_form do
     %Instance{
       id: "contact-form",
-      name: "Contact Form",
+      title: "Contact Form",
       description: "Please fill out this form to get in touch with us.",
-      items: [
+      elements: [
         %Instance.Element{
-          id: "contact-heading",
-          type: "heading",
-          content: "Contact Information",
-          metadata: %{"level" => "h3"}
+          name: "contact-heading",
+          type: "html",
+          html: "<h3 class=\"text-xl font-semibold text-gray-900\">Contact Information</h3>"
         },
         %Instance.Element{
-          id: "contact-intro",
-          type: "paragraph",
-          content:
-            "We'd love to hear from you! Fill out the form below and we'll get back to you as soon as possible.",
-          metadata: %{"class" => "text-gray-600"}
+          name: "contact-intro",
+          type: "html",
+          html:
+            "<p class=\"text-gray-600 mb-4\">We'd love to hear from you! Fill out the form below and we'll get back to you as soon as possible.</p>"
         },
-        %Instance.Field{
-          id: "name",
+        %Instance.Question{
           name: "name",
-          type: "string",
-          label: "Full Name",
+          type: "text",
+          title: "Full Name",
           placeholder: "John Doe",
-          help_text: "Enter your full name as it appears on official documents",
-          required: true,
-          validations: [
-            %Instance.Validation{type: "min_length", value: 2}
+          description: "Enter your full name as it appears on official documents",
+          isRequired: true,
+          validators: [
+            %Instance.Validator{type: "text", minLength: 2}
           ]
         },
-        %Instance.Field{
-          id: "email",
+        %Instance.Question{
           name: "email",
-          type: "email",
-          label: "Email Address",
+          type: "text",
+          inputType: "email",
+          title: "Email Address",
           placeholder: "john@example.com",
-          help_text: "We'll never share your email with anyone else",
-          required: true,
-          validations: [
-            %Instance.Validation{type: "email_format"}
+          description: "We'll never share your email with anyone else",
+          isRequired: true,
+          validators: [
+            %Instance.Validator{type: "email"}
           ]
         },
         %Instance.Element{
-          id: "contact-group",
-          type: "group",
-          content: "Contact Preferences",
-          metadata: %{"layout" => "grid-2"},
-          items: [
-            %Instance.Field{
-              id: "phone",
+          name: "contact-group",
+          type: "panel",
+          title: "Contact Preferences",
+          elements: [
+            %Instance.Question{
               name: "phone",
-              type: "string",
-              label: "Phone Number",
+              type: "text",
+              title: "Phone Number",
               placeholder: "(555) 123-4567",
-              required: false
+              isRequired: false
             },
-            %Instance.Field{
-              id: "preferred_contact",
+            %Instance.Question{
               name: "preferred_contact",
-              type: "select",
-              label: "Preferred Contact Method",
-              required: false,
-              options: [
+              type: "dropdown",
+              title: "Preferred Contact Method",
+              isRequired: false,
+              choices: [
                 {"Email", "email"},
                 {"Phone", "phone"},
                 {"Either", "either"}
@@ -93,78 +87,71 @@ defmodule Example.FormInstances do
           ]
         },
         %Instance.Element{
-          id: "divider-1",
-          type: "divider"
+          name: "divider-1",
+          type: "html",
+          html: "<hr class=\"my-6 border-gray-300\" />"
         },
         %Instance.Element{
-          id: "inquiry-heading",
-          type: "heading",
-          content: "Your Inquiry",
-          metadata: %{"level" => "h3"}
+          name: "inquiry-heading",
+          type: "html",
+          html: "<h3 class=\"text-xl font-semibold text-gray-900\">Your Inquiry</h3>"
         },
-        %Instance.Field{
-          id: "subject",
+        %Instance.Question{
           name: "subject",
-          type: "select",
-          label: "Subject",
-          help_text: "Choose the topic that best matches your inquiry",
-          required: true,
-          options: [
+          type: "dropdown",
+          title: "Subject",
+          description: "Choose the topic that best matches your inquiry",
+          isRequired: true,
+          choices: [
             {"General Inquiry", "general"},
             {"Technical Support", "support"},
             {"Sales", "sales"},
             {"Feedback", "feedback"}
           ]
         },
-        %Instance.Field{
-          id: "message",
+        %Instance.Question{
           name: "message",
-          type: "textarea",
-          label: "Message",
+          type: "comment",
+          title: "Message",
           placeholder: "Tell us how we can help you...",
-          help_text: "Please provide as much detail as possible",
-          required: true,
-          validations: [
-            %Instance.Validation{type: "min_length", value: 10},
-            %Instance.Validation{type: "max_length", value: 1000}
+          description: "Please provide as much detail as possible",
+          isRequired: true,
+          validators: [
+            %Instance.Validator{type: "text", minLength: 10, maxLength: 1000}
           ]
         },
-        %Instance.Field{
-          id: "priority",
+        %Instance.Question{
           name: "priority",
-          type: "decimal",
-          label: "Priority (1-10)",
+          type: "text",
+          inputType: "number",
+          title: "Priority (1-10)",
           placeholder: "5",
-          help_text: "Rate the urgency of your request from 1 (low) to 10 (high)",
-          required: false,
-          validations: [
-            %Instance.Validation{type: "numeric_range", min: 1, max: 10}
+          description: "Rate the urgency of your request from 1 (low) to 10 (high)",
+          isRequired: false,
+          validators: [
+            %Instance.Validator{type: "numeric", minValue: 1, maxValue: 10}
           ]
         },
         %Instance.Element{
-          id: "divider-2",
-          type: "divider"
+          name: "divider-2",
+          type: "html",
+          html: "<hr class=\"my-6 border-gray-300\" />"
         },
-        %Instance.Field{
-          id: "subscribe",
+        %Instance.Question{
           name: "subscribe",
           type: "boolean",
-          label: "Subscribe to newsletter",
-          help_text: "Receive updates about new features and announcements",
-          required: false
+          title: "Subscribe to newsletter",
+          description: "Receive updates about new features and announcements",
+          isRequired: false
         },
-        %Instance.Field{
-          id: "newsletter_frequency",
+        %Instance.Question{
           name: "newsletter_frequency",
-          type: "select",
-          label: "Newsletter Frequency",
-          help_text: "How often would you like to receive our newsletter?",
-          required: false,
-          visible_when: %{
-            field: "email",
-            operator: "valid"
-          },
-          options: [
+          type: "dropdown",
+          title: "Newsletter Frequency",
+          description: "How often would you like to receive our newsletter?",
+          isRequired: false,
+          visibleIf: "{email} notempty",
+          choices: [
             {"Daily", "daily"},
             {"Weekly", "weekly"},
             {"Monthly", "monthly"}
@@ -187,218 +174,179 @@ defmodule Example.FormInstances do
   @doc """
   Returns a payment form that demonstrates conditional field visibility.
 
-  This form shows how fields can be conditionally displayed based on other field values:
+  This form shows how questions can be conditionally displayed based on other question values:
   - Credit card fields only appear when payment method is "credit_card"
   - Bank account fields only appear when payment method is "bank_transfer"
   """
   def payment_form do
     %Instance{
       id: "payment-form",
-      name: "Payment Form",
+      title: "Payment Form",
       description: "Complete your payment information below.",
-      items: [
+      elements: [
         %Instance.Element{
-          id: "payment-heading",
-          type: "heading",
-          content: "Payment Method Selection",
-          metadata: %{"level" => "h3"}
+          name: "payment-heading",
+          type: "html",
+          html: "<h3 class=\"text-xl font-semibold text-gray-900\">Payment Method Selection</h3>"
         },
         %Instance.Element{
-          id: "payment-intro",
-          type: "paragraph",
-          content: "Select your preferred payment method and enter the required details below.",
-          metadata: %{"class" => "text-gray-600"}
+          name: "payment-intro",
+          type: "html",
+          html:
+            "<p class=\"text-gray-600 mb-4\">Select your preferred payment method and enter the required details below.</p>"
         },
-        %Instance.Field{
-          id: "payment_method",
+        %Instance.Question{
           name: "payment_method",
-          type: "select",
-          label: "Payment Method",
-          help_text: "Choose how you would like to pay",
-          required: true,
-          options: [
+          type: "dropdown",
+          title: "Payment Method",
+          description: "Choose how you would like to pay",
+          isRequired: true,
+          choices: [
             {"Credit Card", "credit_card"},
             {"Bank Transfer", "bank_transfer"},
             {"PayPal", "paypal"}
           ]
         },
         %Instance.Element{
-          id: "payment-divider-1",
-          type: "divider"
+          name: "payment-divider-1",
+          type: "html",
+          html: "<hr class=\"my-6 border-gray-300\" />"
         },
         # Credit card fields - only visible when payment_method is "credit_card"
-        %Instance.Field{
-          id: "card_number",
+        %Instance.Question{
           name: "card_number",
-          type: "string",
-          label: "Card Number",
+          type: "text",
+          title: "Card Number",
           placeholder: "1234 5678 9012 3456",
-          help_text: "Enter your 16-digit card number",
-          required: false,
-          visible_when: %{
-            field: "payment_method",
-            operator: "equals",
-            value: "credit_card"
-          },
-          validations: [
-            %Instance.Validation{type: "min_length", value: 13}
+          description: "Enter your 16-digit card number",
+          isRequired: false,
+          visibleIf: "{payment_method} = 'credit_card'",
+          validators: [
+            %Instance.Validator{type: "text", minLength: 13}
           ]
         },
-        %Instance.Field{
-          id: "card_expiry",
+        %Instance.Question{
           name: "card_expiry",
-          type: "string",
-          label: "Expiry Date",
+          type: "text",
+          title: "Expiry Date",
           placeholder: "MM/YY",
-          help_text: "Card expiration date",
-          required: false,
-          visible_when: %{
-            field: "payment_method",
-            operator: "equals",
-            value: "credit_card"
-          }
+          description: "Card expiration date",
+          isRequired: false,
+          visibleIf: "{payment_method} = 'credit_card'"
         },
-        %Instance.Field{
-          id: "card_cvv",
+        %Instance.Question{
           name: "card_cvv",
-          type: "string",
-          label: "CVV",
+          type: "text",
+          title: "CVV",
           placeholder: "123",
-          help_text: "3-digit security code on the back of your card",
-          required: false,
-          visible_when: %{
-            field: "payment_method",
-            operator: "equals",
-            value: "credit_card"
-          },
-          validations: [
-            %Instance.Validation{type: "min_length", value: 3},
-            %Instance.Validation{type: "max_length", value: 4}
+          description: "3-digit security code on the back of your card",
+          isRequired: false,
+          visibleIf: "{payment_method} = 'credit_card'",
+          validators: [
+            %Instance.Validator{type: "text", minLength: 3, maxLength: 4}
           ]
         },
         # Bank transfer fields - only visible when payment_method is "bank_transfer"
-        %Instance.Field{
-          id: "account_number",
+        %Instance.Question{
           name: "account_number",
-          type: "string",
-          label: "Account Number",
+          type: "text",
+          title: "Account Number",
           placeholder: "1234567890",
-          help_text: "Your bank account number",
-          required: false,
-          visible_when: %{
-            field: "payment_method",
-            operator: "equals",
-            value: "bank_transfer"
-          }
+          description: "Your bank account number",
+          isRequired: false,
+          visibleIf: "{payment_method} = 'bank_transfer'"
         },
-        %Instance.Field{
-          id: "routing_number",
+        %Instance.Question{
           name: "routing_number",
-          type: "string",
-          label: "Routing Number",
+          type: "text",
+          title: "Routing Number",
           placeholder: "021000021",
-          help_text: "9-digit routing number for your bank",
-          required: false,
-          visible_when: %{
-            field: "payment_method",
-            operator: "equals",
-            value: "bank_transfer"
-          },
-          validations: [
-            %Instance.Validation{type: "min_length", value: 9},
-            %Instance.Validation{type: "max_length", value: 9}
+          description: "9-digit routing number for your bank",
+          isRequired: false,
+          visibleIf: "{payment_method} = 'bank_transfer'",
+          validators: [
+            %Instance.Validator{type: "text", minLength: 9, maxLength: 9}
           ]
         },
         # PayPal email - only visible when payment_method is "paypal"
-        %Instance.Field{
-          id: "paypal_email",
+        %Instance.Question{
           name: "paypal_email",
-          type: "email",
-          label: "PayPal Email",
+          type: "text",
+          inputType: "email",
+          title: "PayPal Email",
           placeholder: "you@example.com",
-          help_text: "Email address associated with your PayPal account",
-          required: false,
-          visible_when: %{
-            field: "payment_method",
-            operator: "equals",
-            value: "paypal"
-          },
-          validations: [
-            %Instance.Validation{type: "email_format"}
+          description: "Email address associated with your PayPal account",
+          isRequired: false,
+          visibleIf: "{payment_method} = 'paypal'",
+          validators: [
+            %Instance.Validator{type: "email"}
           ]
         },
         %Instance.Element{
-          id: "payment-divider-2",
-          type: "divider"
+          name: "payment-divider-2",
+          type: "html",
+          html: "<hr class=\"my-6 border-gray-300\" />"
         },
         # Amount field - always visible
-        %Instance.Field{
-          id: "amount",
+        %Instance.Question{
           name: "amount",
-          type: "decimal",
-          label: "Amount",
+          type: "text",
+          inputType: "number",
+          title: "Amount",
           placeholder: "100.00",
-          help_text: "Enter the payment amount in USD",
-          required: true,
-          validations: [
-            %Instance.Validation{type: "numeric_range", min: 0.01, max: 10000}
+          description: "Enter the payment amount in USD",
+          isRequired: true,
+          validators: [
+            %Instance.Validator{type: "numeric", minValue: 0.01, maxValue: 10000}
           ]
         },
         # Save payment method checkbox - always visible
-        %Instance.Field{
-          id: "save_method",
+        %Instance.Question{
           name: "save_method",
           type: "boolean",
-          label: "Save this payment method for future use",
-          help_text: "Securely store your payment details",
-          required: false
+          title: "Save this payment method for future use",
+          description: "Securely store your payment details",
+          isRequired: false
         },
         %Instance.Element{
-          id: "billing-heading",
-          type: "heading",
-          content: "Billing Information",
-          metadata: %{"level" => "h3"}
+          name: "billing-heading",
+          type: "html",
+          html: "<h3 class=\"text-xl font-semibold text-gray-900 mt-6\">Billing Information</h3>"
         },
         %Instance.Element{
-          id: "billing-address-group",
-          type: "group",
-          content: "Billing Address",
-          metadata: %{"layout" => "grid-2"},
-          items: [
-            %Instance.Field{
-              id: "billing_street",
+          name: "billing-address-group",
+          type: "panel",
+          title: "Billing Address",
+          elements: [
+            %Instance.Question{
               name: "billing_street",
-              type: "string",
-              label: "Street Address",
+              type: "text",
+              title: "Street Address",
               placeholder: "123 Main St",
-              required: true
+              isRequired: true
             },
-            %Instance.Field{
-              id: "billing_city",
+            %Instance.Question{
               name: "billing_city",
-              type: "string",
-              label: "City",
+              type: "text",
+              title: "City",
               placeholder: "San Francisco",
-              required: true
+              isRequired: true
             },
-            %Instance.Field{
-              id: "billing_state",
+            %Instance.Question{
               name: "billing_state",
-              type: "string",
-              label: "State",
+              type: "text",
+              title: "State",
               placeholder: "CA",
-              required: true
+              isRequired: true
             },
-            %Instance.Field{
-              id: "billing_zip",
+            %Instance.Question{
               name: "billing_zip",
-              type: "string",
-              label: "ZIP Code",
+              type: "text",
+              title: "ZIP Code",
               placeholder: "94102",
-              required: true,
-              validations: [
-                %Instance.Validation{type: "min_length", value: 5},
-                %Instance.Validation{type: "max_length", value: 10}
+              isRequired: true,
+              validators: [
+                %Instance.Validator{type: "text", minLength: 5, maxLength: 10}
               ]
             }
           ]
@@ -418,163 +366,132 @@ defmodule Example.FormInstances do
   end
 
   @doc """
-  Returns a form demonstrating section elements.
+  Returns a form demonstrating panel elements.
 
   This form demonstrates:
-  - Section elements with titles
-  - Sections containing multiple fields and groups
-  - Nested sections
-  - Sections with custom classes
-  - Conditional section visibility
+  - Panel elements with titles
+  - Panels containing multiple questions
+  - Nested panels
+  - Conditional panel visibility
   """
   def section_form do
     %Instance{
       id: "section-form",
-      description: "Complete your profile information using sections.",
-      items: [
+      title: "Profile Form",
+      description: "Complete your profile information using panels.",
+      elements: [
         %Instance.Element{
-          id: "personal-section",
-          type: "section",
-          content: "Personal Information",
-          items: [
-            %Instance.Element{
-              id: "name-group",
-              type: "group",
-              content: "Full Name",
-              metadata: %{"layout" => "grid-2"},
-              items: [
-                %Instance.Field{
-                  id: "first_name",
-                  name: "first_name",
-                  type: "string",
-                  label: "First Name",
-                  placeholder: "John",
-                  required: true
-                },
-                %Instance.Field{
-                  id: "last_name",
-                  name: "last_name",
-                  type: "string",
-                  label: "Last Name",
-                  placeholder: "Doe",
-                  required: true
-                }
-              ]
+          name: "personal-section",
+          type: "panel",
+          title: "Personal Information",
+          elements: [
+            %Instance.Question{
+              name: "first_name",
+              type: "text",
+              title: "First Name",
+              placeholder: "John",
+              isRequired: true
             },
-            %Instance.Field{
-              id: "email",
+            %Instance.Question{
+              name: "last_name",
+              type: "text",
+              title: "Last Name",
+              placeholder: "Doe",
+              isRequired: true
+            },
+            %Instance.Question{
               name: "email",
-              type: "email",
-              label: "Email Address",
+              type: "text",
+              inputType: "email",
+              title: "Email Address",
               placeholder: "john.doe@example.com",
-              required: true,
-              validations: [
-                %Instance.Validation{type: "email_format"}
+              isRequired: true,
+              validators: [
+                %Instance.Validator{type: "email"}
               ]
             }
           ]
         },
         %Instance.Element{
-          id: "address-section",
-          type: "section",
-          content: "Address",
-          metadata: %{"class" => "mt-6"},
-          items: [
-            %Instance.Field{
-              id: "street",
+          name: "address-section",
+          type: "panel",
+          title: "Address",
+          elements: [
+            %Instance.Question{
               name: "street",
-              type: "string",
-              label: "Street Address",
+              type: "text",
+              title: "Street Address",
               placeholder: "123 Main St",
-              required: true
+              isRequired: true
             },
-            %Instance.Element{
-              id: "city-state-group",
-              type: "group",
-              metadata: %{"layout" => "grid-3"},
-              items: [
-                %Instance.Field{
-                  id: "city",
-                  name: "city",
-                  type: "string",
-                  label: "City",
-                  placeholder: "San Francisco",
-                  required: true
-                },
-                %Instance.Field{
-                  id: "state",
-                  name: "state",
-                  type: "string",
-                  label: "State",
-                  placeholder: "CA",
-                  required: true
-                },
-                %Instance.Field{
-                  id: "zip",
-                  name: "zip",
-                  type: "string",
-                  label: "ZIP Code",
-                  placeholder: "94102",
-                  required: true
-                }
-              ]
+            %Instance.Question{
+              name: "city",
+              type: "text",
+              title: "City",
+              placeholder: "San Francisco",
+              isRequired: true
+            },
+            %Instance.Question{
+              name: "state",
+              type: "text",
+              title: "State",
+              placeholder: "CA",
+              isRequired: true
+            },
+            %Instance.Question{
+              name: "zip",
+              type: "text",
+              title: "ZIP Code",
+              placeholder: "94102",
+              isRequired: true
             }
           ]
         },
         %Instance.Element{
-          id: "preferences-section",
-          type: "section",
-          content: "Preferences",
-          metadata: %{"class" => "mt-6"},
-          items: [
-            %Instance.Field{
-              id: "newsletter",
+          name: "preferences-section",
+          type: "panel",
+          title: "Preferences",
+          elements: [
+            %Instance.Question{
               name: "newsletter",
               type: "boolean",
-              label: "Subscribe to newsletter",
-              help_text: "Receive weekly updates and news"
+              title: "Subscribe to newsletter",
+              description: "Receive weekly updates and news"
             },
-            %Instance.Field{
-              id: "newsletter_frequency",
+            %Instance.Question{
               name: "newsletter_frequency",
-              type: "select",
-              label: "Newsletter Frequency",
-              required: false,
-              visible_when: %{
-                field: "newsletter",
-                operator: "equals",
-                value: true
-              },
-              options: [
+              type: "dropdown",
+              title: "Newsletter Frequency",
+              isRequired: false,
+              visibleIf: "{newsletter} = true",
+              choices: [
                 {"Daily", "daily"},
                 {"Weekly", "weekly"},
                 {"Monthly", "monthly"}
               ]
             },
-            %Instance.Field{
-              id: "notification_method",
+            %Instance.Question{
               name: "notification_method",
-              type: "radio-group",
-              label: "Notification Method",
-              help_text: "Choose how you'd like to receive notifications",
-              required: true,
+              type: "radiogroup",
+              title: "Notification Method",
+              description: "Choose how you'd like to receive notifications",
+              isRequired: true,
               metadata: %{"style" => "vertical"},
-              options: [
+              choices: [
                 {"Email Only", "email"},
                 {"SMS Only", "sms"},
                 {"Both Email and SMS", "both"},
                 {"None", "none"}
               ]
             },
-            %Instance.Field{
-              id: "theme",
+            %Instance.Question{
               name: "theme",
-              type: "radio-group",
-              label: "Theme Preference",
-              help_text: "Select your preferred color theme",
-              required: false,
+              type: "radiogroup",
+              title: "Theme Preference",
+              description: "Select your preferred color theme",
+              isRequired: false,
               metadata: %{"style" => "horizontal"},
-              options: [
+              choices: [
                 {"Light", "light"},
                 {"Dark", "dark"},
                 {"Auto", "auto"}
@@ -583,76 +500,60 @@ defmodule Example.FormInstances do
           ]
         },
         %Instance.Element{
-          id: "nested-section-parent",
-          type: "section",
-          content: "Additional Information",
-          metadata: %{"class" => "mt-6"},
-          items: [
+          name: "additional-section",
+          type: "panel",
+          title: "Additional Information",
+          elements: [
             %Instance.Element{
-              id: "bio-heading",
-              type: "heading",
-              content: "Biography",
-              metadata: %{"level" => "h4"}
+              name: "bio-heading",
+              type: "html",
+              html: "<h4 class=\"text-lg font-semibold text-gray-900\">Biography</h4>"
             },
-            %Instance.Field{
-              id: "bio",
+            %Instance.Question{
               name: "bio",
-              type: "textarea",
-              label: "Tell us about yourself",
+              type: "comment",
+              title: "Tell us about yourself",
               placeholder: "Write a short bio...",
-              required: false
+              isRequired: false
             },
             %Instance.Element{
-              id: "social-nested-section",
-              type: "section",
-              content: "Social Media Links",
-              metadata: %{"class" => "mt-4"},
-              items: [
-                %Instance.Element{
-                  id: "social-group",
-                  type: "group",
-                  metadata: %{"layout" => "grid-2"},
-                  items: [
-                    %Instance.Field{
-                      id: "twitter",
-                      name: "twitter",
-                      type: "string",
-                      label: "Twitter",
-                      placeholder: "@username"
-                    },
-                    %Instance.Field{
-                      id: "linkedin",
-                      name: "linkedin",
-                      type: "string",
-                      label: "LinkedIn",
-                      placeholder: "linkedin.com/in/username"
-                    }
-                  ]
+              name: "social-nested-section",
+              type: "panel",
+              title: "Social Media Links",
+              elements: [
+                %Instance.Question{
+                  name: "twitter",
+                  type: "text",
+                  title: "Twitter",
+                  placeholder: "@username"
+                },
+                %Instance.Question{
+                  name: "linkedin",
+                  type: "text",
+                  title: "LinkedIn",
+                  placeholder: "linkedin.com/in/username"
                 }
               ]
             }
           ]
         },
         %Instance.Element{
-          id: "documents-section",
-          type: "section",
-          content: "Profile Documents",
-          metadata: %{"class" => "mt-6"},
-          items: [
+          name: "documents-section",
+          type: "panel",
+          title: "Profile Documents",
+          elements: [
             %Instance.Element{
-              id: "documents-intro",
-              type: "paragraph",
-              content:
-                "Upload any supporting documents for your profile (resume, certifications, etc.)",
-              metadata: %{"class" => "text-gray-600 text-sm mb-4"}
+              name: "documents-intro",
+              type: "html",
+              html:
+                "<p class=\"text-gray-600 text-sm mb-4\">Upload any supporting documents for your profile (resume, certifications, etc.)</p>"
             },
-            %Instance.Field{
-              id: "profile_documents",
+            %Instance.Question{
               name: "profile_documents",
-              type: "direct_upload",
-              label: "Documents",
-              help_text: "Upload up to 3 files (PDF, DOC, DOCX, or images - max 10MB each)",
-              required: false,
+              type: "file",
+              title: "Documents",
+              description: "Upload up to 3 files (PDF, DOC, DOCX, or images - max 10MB each)",
+              isRequired: false,
               metadata: %{
                 "max_entries" => 3,
                 "max_file_size" => 10_000_000,
@@ -676,242 +577,200 @@ defmodule Example.FormInstances do
 
   @doc """
   Returns a comprehensive showcase form demonstrating all DynamicForm features.
-
-  This form demonstrates:
-  - All element types (heading, paragraph, divider, group, section)
-  - All field types (string, email, textarea, decimal, boolean, select)
-  - Groups with different layouts (grid-2, grid-3, horizontal)
-  - Conditional visibility (equals and valid operators)
-  - Nested groups
-  - Field validations
+  Defined as a map (JSON-like format) to demonstrate JSON decoding.
   """
   def showcase_form do
     %{
-      id: "showcase-form",
-      name: "DynamicForm Feature Showcase",
-      description: "A comprehensive example showcasing all DynamicForm capabilities.",
-      items: [
+      "id" => "showcase-form",
+      "title" => "DynamicForm Feature Showcase",
+      "description" => "A comprehensive example showcasing all DynamicForm capabilities.",
+      "elements" => [
         %{
-          id: "intro-heading",
-          type: "heading",
-          content: "Welcome to DynamicForm",
-          metadata: %{"level" => "h2"}
+          "name" => "intro-heading",
+          "type" => "html",
+          "html" =>
+            "<h2 class=\"text-2xl font-semibold text-gray-900\">Welcome to DynamicForm</h2>"
         },
         %{
-          id: "intro-paragraph",
-          type: "paragraph",
-          content:
-            "This form demonstrates all the features of the DynamicForm library including elements, groups, conditional visibility, and various field types.",
-          metadata: %{"class" => "text-gray-600 text-lg"}
+          "name" => "intro-paragraph",
+          "type" => "html",
+          "html" =>
+            "<p class=\"text-gray-600 text-lg mb-4\">This form demonstrates all the features of the DynamicForm library including elements, panels, conditional visibility, and various question types.</p>"
         },
         %{
-          id: "divider-intro",
-          type: "divider"
+          "name" => "divider-intro",
+          "type" => "html",
+          "html" => "<hr class=\"my-6 border-gray-300\" />"
         },
         %{
-          id: "personal-heading",
-          type: "heading",
-          content: "Personal Information",
-          metadata: %{"level" => "h3"}
+          "name" => "personal-heading",
+          "type" => "html",
+          "html" => "<h3 class=\"text-xl font-semibold text-gray-900\">Personal Information</h3>"
         },
         %{
-          id: "name-group",
-          type: "group",
-          content: "Full Name",
-          metadata: %{"layout" => "grid-2"},
-          items: [
+          "name" => "name-panel",
+          "type" => "panel",
+          "title" => "Full Name",
+          "elements" => [
             %{
-              id: "first_name",
-              name: "first_name",
-              type: "string",
-              label: "First Name",
-              placeholder: "John",
-              required: true,
-              validations: [
-                %{type: "min_length", value: 2}
+              "name" => "first_name",
+              "type" => "text",
+              "title" => "First Name",
+              "placeholder" => "John",
+              "isRequired" => true,
+              "validators" => [
+                %{"type" => "text", "minLength" => 2}
               ]
             },
             %{
-              id: "last_name",
-              name: "last_name",
-              type: "string",
-              label: "Last Name",
-              placeholder: "Doe",
-              required: true,
-              validations: [
-                %{type: "min_length", value: 2}
+              "name" => "last_name",
+              "type" => "text",
+              "title" => "Last Name",
+              "placeholder" => "Doe",
+              "isRequired" => true,
+              "validators" => [
+                %{"type" => "text", "minLength" => 2}
               ]
             }
           ]
         },
         %{
-          id: "email",
-          name: "email",
-          type: "email",
-          label: "Email Address",
-          placeholder: "john.doe@example.com",
-          required: true,
-          validations: [
-            %{type: "email_format"}
+          "name" => "email",
+          "type" => "text",
+          "inputType" => "email",
+          "title" => "Email Address",
+          "placeholder" => "john.doe@example.com",
+          "isRequired" => true,
+          "validators" => [
+            %{"type" => "email"}
           ]
         },
         %{
-          id: "email-prefs-group",
-          type: "group",
-          content: "Email Preferences",
-          metadata: %{"layout" => "horizontal"},
-          visible_when: %{
-            field: "email",
-            operator: "valid"
-          },
-          items: [
+          "name" => "email-prefs-panel",
+          "type" => "panel",
+          "title" => "Email Preferences",
+          "visibleIf" => "{email} notempty",
+          "elements" => [
             %{
-              id: "email_notifications",
-              name: "email_notifications",
-              type: "boolean",
-              label: "Receive email notifications"
+              "name" => "email_notifications",
+              "type" => "boolean",
+              "title" => "Receive email notifications"
             },
             %{
-              id: "email_frequency",
-              name: "email_frequency",
-              type: "select",
-              label: "Frequency",
-              options: [
-                {"Daily", "daily"},
-                {"Weekly", "weekly"},
-                {"Monthly", "monthly"}
+              "name" => "email_frequency",
+              "type" => "dropdown",
+              "title" => "Frequency",
+              "choices" => [
+                %{"value" => "daily", "text" => "Daily"},
+                %{"value" => "weekly", "text" => "Weekly"},
+                %{"value" => "monthly", "text" => "Monthly"}
               ]
             }
           ]
         },
         %{
-          id: "divider-1",
-          type: "divider"
+          "name" => "divider-1",
+          "type" => "html",
+          "html" => "<hr class=\"my-6 border-gray-300\" />"
         },
         %{
-          id: "address-heading",
-          type: "heading",
-          content: "Address",
-          metadata: %{"level" => "h3"}
+          "name" => "address-heading",
+          "type" => "html",
+          "html" => "<h3 class=\"text-xl font-semibold text-gray-900\">Address</h3>"
         },
         %{
-          id: "address-group",
-          type: "group",
-          metadata: %{"layout" => "vertical"},
-          items: [
-            %{
-              id: "street",
-              name: "street",
-              type: "string",
-              label: "Street Address",
-              placeholder: "123 Main St",
-              required: true
-            },
-            %{
-              id: "city-state-zip-group",
-              type: "group",
-              metadata: %{"layout" => "grid-3"},
-              items: [
-                %{
-                  id: "city",
-                  name: "city",
-                  type: "string",
-                  label: "City",
-                  placeholder: "San Francisco",
-                  required: true
-                },
-                %{
-                  id: "state",
-                  name: "state",
-                  type: "string",
-                  label: "State",
-                  placeholder: "CA",
-                  required: true,
-                  validations: [
-                    %{type: "max_length", value: 2}
-                  ]
-                },
-                %{
-                  id: "zip",
-                  name: "zip",
-                  type: "string",
-                  label: "ZIP",
-                  placeholder: "94102",
-                  required: true,
-                  validations: [
-                    %{type: "min_length", value: 5},
-                    %{type: "max_length", value: 10}
-                  ]
-                }
-              ]
-            }
+          "name" => "street",
+          "type" => "text",
+          "title" => "Street Address",
+          "placeholder" => "123 Main St",
+          "isRequired" => true
+        },
+        %{
+          "name" => "city",
+          "type" => "text",
+          "title" => "City",
+          "placeholder" => "San Francisco",
+          "isRequired" => true
+        },
+        %{
+          "name" => "state",
+          "type" => "text",
+          "title" => "State",
+          "placeholder" => "CA",
+          "isRequired" => true,
+          "validators" => [
+            %{"type" => "text", "maxLength" => 2}
           ]
         },
         %{
-          id: "divider-2",
-          type: "divider"
-        },
-        %{
-          id: "feedback-heading",
-          type: "heading",
-          content: "Feedback",
-          metadata: %{"level" => "h3"}
-        },
-        %{
-          id: "category",
-          name: "category",
-          type: "select",
-          label: "Feedback Category",
-          required: true,
-          options: [
-            {"Bug Report", "bug"},
-            {"Feature Request", "feature"},
-            {"General Feedback", "general"}
+          "name" => "zip",
+          "type" => "text",
+          "title" => "ZIP",
+          "placeholder" => "94102",
+          "isRequired" => true,
+          "validators" => [
+            %{"type" => "text", "minLength" => 5, "maxLength" => 10}
           ]
         },
         %{
-          id: "rating",
-          name: "rating",
-          type: "decimal",
-          label: "Rating (1-10)",
-          placeholder: "8",
-          required: true,
-          validations: [
-            %{type: "numeric_range", min: 1, max: 10}
+          "name" => "divider-2",
+          "type" => "html",
+          "html" => "<hr class=\"my-6 border-gray-300\" />"
+        },
+        %{
+          "name" => "feedback-heading",
+          "type" => "html",
+          "html" => "<h3 class=\"text-xl font-semibold text-gray-900\">Feedback</h3>"
+        },
+        %{
+          "name" => "category",
+          "type" => "dropdown",
+          "title" => "Feedback Category",
+          "isRequired" => true,
+          "choices" => [
+            %{"value" => "bug", "text" => "Bug Report"},
+            %{"value" => "feature", "text" => "Feature Request"},
+            %{"value" => "general", "text" => "General Feedback"}
           ]
         },
         %{
-          id: "comments",
-          name: "comments",
-          type: "textarea",
-          label: "Comments",
-          placeholder: "Tell us more...",
-          required: true,
-          validations: [
-            %{type: "min_length", value: 10},
-            %{type: "max_length", value: 500}
+          "name" => "rating",
+          "type" => "text",
+          "inputType" => "number",
+          "title" => "Rating (1-10)",
+          "placeholder" => "8",
+          "isRequired" => true,
+          "validators" => [
+            %{"type" => "numeric", "minValue" => 1, "maxValue" => 10}
           ]
         },
         %{
-          id: "thank-you",
-          type: "paragraph",
-          content: "Thank you for providing your feedback!",
-          metadata: %{"class" => "text-green-600 font-semibold"},
-          visible_when: %{
-            field: "comments",
-            operator: "valid"
-          }
+          "name" => "comments",
+          "type" => "comment",
+          "title" => "Comments",
+          "placeholder" => "Tell us more...",
+          "isRequired" => true,
+          "validators" => [
+            %{"type" => "text", "minLength" => 10, "maxLength" => 500}
+          ]
+        },
+        %{
+          "name" => "thank-you",
+          "type" => "html",
+          "html" =>
+            "<p class=\"text-green-600 font-semibold\">Thank you for providing your feedback!</p>",
+          "visibleIf" => "{comments} notempty"
         }
       ],
-      backend: %{
-        module: Example.TestBackend,
-        function: :submit,
-        config: [],
-        name: "Test Backend",
-        description: "Logs form submissions for testing"
+      "backend" => %{
+        "module" => "Example.TestBackend",
+        "function" => "submit",
+        "config" => [],
+        "name" => "Test Backend",
+        "description" => "Logs form submissions for testing"
       },
-      metadata: %{
-        created_at: DateTime.utc_now()
+      "metadata" => %{
+        "created_at" => DateTime.utc_now()
       }
     }
   end
