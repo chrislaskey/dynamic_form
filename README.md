@@ -10,7 +10,9 @@ validation and backend integration.
 
 ## SurveyJS-Compatible Format
 
-Form definitions use [SurveyJS-compatible JSON](https://surveyjs.io/form-library/documentation):
+Form definitions use [SurveyJS-compatible JSON](https://surveyjs.io/form-library/documentation).
+Decode the JSON into an instance (e.g. in `mount/3` — not in a template; the
+struct itself is not renderable):
 
 ```elixir
 instance = DynamicForm.Instance.decode!(~S({
@@ -39,6 +41,32 @@ instance = DynamicForm.Instance.decode!(~S({
   ]
 }))
 ```
+
+Then render it with the `DynamicForm.RendererLive` component:
+
+```elixir
+# In your LiveView
+def mount(_params, _session, socket) do
+  {:ok, assign(socket, :form_instance, instance)}
+end
+
+def handle_info({:dynamic_form_success, _id, result}, socket) do
+  {:noreply, put_flash(socket, :info, result[:message])}
+end
+```
+
+```heex
+<.live_component
+  module={DynamicForm.RendererLive}
+  id="contact-form"
+  instance={@form_instance}
+  send_messages={true}
+/>
+```
+
+The component manages form state, validation on change, and submission. For
+custom state management, use the stateless `DynamicForm.Renderer.render/1`
+function component instead.
 
 ### Supported question types
 

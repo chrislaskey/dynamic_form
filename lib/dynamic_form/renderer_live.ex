@@ -507,8 +507,6 @@ defmodule DynamicForm.RendererLive do
     * `class` - Additional CSS classes to apply to the button
     * `disabled` - Whether the button is disabled
   """
-  use Phoenix.Component
-
   attr(:form, :string, required: true, doc: "The ID of the form element to submit")
   attr(:class, :string, default: nil, doc: "Additional CSS classes")
   attr(:disabled, :boolean, default: false, doc: "Whether the button is disabled")
