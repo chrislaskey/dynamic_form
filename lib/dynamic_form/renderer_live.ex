@@ -35,7 +35,7 @@ defmodule DynamicForm.RendererLive do
         send_messages={true}
       />
 
-      def handle_info({:dynamic_form_after_success, _id, result}, socket) do
+      def handle_info({:dynamic_form_success, _id, result}, socket) do
         {:noreply, put_flash(socket, :info, result.message)}
       end
 

@@ -7,6 +7,19 @@ To start your Phoenix server:
 
 Now you can visit [`localhost:4444`](http://localhost:4444) from your browser.
 
+## Test Pages
+
+  * `/slot-forms` - Declarative `<DynamicForm.form>` definitions: `<:field>`
+    slots, `<:group>` panels, custom markup (slot bodies), data mode through
+    the same component, and an input-preservation test across parent re-renders
+  * `/form-test` - `DynamicForm.Renderer` with manual state management
+  * `/form-test-component` - `DynamicForm.RendererLive` usage modes and
+    external submit buttons
+  * `/render` - Create vs edit mode
+  * `/payment-form`, `/showcase-form`, `/section-form` - Larger form scenarios
+  * `/surveyjs-test` - SurveyJS JSON decoding
+  * `/builder-mockups` - WYSIWYG builder mockups
+
 Ready to run in production? Please [check our deployment guides](https://hexdocs.pm/phoenix/deployment.html).
 
 ## Learn more
