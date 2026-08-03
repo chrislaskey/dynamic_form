@@ -133,20 +133,18 @@ defmodule DynamicForm.Changeset do
       |> Enum.filter(&(&1.type == "file"))
       |> Enum.map(& &1.name)
 
-    Enum.reduce(upload_fields, params, fn field_name, acc ->
-      case Map.get(acc, field_name) do
-        value when is_binary(value) ->
-          # Decode JSON string to list of maps
-          case Jason.decode(value) do
-            {:ok, decoded} -> Map.put(acc, field_name, decoded)
-            {:error, _} -> acc
-          end
+    Enum.reduce(upload_fields, params, &decode_upload_field/2)
+  end
 
-        # Already decoded or nil
-        _ ->
-          acc
-      end
-    end)
+  # Decode a JSON-string value to a list of maps; leave already-decoded or
+  # nil values untouched
+  defp decode_upload_field(field_name, params) do
+    with value when is_binary(value) <- Map.get(params, field_name),
+         {:ok, decoded} <- Jason.decode(value) do
+      Map.put(params, field_name, decoded)
+    else
+      _ -> params
+    end
   end
 
   # Checkbox groups submit a hidden empty entry under `name[]` so that clearing
@@ -159,18 +157,25 @@ defmodule DynamicForm.Changeset do
       |> Enum.filter(&(&1.type in ["checkbox", "tagbox"]))
       |> Enum.map(& &1.name)
 
-    Enum.reduce(array_fields, params, fn field_name, acc ->
-      case Map.get(acc, field_name) do
-        values when is_list(values) ->
-          case Enum.reject(values, &(&1 == "")) do
-            [] -> Map.put(acc, field_name, nil)
-            selected -> Map.put(acc, field_name, selected)
-          end
+    Enum.reduce(array_fields, params, &normalize_array_field/2)
+  end
 
-        _ ->
-          acc
-      end
-    end)
+  defp normalize_array_field(field_name, params) do
+    case Map.get(params, field_name) do
+      values when is_list(values) ->
+        Map.put(params, field_name, reject_empty_selections(values))
+
+      _ ->
+        params
+    end
+  end
+
+  # An all-empty selection becomes nil so validate_required still applies
+  defp reject_empty_selections(values) do
+    case Enum.reject(values, &(&1 == "")) do
+      [] -> nil
+      selected -> selected
+    end
   end
 
   defp get_required_fields(questions, params) do

@@ -237,7 +237,8 @@ defmodule DynamicForm.DirectUpload do
     # Remove file at index
     {deleted_file, remaining_files} = List.pop_at(uploaded_files, index)
 
-    # TODO: Optionally delete from cloud storage via callback
+    # The file is only removed from the form state; deleting the object from
+    # cloud storage is left to the application (e.g. on form submission)
 
     if deleted_file do
       Logger.info("File deleted: #{deleted_file["filename"]}")

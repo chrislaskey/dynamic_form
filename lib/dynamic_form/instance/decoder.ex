@@ -215,9 +215,13 @@ defmodule DynamicForm.Instance.Decoder do
     String.to_existing_atom(module_string)
   rescue
     ArgumentError ->
-      raise ArgumentError,
-            "Module #{module_string} is not loaded. " <>
-              "Please ensure the module is loaded before decoding."
+      reraise ArgumentError,
+              [
+                message:
+                  "Module #{module_string} is not loaded. " <>
+                    "Please ensure the module is loaded before decoding."
+              ],
+              __STACKTRACE__
   end
 
   def decode_module(module) when is_atom(module), do: module
@@ -231,7 +235,9 @@ defmodule DynamicForm.Instance.Decoder do
     String.to_existing_atom(string)
   rescue
     ArgumentError ->
-      raise ArgumentError, "Atom :#{string} does not exist. Cannot decode safely."
+      reraise ArgumentError,
+              [message: "Atom :#{string} does not exist. Cannot decode safely."],
+              __STACKTRACE__
   end
 
   def decode_atom(atom) when is_atom(atom), do: atom

@@ -161,6 +161,33 @@ defmodule DynamicForm.Renderer do
     render_panel_or_html(element, form, opts)
   end
 
+  # Render HTML elements defined with a slot body (see Instance.FromSlots).
+  # The body is compile-checked HEEx, so unlike the html-string clause below it
+  # is escaped by default and can read the defining template's assigns.
+  defp render_panel_or_html(%Instance.Element{type: "html", slot: entry}, _form, _opts)
+       when not is_nil(entry) do
+    assigns = %{entry: entry}
+
+    ~H"""
+    <div class="mb-4">
+      {render_slot(@entry)}
+    </div>
+    """
+  end
+
+  # Render fully custom elements: the slot body receives the Phoenix form so
+  # it can read current values, e.g. <:field type="custom" :let={form}>
+  defp render_panel_or_html(%Instance.Element{type: "custom", slot: entry}, form, _opts)
+       when not is_nil(entry) do
+    assigns = %{entry: entry, form: form}
+
+    ~H"""
+    <div class="mb-4">
+      {render_slot(@entry, @form)}
+    </div>
+    """
+  end
+
   # Render HTML elements
   defp render_panel_or_html(%Instance.Element{type: "html"} = element, _form, _opts) do
     html_content = element.html || ""
@@ -242,6 +269,38 @@ defmodule DynamicForm.Renderer do
           </div>
         </div>
       </div>
+    </div>
+    """
+  end
+
+  # Render a question defined with a slot body: the body receives the
+  # Phoenix.HTML.FormField and takes over the control, while the library keeps
+  # the label, description, error display, and changeset validation. E.g.
+  #
+  #   <:field type="text" name="amount" label="Amount" :let={field}>
+  #     <input type="range" name={field.name} id={field.id} value={field.value} />
+  #   </:field>
+  defp render_question(%Instance.Question{slot: entry} = question, form, _opts)
+       when not is_nil(entry) do
+    field = form[String.to_atom(question.name)]
+    errors = if Phoenix.Component.used_input?(field), do: field.errors, else: []
+
+    assigns = %{
+      question: question,
+      field: field,
+      entry: entry,
+      label: question_label(question),
+      errors: Enum.map(errors, &CoreComponents.translate_error/1)
+    }
+
+    ~H"""
+    <div class="mb-4">
+      <CoreComponents.label for={@field.id}>{@label}</CoreComponents.label>
+      {render_slot(@entry, @field)}
+      <CoreComponents.error :for={msg <- @errors}>{msg}</CoreComponents.error>
+      <%= if @question.description do %>
+        <p class="mt-2 text-sm text-gray-500"><%= @question.description %></p>
+      <% end %>
     </div>
     """
   end

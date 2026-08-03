@@ -175,23 +175,47 @@ defmodule DynamicForm.RendererLive do
       |> Map.get(:params, %{})
       |> apply_default_values(instance)
 
-    gettext = Map.get(assigns, :gettext, DynamicForm.Gettext)
-    changeset = Changeset.create_changeset(instance, initial_params)
-    form = to_form(changeset, as: form_name)
+    if definition_unchanged?(socket, instance, initial_params, form_name) do
+      # The form definition and initial params are the same — keep the live
+      # changeset so a parent re-render doesn't wipe in-progress user input.
+      # The fresh instance is still assigned because slot-defined elements may
+      # carry new closures that must re-render with current parent assigns.
+      {:ok,
+       socket
+       |> assign(assigns)
+       |> assign(:instance, instance)
+       |> assign(:initial_params, initial_params)}
+    else
+      gettext = Map.get(assigns, :gettext, DynamicForm.Gettext)
+      changeset = Changeset.create_changeset(instance, initial_params)
+      form = to_form(changeset, as: form_name)
 
-    socket =
-      socket
-      |> assign(assigns)
-      |> assign(:instance, instance)
-      |> assign(:changeset, changeset)
-      |> assign(:form, form)
-      |> assign(:form_name, form_name)
-      |> assign(:initial_params, initial_params)
-      |> assign(:gettext, gettext)
-      |> assign(:submitting, false)
-      |> allow_uploads_for_direct_upload_fields(instance)
+      socket =
+        socket
+        |> assign(assigns)
+        |> assign(:instance, instance)
+        |> assign(:changeset, changeset)
+        |> assign(:form, form)
+        |> assign(:form_name, form_name)
+        |> assign(:initial_params, initial_params)
+        |> assign(:gettext, gettext)
+        |> assign(:submitting, false)
+        |> allow_uploads_for_direct_upload_fields(instance)
 
-    {:ok, socket}
+      {:ok, socket}
+    end
+  end
+
+  # True when the component is already initialized and neither the form
+  # definition nor the initial params changed. Instances are compared with
+  # their slot entries stripped: slot bodies hold closures over the parent's
+  # assigns, which compare unequal whenever those assigns change even though
+  # the form definition itself is identical.
+  defp definition_unchanged?(socket, instance, initial_params, form_name) do
+    Map.has_key?(socket.assigns, :changeset) and
+      form_name == socket.assigns.form_name and
+      Instance.strip_slots(instance) == Instance.strip_slots(socket.assigns.instance) and
+      initial_params == socket.assigns.initial_params
   end
 
   defp handle_delete_file_update(assigns, socket) do
@@ -589,8 +613,7 @@ defmodule DynamicForm.RendererLive do
     |> to_string()
     |> String.replace("_", " ")
     |> String.split()
-    |> Enum.map(&String.capitalize/1)
-    |> Enum.join(" ")
+    |> Enum.map_join(" ", &String.capitalize/1)
   end
 
   # Helper to set up uploads for file upload questions

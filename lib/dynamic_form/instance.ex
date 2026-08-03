@@ -49,6 +49,15 @@ defmodule DynamicForm.Instance do
 
       # Decode from map
       instance = DynamicForm.Instance.decode!(map)
+
+  ## Slot-Defined Instances
+
+  Instances can also be built from `<:field>` slot entries via `DynamicForm.form/1`
+  (see `DynamicForm.Instance.FromSlots`). Questions and elements defined with a
+  slot body carry the raw slot entry in their `:slot` field so the renderer can
+  call `Phoenix.Component.render_slot/2` on it. The `:slot` field holds a
+  closure, so it is never JSON-encoded; use `strip_slots/1` to compare two
+  instances by definition alone.
   """
 
   @enforce_keys [:id, :elements]
@@ -180,7 +189,8 @@ defmodule DynamicForm.Instance do
       :rateMin,
       :rateMax,
       :rateStep,
-      :metadata
+      :metadata,
+      :slot
     ]
 
     @type t :: %__MODULE__{
@@ -201,7 +211,8 @@ defmodule DynamicForm.Instance do
             rateMin: integer() | nil,
             rateMax: integer() | nil,
             rateStep: integer() | nil,
-            metadata: map() | nil
+            metadata: map() | nil,
+            slot: map() | nil
           }
   end
 
@@ -321,7 +332,8 @@ defmodule DynamicForm.Instance do
       :imageWidth,
       :imageHeight,
       :imageFit,
-      :metadata
+      :metadata,
+      :slot
     ]
 
     @type t :: %__MODULE__{
@@ -336,7 +348,8 @@ defmodule DynamicForm.Instance do
             imageWidth: String.t() | nil,
             imageHeight: String.t() | nil,
             imageFit: String.t() | nil,
-            metadata: map() | nil
+            metadata: map() | nil,
+            slot: map() | nil
           }
   end
 
@@ -472,6 +485,31 @@ defmodule DynamicForm.Instance do
             regex: String.t() | nil,
             text: String.t() | nil
           }
+  end
+
+  @doc """
+  Returns a copy of the instance with all `:slot` fields removed.
+
+  Slot-defined elements (see `DynamicForm.Instance.FromSlots`) carry their raw
+  slot entry — including its `inner_block` closure — in the `:slot` field.
+  Closures capture template assigns, so two otherwise-identical instances can
+  compare unequal whenever those assigns change. Stripping the slots yields the
+  form *definition* alone, which compares reliably with `==`.
+  """
+  def strip_slots(%__MODULE__{} = instance) do
+    %{instance | elements: strip_element_slots(instance.elements)}
+  end
+
+  defp strip_element_slots(nil), do: nil
+
+  defp strip_element_slots(elements) when is_list(elements) do
+    Enum.map(elements, fn
+      %Question{} = question ->
+        %{question | slot: nil}
+
+      %Element{} = element ->
+        %{element | slot: nil, elements: strip_element_slots(element.elements)}
+    end)
   end
 
   # Custom encoder for Instance that handles DateTime fields

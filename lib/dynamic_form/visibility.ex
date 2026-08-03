@@ -164,22 +164,26 @@ defmodule DynamicForm.Visibility do
     end
   end
 
+  @keyword_tokens %{
+    "and" => :and,
+    "or" => :or,
+    "true" => {:boolean, true},
+    "false" => {:boolean, false},
+    "empty" => {:op, :empty},
+    "notempty" => {:op, :notempty},
+    "contains" => {:op, :contains},
+    "contain" => {:op, :contains},
+    "notcontains" => {:op, :notcontains},
+    "notcontain" => {:op, :notcontains},
+    "anyof" => {:op, :anyof},
+    "allof" => {:op, :allof},
+    "noneof" => {:op, :noneof}
+  }
+
   defp word_token(word) do
-    case String.downcase(word) do
-      "and" -> :and
-      "or" -> :or
-      "true" -> {:boolean, true}
-      "false" -> {:boolean, false}
-      "empty" -> {:op, :empty}
-      "notempty" -> {:op, :notempty}
-      "contains" -> {:op, :contains}
-      "contain" -> {:op, :contains}
-      "notcontains" -> {:op, :notcontains}
-      "notcontain" -> {:op, :notcontains}
-      "anyof" -> {:op, :anyof}
-      "allof" -> {:op, :allof}
-      "noneof" -> {:op, :noneof}
-      _ -> number_or_error(word)
+    case Map.fetch(@keyword_tokens, String.downcase(word)) do
+      {:ok, token} -> token
+      :error -> number_or_error(word)
     end
   end
 
