@@ -209,8 +209,40 @@ def deps do
 end
 ```
 
+### Tailwind setup
+
+The form components are styled with Tailwind and assume the
+[@tailwindcss/forms](https://github.com/tailwindlabs/tailwindcss-forms)
+plugin (it provides input border widths, appearance resets, and
+checkbox/radio styling).
+
+- **Phoenix ≤ 1.7 apps**: the generated `tailwind.config.js` already includes
+  `@tailwindcss/forms` — only the content path for DynamicForm's classes
+  needs adding:
+
+  ```js
+  content: [
+    // ...
+    "../deps/dynamic_form/lib/**/*.ex"
+  ]
+  ```
+
+- **Phoenix 1.8+ apps** (CSS-based Tailwind v4 config): the plugin is *not*
+  included by the generator — add both lines to `assets/css/app.css`. No npm
+  install is needed; the Phoenix-managed standalone Tailwind CLI bundles the
+  first-party plugins:
+
+  ```css
+  /* Include DynamicForm's classes in the Tailwind build */
+  @source "../../deps/dynamic_form/lib";
+
+  @plugin "@tailwindcss/forms";
+  ```
+
 ## Example App
 
-The `example/` directory contains a Phoenix app exercising the library,
-including a `/slot-forms` page demonstrating declarative definitions, groups,
-and all three custom-markup tiers. See `example/README.md`.
+The `examples/demo/` directory contains a full Phoenix app exercising the
+library, including a `/slot-forms` page demonstrating declarative
+definitions, groups, and all three custom-markup tiers. The demo is
+generated from a pinned `phx.new` skeleton plus the version-controlled
+`examples/overlay/` — see `examples/README.md`.
