@@ -3,7 +3,7 @@
 > **Note (2026-07):** This is the original design document and predates the
 > migration to SurveyJS-compatible JSON format. Code examples below use the
 > old bespoke format (`Instance.Field`, `visible_when`, `items`, ...). For the
-> current format see `surveyjs-mapping.md` and the module docs in
+> current format see `guides/surveyjs.md` and the module docs in
 > `lib/dynamic_form/`.
 
 A Phoenix LiveView library for creating dynamic forms through a WYSIWYG interface that leverages Ecto changesets and Phoenix CoreComponents.

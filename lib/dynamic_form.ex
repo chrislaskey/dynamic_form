@@ -69,11 +69,14 @@ defmodule DynamicForm do
   ## Declarative Forms
 
   `DynamicForm.form/1` is the unified entry point for rendering forms. It
-  accepts either a prebuilt instance (data mode) or `<:field>` slots
-  (declarative mode) — exactly one of the two:
+  accepts a prebuilt instance, a SurveyJS-compatible JSON string, or
+  `<:field>` slots (declarative mode) — exactly one of the three:
 
-      <%!-- Data mode --%>
+      <%!-- Data mode: Instance struct or map --%>
       <DynamicForm.form id="contact-form" instance={@form_instance} send_messages />
+
+      <%!-- Data mode: SurveyJS-compatible JSON string --%>
+      <DynamicForm.form id="contact-form" json={@json} send_messages />
 
       <%!-- Declarative mode --%>
       <DynamicForm.form id="contact-form" title="Contact Form" send_messages>
@@ -96,12 +99,12 @@ defmodule DynamicForm do
   defdelegate submit_button(assigns), to: DynamicForm.RendererLive
 
   @doc """
-  Renders a dynamic form from either an instance (data mode) or `<:field>`
-  slots (declarative mode).
+  Renders a dynamic form from an instance, a SurveyJS-compatible JSON string,
+  or `<:field>` slots (declarative mode).
 
   Wraps `DynamicForm.RendererLive`, which manages form state, validation, and
-  backend submission. Exactly one of the `instance` attribute or `<:field>`
-  slots must be provided.
+  backend submission. Exactly one of the `instance` attribute, the `json`
+  attribute, or `<:field>` slots must be provided.
 
   ## Declarative mode
 
@@ -158,7 +161,14 @@ defmodule DynamicForm do
   attr(:instance, :any,
     default: nil,
     doc:
-      "Data mode: an Instance struct, JSON string, or map. Mutually exclusive with <:field> slots."
+      "Data mode: an Instance struct, JSON string, or map. Mutually exclusive with json and <:field> slots."
+  )
+
+  attr(:json, :string,
+    default: nil,
+    doc:
+      "Data mode: a SurveyJS-compatible JSON string, decoded with Instance.decode!/1. " <>
+        "Mutually exclusive with instance and <:field> slots."
   )
 
   attr(:title, :string, default: nil, doc: "Instance title (declarative mode)")
@@ -259,22 +269,47 @@ defmodule DynamicForm do
     """
   end
 
-  defp resolve_instance(%{instance: nil, field: []} = assigns) do
-    raise ArgumentError,
-          "DynamicForm.form id=#{inspect(assigns.id)} requires either an instance " <>
-            "attribute or <:field> slots"
-  end
+  # The form definition comes from exactly one of three modes: the instance
+  # attribute, the json attribute, or <:field>/<:group> slots.
+  defp resolve_instance(assigns) do
+    case definition_modes(assigns) do
+      [:instance] ->
+        assigns.instance
 
-  defp resolve_instance(%{instance: instance, field: fields} = assigns)
-       when not is_nil(instance) do
-    if fields != [] or assigns.group != [] do
-      raise ArgumentError,
-            "DynamicForm.form id=#{inspect(assigns.id)} received both an instance " <>
-              "attribute and <:field>/<:group> slots — provide exactly one"
+      [:json] ->
+        decode_json!(assigns)
+
+      [:slots] ->
+        Instance.FromSlots.convert!(assigns)
+
+      [] ->
+        raise ArgumentError,
+              "DynamicForm.form id=#{inspect(assigns.id)} requires a form definition: " <>
+                "an instance attribute, a json attribute, or <:field> slots"
+
+      modes ->
+        raise ArgumentError,
+              "DynamicForm.form id=#{inspect(assigns.id)} received multiple form " <>
+                "definitions (#{Enum.map_join(modes, " and ", &inspect/1)}) — provide exactly one"
     end
-
-    instance
   end
 
-  defp resolve_instance(assigns), do: Instance.FromSlots.convert!(assigns)
+  defp definition_modes(assigns) do
+    [
+      instance: not is_nil(assigns.instance),
+      json: not is_nil(assigns.json),
+      slots: assigns.field != [] or assigns.group != []
+    ]
+    |> Enum.filter(fn {_mode, present?} -> present? end)
+    |> Enum.map(fn {mode, _present?} -> mode end)
+  end
+
+  defp decode_json!(%{json: json}) when is_binary(json), do: Instance.decode!(json)
+
+  defp decode_json!(%{json: other} = assigns) do
+    raise ArgumentError,
+          "DynamicForm.form id=#{inspect(assigns.id)} json attribute must be a JSON " <>
+            "string — for maps or Instance structs use the instance attribute. " <>
+            "Got: #{inspect(other)}"
+  end
 end

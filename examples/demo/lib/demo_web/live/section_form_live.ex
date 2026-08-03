@@ -53,7 +53,9 @@ defmodule DemoWeb.SectionFormLive do
             </button>
           </div>
           <div class="mt-3 text-xs text-indigo-800 font-mono bg-indigo-100 p-2 rounded">
-            instance=&lbrace;{if @use_json, do: "@json_string", else: "@form_instance"}&rbrace;
+            {if @use_json, do: "json", else: "instance"}=&lbrace;{if @use_json,
+              do: "@json_string",
+              else: "@form_instance"}&rbrace;
           </div>
         </div>
 
@@ -71,12 +73,12 @@ defmodule DemoWeb.SectionFormLive do
         </div>
 
         <div class="rounded-lg bg-gray-50 shadow-sm ring-1 ring-gray-900/5 p-6">
-          <.live_component
-            module={DynamicForm.RendererLive}
+          <DynamicForm.form
             id="section-form"
-            instance={if @use_json, do: @json_string, else: @form_instance}
-            hide_submit={true}
-            send_messages={true}
+            instance={if !@use_json, do: @form_instance}
+            json={if @use_json, do: @json_string}
+            hide_submit
+            send_messages
             submit_text="Save Profile"
             validation_summary="detailed"
           />

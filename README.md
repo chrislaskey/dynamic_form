@@ -1,248 +1,185 @@
 # DynamicForm
 
-A library for creating dynamic forms with full backend validation using
-changesets and calls to backend functions in Elixir Phoenix. Also supports
-building forms through a WYSIWYG interface.
+> Dynamic, changeset-backed forms for Phoenix LiveView — defined declaratively
+> in HEEx or as (SurveyJS-compatible) data.
 
-This library enables users to build forms dynamically through a visual interface,
-then render those forms using standard Phoenix LiveView patterns with robust
-validation and backend integration.
+## Architecture
 
-## Defining Forms
+DynamicForm renders complete, validated forms from a single definition. A
+definition can be written two ways, and both converge on the same
+`DynamicForm.Instance` struct — so validation, conditional logic, and
+submission behave identically:
 
-Forms can be defined two ways, both rendered through the same
-`DynamicForm.form/1` component:
+- **Data** — [SurveyJS-compatible JSON](https://surveyjs.io/form-library/documentation)
+  (or maps/structs), for forms that are stored in a database, generated at
+  runtime, or built in a WYSIWYG editor.
+- **Declarative** — `<:field>` slots inside `<DynamicForm.form>`, for forms
+  owned by application code and co-located with the template.
 
-- **Declaratively in the template** with `<:field>` slots — for forms owned by
-  application code.
-- **As data** in [SurveyJS-compatible JSON](https://surveyjs.io/form-library/documentation)
-  — for forms that are stored, generated, or built in a WYSIWYG editor.
+In declarative mode, everything is composed from slots:
 
-Both converge on the same `DynamicForm.Instance` struct internally, so
-validation, conditional logic, and backend submission behave identically.
+- **`<:field>`** — every question and element in render order: text, comment,
+  dropdown, radiogroup, checkbox, boolean, rating, tagbox, file uploads, plus
+  html/image content blocks.
+- **`<:group>`** — collects fields into a titled panel, with its own
+  conditional visibility.
+- **Slot bodies** — custom markup at three tiers: content blocks, custom
+  controls that receive the form field (the library keeps the label, errors,
+  and validation), and fully custom elements that receive the form.
 
-## Declarative Form Definitions
+Whichever mode defines the form, the library owns the full lifecycle: an Ecto
+changeset built from the definition (types, required fields, validators),
+SurveyJS conditional expressions (`visible_if`, `required_if`, `enable_if`)
+evaluated live as the user types, direct-to-cloud file uploads, and
+submission through a small backend behaviour your application implements.
 
-Define a form directly in HEEx with `<:field>` slots, in render order:
+## Examples
+
+A form is a component call with fields in render order:
 
 ```heex
-<DynamicForm.form id="contact-form" title="Contact Form" send_messages>
-  <:field type="text" input_type="email" name="email" label="Email Address"
-          required format="email" />
-  <:field type="dropdown" name="subject" label="Subject"
-          options={[{"Support", "support"}, {"Sales", "sales"}]} />
-  <:field type="comment" name="details" label="Details"
-          visible_if="{subject} = 'support'" />
+<DynamicForm.form id="contact-form" send_messages>
+  <:field type="text" name="name" label="Name" required />
+  <:field type="text" name="email" input_type="email" label="Email Address" required format="email" />
 </DynamicForm.form>
 ```
 
 ```elixir
-# In the parent LiveView
 def handle_info({:dynamic_form_success, _id, result}, socket) do
-  {:noreply, put_flash(socket, :info, result[:message])}
+  {:noreply, put_flash(socket, :info, result.message)}
 end
 ```
 
-Slot attrs are snake_case and map to the SurveyJS-style fields (`label` →
-`title`, `options` → `choices`, `visible_if` → `visibleIf`, ...). Validation
-attrs are flattened for the common cases — `min_length`, `max_length`, `min`,
-`max`, `pattern`, `format="email"` — with `validators={[...]}` as the escape
-hatch. Invalid definitions (duplicate names, choice fields without options,
-unknown types, ...) raise with a descriptive message at render time.
-
-See `DynamicForm.form/1` for the full attribute reference and
-`DynamicForm.Instance.FromSlots` for the conversion rules.
-
-### Groups (panels)
-
-Fields sharing a `group` attribute are collected into a panel declared by a
-`<:group>` entry. The panel renders at the position of its first member field:
+Layer in validation attrs and conditional visibility — the details field only
+appears when the subject is `support`, and hidden required fields are
+excluded from validation automatically:
 
 ```heex
-<:field type="boolean" name="ship" label="Ship to a different address?" />
-
-<:group name="address" title="Shipping Address" visible_if="{ship} = true" />
-<:field group="address" type="text" name="street" label="Street" required />
-<:field group="address" type="text" name="city" label="City" required />
+<DynamicForm.form id="support-form" send_messages>
+  <:field type="text" name="name" label="Name" required min_length={2} />
+  <:field type="dropdown" name="subject" label="Subject" required options={[{"Support", "support"}, {"Sales", "sales"}]} />
+  <:field type="comment" name="details" label="Support Details" visible_if="{subject} = 'support'" />
+  <:field type="rating" name="satisfaction" label="Satisfaction" rate_min={1} rate_max={5} />
+</DynamicForm.form>
 ```
 
-### Custom markup
-
-A `<:field>` slot body customizes rendering at three levels:
+Group fields into panels, and take over rendering where you need to — here a
+custom range control via a slot body, while the library still owns the label,
+errors, and changeset validation:
 
 ```heex
-<%!-- 1. Content block: compile-checked HEEx instead of an html string,
-     escaped by default, can read parent assigns --%>
-<:field type="html" name="intro">
-  <h2>Welcome, {@current_user.name}</h2>
-</:field>
+<DynamicForm.form id="checkout-form" send_messages>
+  <:field type="boolean" name="ship" label="Ship to a different address?" />
 
-<%!-- 2. Custom control: the body receives the Phoenix.HTML.FormField and
-     replaces the input; the library still renders the label and errors,
-     and the changeset still validates the field --%>
-<:field type="text" input_type="number" name="budget" label="Budget" min={0} :let={field}>
-  <input type="range" min="0" max="1000" name={field.name} id={field.id}
-         value={field.value || 0} />
-</:field>
+  <:group name="address" title="Shipping Address" visible_if="{ship} = true" />
+  <:field group="address" type="text" name="street" label="Street" required />
+  <:field group="address" type="text" name="city" label="City" required />
 
-<%!-- 3. Fully custom element: the body receives the Phoenix form --%>
-<:field type="custom" name="summary" :let={form}>
-  <p>Total: {Phoenix.HTML.Form.input_value(form, :budget)}</p>
-</:field>
+  <:field :let={field} type="text" name="budget" input_type="number" label="Budget">
+    <input type="range" min="0" max="1000" step="50" name={field.name} id={field.id} value={field.value || 0} />
+  </:field>
+</DynamicForm.form>
 ```
 
-Slot bodies are in-memory only: an instance containing them can be
-JSON-encoded (the bodies are dropped), but declarative forms are owned by the
-code that defines them and cannot round-trip through the WYSIWYG builder.
+Or define the same form as data. SurveyJS-compatible JSON passes straight in
+via the `json` attribute (`<DynamicForm.form id="contact-form" json={@json} />`),
+or decode it at the edge — from JSON, a map, or built as structs — and pass
+the instance to the same component:
 
-## SurveyJS-Compatible Data Format
-
-Form definitions can also be [SurveyJS-compatible JSON](https://surveyjs.io/form-library/documentation).
-Decode the JSON into an instance (e.g. in `mount/3` — not in a template; the
-struct itself is not renderable):
-
-```elixir
-instance = DynamicForm.Instance.decode!(~S({
+```json
+{
   "title": "Contact Form",
   "elements": [
-    {
-      "type": "text",
-      "name": "email",
-      "inputType": "email",
-      "title": "Email Address",
-      "isRequired": true,
-      "validators": [{"type": "email"}]
-    },
-    {
-      "type": "dropdown",
-      "name": "subject",
-      "title": "Subject",
-      "choices": [{"value": "support", "text": "Support"}]
-    },
-    {
-      "type": "comment",
-      "name": "details",
-      "title": "Details",
-      "visibleIf": "{subject} = 'support'"
-    }
+    {"type": "text", "name": "name", "inputType": "text"},
+    {"type": "text", "name": "email", "inputType": "email"}
   ]
-}))
-```
-
-Then pass the instance to the same component:
-
-```elixir
-# In your LiveView
-def mount(_params, _session, socket) do
-  {:ok, assign(socket, :form_instance, instance)}
-end
-
-def handle_info({:dynamic_form_success, _id, result}, socket) do
-  {:noreply, put_flash(socket, :info, result[:message])}
-end
+}
 ```
 
 ```heex
-<DynamicForm.form id="contact-form" instance={@form_instance} send_messages />
+<DynamicForm.form id="contact-form" json={@json} send_messages />
 ```
 
-`DynamicForm.form/1` requires exactly one of the `instance` attribute or
-`<:field>` slots. Rendering the `DynamicForm.RendererLive` LiveComponent
-directly with `<.live_component>` is equivalent and remains supported; for
-custom state management, use the stateless `DynamicForm.Renderer.render/1`
-function component instead.
+Every example runs live in the demo app — the
+[Slot Forms page](examples/overlay/lib/demo_web/live/slot_form_live.ex) shows
+each definition alongside its rendered form. Every feature is explained in
+depth in the [Usage guide](guides/usage.md).
 
-### Supported question types
+## Demo app
 
-| Type | Renders as | Notes |
-|------|-----------|-------|
-| `text` | `<input>` | `inputType` passes through (`email`, `number`, ...) |
-| `comment` | `<textarea>` | |
-| `dropdown` | `<select>` | |
-| `radiogroup` | Radio buttons | `metadata.style`: `vertical`/`horizontal` |
-| `checkbox` | Checkbox group | Array-valued |
-| `tagbox` | Multi-select | Array-valued |
-| `boolean` | Single checkbox | |
-| `rating` | Numeric radio row | `rateMin`/`rateMax`/`rateStep` (default 1–5) |
-| `file` | Direct upload | Presigner configured via `metadata` |
-
-Element types: `html`, `panel` (nesting container; declared via `<:group>` in
-declarative mode), `image`, and `custom` (declarative mode only, requires a
-slot body).
-
-### Conditional logic
-
-`visibleIf`, `requiredIf`, and `enableIf` (slot attrs: `visible_if`,
-`required_if`, `enable_if`) accept SurveyJS expressions:
+The `/examples` directory contains a full Phoenix demo app exercising every
+feature — declarative and data definitions, every question type, conditional
+logic, panels, custom markup, file uploads, and backend submission:
 
 ```
-{field} = 'value'        {field} notempty         {field} > 100
-{a} = 'x' and {b} empty  {tags} anyof ['a', 'b']  {list} contains 'item'
+git clone https://github.com/chrislaskey/dynamic_form.git
+cd dynamic_form/examples/demo
+mix setup && iex -S mix phx.server
 ```
 
-Supported operators: `=`, `==`, `<>`, `!=`, `>`, `<`, `>=`, `<=`, `empty`,
-`notempty`, `contains`, `notcontains`, `anyof`, `allof`, `noneof`, combined
-with `and`, `or`, and parentheses. Hidden required questions are excluded
-from validation automatically.
+The demo is generated: `examples/regenerate.sh` rebuilds it from a pinned
+`phx.new` release, then applies the version-controlled `examples/overlay/`
+directory on top. The interesting demo code — LiveViews, form definitions,
+layout tweaks — lives in the overlay; edit there, copy over the demo
+(`cp -R overlay/. demo/`), and never edit generated files directly.
 
-### Validators
+## Additional documentation
 
-`text` (`minLength`/`maxLength`), `numeric` (`minValue`/`maxValue`), `email`,
-and `regex`. Each accepts a custom error message via `text`. In declarative
-mode the flattened attrs (`min_length`, `min`, `pattern`, `format`, ...)
-build these validators automatically.
-
-Not supported (rendered as a visible fallback box): matrix types,
-`paneldynamic`, `multipletext`, `signaturepad`, `imagepicker`, `ranking`,
-`slider`, `expression`. Multi-page definitions are flattened into a single
-form.
+- **[Usage](guides/usage.md)** — every feature in depth: both definition
+  modes, question types, validation, conditional logic, groups, custom
+  markup, rendering options, edit mode, backends, and file uploads
+- **[SurveyJS compatibility](guides/surveyjs.md)** — defining forms as data:
+  what's supported, what isn't, and DynamicForm's extensions
+- **[Reference](guides/reference.md)** — quick tables for every attribute,
+  slot, question type, validator, and expression operator
+- **[Development](guides/development.md)** — the demo app workflow,
+  architecture notes, and testing
 
 ## Installation
 
-When using as a path dependency in your Phoenix app:
+DynamicForm is not yet published to Hex. Add it as a path or git dependency
+in `mix.exs`:
 
 ```elixir
 def deps do
   [
-    {:dynamic_form, path: "../"}
+    {:dynamic_form, path: "../dynamic_form"}
+    # or: {:dynamic_form, git: "https://github.com/chrislaskey/dynamic_form.git"}
   ]
 end
 ```
 
-### Tailwind setup
+### Tailwind CSS
 
-The form components are styled with Tailwind and assume the
+The components are styled with Tailwind utility classes and assume the
 [@tailwindcss/forms](https://github.com/tailwindlabs/tailwindcss-forms)
-plugin (it provides input border widths, appearance resets, and
-checkbox/radio styling).
+plugin (input border widths, appearance resets, checkbox/radio styling).
 
-- **Phoenix ≤ 1.7 apps**: the generated `tailwind.config.js` already includes
-  `@tailwindcss/forms` — only the content path for DynamicForm's classes
-  needs adding:
+Tailwind v4 (`assets/css/app.css`) — Phoenix 1.8+ generators do **not**
+include the forms plugin, so add both lines (no npm install needed; the
+Phoenix-managed standalone Tailwind CLI bundles the first-party plugins):
 
-  ```js
-  content: [
-    // ...
-    "../deps/dynamic_form/lib/**/*.ex"
-  ]
-  ```
+```css
+@source "../../deps/dynamic_form/lib";
+@plugin "@tailwindcss/forms";
+```
 
-- **Phoenix 1.8+ apps** (CSS-based Tailwind v4 config): the plugin is *not*
-  included by the generator — add both lines to `assets/css/app.css`. No npm
-  install is needed; the Phoenix-managed standalone Tailwind CLI bundles the
-  first-party plugins:
+Tailwind v3 (`assets/tailwind.config.js`) — Phoenix ≤ 1.7 generators already
+include the forms plugin, so only the source path is needed:
 
-  ```css
-  /* Include DynamicForm's classes in the Tailwind build */
-  @source "../../deps/dynamic_form/lib";
+```js
+content: [
+  // ...existing paths
+  "../deps/dynamic_form/lib/**/*.ex",
+],
+```
 
-  @plugin "@tailwindcss/forms";
-  ```
+### File uploads (optional)
 
-## Example App
+Direct-to-cloud file uploads (`type="file"`) require a presigner module and
+a JavaScript uploader registered in `assets/js/app.js` — see
+[Usage: File uploads](guides/usage.md#file-uploads).
 
-The `examples/demo/` directory contains a full Phoenix app exercising the
-library, including a `/slot-forms` page demonstrating declarative
-definitions, groups, and all three custom-markup tiers. The demo is
-generated from a pinned `phx.new` skeleton plus the version-controlled
-`examples/overlay/` — see `examples/README.md`.
+## License
+
+MIT — see [LICENSE.md](LICENSE.md).
