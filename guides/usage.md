@@ -236,7 +236,7 @@ every submission, carrying the outcome as an ok/error tuple —
 
 ```elixir
 def handle_info({:dynamic_form_submit, _id, {:ok, %{result: result}}}, socket) do
-  # result is the backend's map, typically %{message: ..., data: ...}
+  # result is the on_valid_submit return value, typically %{message: ..., data: ...}
   {:noreply, put_flash(socket, :info, result.message)}
 end
 
@@ -300,44 +300,40 @@ end
 `DynamicForm.Changeset.create_changeset/2` builds the changeset from any
 instance; the `/form-test` demo page shows the complete pattern.
 
-## Backends
+## Submitting: `on_valid_submit`
 
-Submission runs through a module implementing the `DynamicForm.Backend`
-behaviour, configured on the instance (or the `backend` attr in declarative
-mode):
+Pass a 1-arity function that receives the form data once the changeset is
+valid — invalid submissions render errors inline and never reach it. Phoenix
+context functions fit the contract directly:
 
-```elixir
-backend: %DynamicForm.Instance.Backend{
-  module: MyApp.EmailBackend,
-  function: :submit,
-  config: [recipient: "admin@example.com"]
-}
+```heex
+<DynamicForm.form id="contact-form" on_valid_submit={&Contacts.create_contact/1} send_messages>
+  <:field type="text" name="email" label="Email" required format="email" />
+</DynamicForm.form>
 ```
 
-The function is called on **every** submission — valid or not — giving the
-application full control:
+The function must return:
 
-```elixir
-def submit(data, changeset, config) do
-  cond do
-    not changeset.valid? ->
-      {:halt, changeset}
+- `{:ok, result}` — success; `result` flows to the parent in the `{:ok, _}`
+  submit message.
+- `{:error, %Ecto.Changeset{}}` — failure with field errors: the changeset's
+  errors are copied onto the form by field name and rendered inline. This is
+  exactly what a context returns for a uniqueness violation:
 
-    email_taken?(data.email) ->
-      {:halt, Ecto.Changeset.add_error(changeset, :email, "already taken")}
-
-    true ->
-      {:ok, record} = save(data, config)
-      {:cont, %{message: "Saved!", data: record}}
+  ```elixir
+  def create_contact(attrs) do
+    %Contact{}
+    |> Contact.changeset(attrs)
+    |> Repo.insert()
   end
-end
-```
+  ```
 
-Return `{:cont, result}` to succeed (the result map goes to the `{:ok, _}`
-submit message), `{:halt, changeset}` to display validation errors, or
-`{:halt, reason}` for a general failure (both halts produce the
-`{:error, _}` submit message). Without a backend configured, a valid
-submission succeeds with the form data.
+- `{:error, reason}` — general failure; `reason` flows to the parent in the
+  `{:error, _}` submit message and the form re-renders unchanged.
+
+Without `on_valid_submit`, a valid submission succeeds with the form data
+alone — pair with `send_messages` and do the work in the parent's
+`handle_info/2` instead.
 
 ## File uploads
 

@@ -21,7 +21,7 @@ defmodule DemoWeb.SlotFormLive do
   <DynamicForm.form
     id="basic-slot-form"
     title="Contact Form"
-    backend={%DynamicForm.Instance.Backend{module: Demo.TestBackend, function: :submit, config: []}}
+    on_valid_submit={&Demo.Submissions.create/1}
     send_messages
   >
     <:field type="text" name="name" label="Name" required min_length={2} />
@@ -168,7 +168,9 @@ defmodule DemoWeb.SlotFormLive do
         <p class="text-sm text-gray-500 mb-6">
           Question types, flattened validators (<code>format</code>, <code>min_length</code>),
           and <code>visible_if</code> (pick subject "Support" to reveal details).
-          Submits through <code>Demo.TestBackend</code>.
+          Submits through <code>on_valid_submit={"{&Demo.Submissions.create/1}"}</code> —
+          try the email <code>taken@example.com</code> to see a context error render
+          on the form.
         </p>
 
         <.definition title="Template definition" code={@src_basic} />
@@ -177,13 +179,7 @@ defmodule DemoWeb.SlotFormLive do
           <DynamicForm.form
             id="basic-slot-form"
             title="Contact Form"
-            backend={
-              %DynamicForm.Instance.Backend{
-                module: Demo.TestBackend,
-                function: :submit,
-                config: []
-              }
-            }
+            on_valid_submit={&Demo.Submissions.create/1}
             send_messages
           >
             <:field type="text" name="name" label="Name" required min_length={2} />

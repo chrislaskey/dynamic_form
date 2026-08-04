@@ -12,7 +12,7 @@ Quick lookup tables. For narrative documentation see the
 | `json` | string | `nil` | Data mode: SurveyJS-compatible JSON string, decoded via `Instance.decode!/1` |
 | `title` | string | `nil` | Instance title (declarative mode) |
 | `description` | string | `nil` | Instance description (declarative mode) |
-| `backend` | any | `nil` | `Instance.Backend` struct for submission (declarative mode) |
+| `on_valid_submit` | function | `nil` | 1-arity function receiving the form data on valid submissions; returns `{:ok, result}` \| `{:error, changeset \| reason}` |
 | `params` | map | `%{}` | Initial form params for edit mode |
 | `form_name` | string | `"dynamic_form"` | Form namespace for params |
 | `submit_text` | string | `"Submit"` | Submit button text |
@@ -126,21 +126,21 @@ Sent to the parent LiveView when `send_messages` is set, shaped
 
 | Outcome | When | Payload |
 |---|---|---|
-| `{:ok, %{result: result, data: data}}` | Backend returned `{:cont, result}`, or no backend and the changeset was valid | `result` is the backend's map (`%{}` without a backend); `data` the applied changeset data |
-| `{:error, %{changeset: changeset, reason: reason}}` | Backend returned `{:halt, _}`, or no backend and the changeset was invalid | `changeset` carries the inline errors; `reason` is a non-changeset halt term or `nil` |
+| `{:ok, %{result: result, data: data}}` | `on_valid_submit` returned `{:ok, result}`, or no callback and the changeset was valid | `result` is the callback's return value (`%{}` without a callback); `data` the applied changeset data |
+| `{:error, %{changeset: changeset, reason: reason}}` | The changeset was invalid, or `on_valid_submit` returned `{:error, _}` | `changeset` carries the inline errors; `reason` is an `{:error, reason}` term or `nil` |
 
-## Backend contract
+## `on_valid_submit` contract
 
-`DynamicForm.Backend` behaviour; the function name is configurable via
-`Instance.Backend`:
+A 1-arity function receiving the form data (the applied changeset), called
+only when the changeset is valid:
 
 ```elixir
-@callback submit(form_data :: map(), changeset :: Ecto.Changeset.t(), config :: Keyword.t()) ::
-            {:cont, map()} | {:halt, Ecto.Changeset.t()} | {:halt, map()}
-@callback validate_config(config :: Keyword.t()) :: :ok | {:error, String.t()}
+(data :: map()) -> {:ok, result} | {:error, Ecto.Changeset.t()} | {:error, reason}
 ```
 
-Called on every submission regardless of changeset validity.
+`{:error, changeset}` errors are copied onto the form by field name and
+rendered inline. Phoenix context functions
+(`&Contacts.create_contact/1`) fit the contract directly.
 
 ## Upload metadata keys
 

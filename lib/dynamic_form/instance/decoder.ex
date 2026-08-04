@@ -44,7 +44,6 @@ defmodule DynamicForm.Instance.Decoder do
       title: Map.get(data, "title"),
       description: Map.get(data, "description"),
       elements: decode_elements(elements),
-      backend: decode_backend(Map.get(data, "backend")),
       metadata: Map.get(data, "metadata"),
       inserted_at: decode_datetime(Map.get(data, "inserted_at")),
       updated_at: decode_datetime(Map.get(data, "updated_at"))
@@ -127,21 +126,6 @@ defmodule DynamicForm.Instance.Decoder do
   end
 
   @doc """
-  Decodes a backend map into an Instance.Backend struct.
-  """
-  def decode_backend(nil), do: nil
-
-  def decode_backend(data) when is_map(data) do
-    %Instance.Backend{
-      module: decode_module(Map.fetch!(data, "module")),
-      function: decode_atom(Map.fetch!(data, "function")),
-      config: decode_config(Map.get(data, "config", [])),
-      name: Map.get(data, "name"),
-      description: Map.get(data, "description")
-    }
-  end
-
-  @doc """
   Decodes a validator list.
   """
   def decode_validators(nil), do: nil
@@ -205,74 +189,6 @@ defmodule DynamicForm.Instance.Decoder do
   end
 
   @doc """
-  Decodes a module name string into a module atom.
-
-  Only converts to atom if the module is already loaded to prevent
-  atom exhaustion attacks.
-  """
-  def decode_module(module_string) when is_binary(module_string) do
-    module_string = ensure_elixir_prefix(module_string)
-    String.to_existing_atom(module_string)
-  rescue
-    ArgumentError ->
-      reraise ArgumentError,
-              [
-                message:
-                  "Module #{module_string} is not loaded. " <>
-                    "Please ensure the module is loaded before decoding."
-              ],
-              __STACKTRACE__
-  end
-
-  def decode_module(module) when is_atom(module), do: module
-
-  @doc """
-  Decodes an atom from a string.
-
-  Only converts to atom if it already exists to prevent atom exhaustion.
-  """
-  def decode_atom(string) when is_binary(string) do
-    String.to_existing_atom(string)
-  rescue
-    ArgumentError ->
-      reraise ArgumentError,
-              [message: "Atom :#{string} does not exist. Cannot decode safely."],
-              __STACKTRACE__
-  end
-
-  def decode_atom(atom) when is_atom(atom), do: atom
-
-  @doc """
-  Decodes backend config.
-
-  Config can be a keyword list or a map. We convert maps to keyword lists.
-  """
-  def decode_config(nil), do: []
-  def decode_config([]), do: []
-
-  def decode_config(config) when is_map(config) do
-    Enum.map(config, fn {key, value} ->
-      {decode_atom(key), value}
-    end)
-  end
-
-  def decode_config(config) when is_list(config) do
-    Enum.map(config, fn
-      %{"key" => key, "value" => value} ->
-        {decode_atom(key), value}
-
-      {key, value} when is_atom(key) ->
-        {key, value}
-
-      {key, value} when is_binary(key) ->
-        {decode_atom(key), value}
-
-      [key, value] when is_binary(key) ->
-        {decode_atom(key), value}
-    end)
-  end
-
-  @doc """
   Decodes a DateTime from an ISO8601 string.
   """
   def decode_datetime(nil), do: nil
@@ -311,9 +227,6 @@ defmodule DynamicForm.Instance.Decoder do
       end
     end)
   end
-
-  defp ensure_elixir_prefix("Elixir." <> _ = module_string), do: module_string
-  defp ensure_elixir_prefix(module_string), do: "Elixir." <> module_string
 
   defp generate_id do
     :crypto.strong_rand_bytes(8) |> Base.encode16(case: :lower)

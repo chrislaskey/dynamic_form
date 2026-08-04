@@ -46,8 +46,7 @@ defmodule DynamicForm.Instance.FromSlots do
   Validates slot entries and builds a `%DynamicForm.Instance{}`.
 
   Expects the assigns of `DynamicForm.form/1`: `:id` plus the `:field` and
-  `:group` slot lists (and optional `:title`, `:description`, `:backend`,
-  `:metadata`).
+  `:group` slot lists (and optional `:title` and `:description`).
   """
   def convert!(assigns) do
     fields = Map.get(assigns, :field, [])
@@ -66,7 +65,6 @@ defmodule DynamicForm.Instance.FromSlots do
       id: assigns.id,
       title: assigns[:title],
       description: assigns[:description],
-      backend: assigns[:backend],
       elements: position_groups(converted, group_defs)
     }
   end

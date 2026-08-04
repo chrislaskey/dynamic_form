@@ -72,7 +72,7 @@ mix format --check-formatted
 ```
 
 Demo app tests (end-to-end LiveView tests: slot definitions, conditional
-visibility, input preservation, backend submission, plus a smoke test over
+visibility, input preservation, submission handling, plus a smoke test over
 every route):
 
 ```

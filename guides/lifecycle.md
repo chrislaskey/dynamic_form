@@ -2,7 +2,7 @@
 
 How a form moves through its lifecycle, and how the parent LiveView is
 notified. For the submission contract itself see
-[Usage: Backends](usage.md#backends).
+[Usage: Submitting](usage.md#submitting-on_valid_submit).
 
 ## Notifying the parent: `send_messages`
 
@@ -80,8 +80,8 @@ submits, and renders errors, and the parent is never notified.
 
 | Outcome | When | Payload |
 |---|---|---|
-| `{:ok, %{result: result, data: data}}` | Backend returned `{:cont, result}`, or no backend and the changeset was valid | `result` is the backend's map (typically `:message`/`:data`), or `%{}` without a backend; `data` is the applied changeset data |
-| `{:error, %{changeset: changeset, reason: reason}}` | Backend returned `{:halt, _}`, or no backend and the changeset was invalid | `changeset` carries the errors rendered inline; `reason` is a backend's non-changeset `{:halt, reason}` term, or `nil` |
+| `{:ok, %{result: result, data: data}}` | `on_valid_submit` returned `{:ok, result}`, or no callback and the changeset was valid | `result` is the callback's return value (typically `:message`/`:data`), or `%{}` without a callback; `data` is the applied changeset data |
+| `{:error, %{changeset: changeset, reason: reason}}` | The changeset was invalid, or `on_valid_submit` returned `{:error, _}` | `changeset` carries the errors rendered inline; `reason` is an `on_valid_submit` `{:error, reason}` term, or `nil` |
 
 Validation (`phx-change`) does not notify the parent — inline errors and
 conditional logic are handled inside the component.
@@ -97,12 +97,13 @@ user types ──▶ phx-change ──▶ changeset rebuilt, conditional logic r
 
 user submits ─▶ phx-submit ─▶ changeset rebuilt
                     │
-                    ├─ backend configured ──▶ backend function called
-                    │      {:cont, result}           ──▶ {:ok, payload}
-                    │      {:halt, changeset/reason} ──▶ {:error, payload}, errors rendered inline
+                    ├─ invalid ──▶ {:error, payload}, errors rendered inline
                     │
-                    └─ no backend ──▶ valid changeset ──▶ {:ok, payload}
-                                      invalid          ──▶ {:error, payload}, errors rendered inline
+                    └─ valid ──▶ on_valid_submit called (when given)
+                           {:ok, result}      ──▶ {:ok, payload}
+                           {:error, changeset} ──▶ {:error, payload}, errors copied onto the form
+                           {:error, reason}    ──▶ {:error, payload}
+                           (no callback)       ──▶ {:ok, payload} with the form data
 ```
 
 Validation runs on every change and every submit — the component handles it

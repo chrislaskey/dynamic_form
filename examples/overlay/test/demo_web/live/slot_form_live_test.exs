@@ -99,7 +99,7 @@ defmodule DemoWeb.SlotFormLiveTest do
   } do
     {:ok, view, _html} = live(conn, "/slot-forms")
 
-    # Required fields missing — TestBackend halts with the invalid changeset
+    # Required fields missing — the invalid changeset never reaches on_valid_submit
     view
     |> form("#basic-slot-form-form", %{"dynamic_form" => %{"name" => "x"}})
     |> render_submit()
@@ -108,7 +108,7 @@ defmodule DemoWeb.SlotFormLiveTest do
     assert render(view) =~ "has errors"
   end
 
-  test "slot form submits through the backend", %{conn: conn} do
+  test "slot form submits through on_valid_submit", %{conn: conn} do
     {:ok, view, _html} = live(conn, "/slot-forms")
 
     view
@@ -123,5 +123,25 @@ defmodule DemoWeb.SlotFormLiveTest do
     |> render_submit()
 
     assert render(view) =~ "Submission Results"
+  end
+
+  test "on_valid_submit {:error, changeset} renders context errors on the form", %{conn: conn} do
+    {:ok, view, _html} = live(conn, "/slot-forms")
+
+    # Demo.Submissions.create/1 rejects this email with {:error, changeset}
+    view
+    |> form("#basic-slot-form-form", %{
+      "dynamic_form" => %{
+        "name" => "Chris",
+        "email" => "taken@example.com",
+        "subject" => "sales",
+        "satisfaction" => "5"
+      }
+    })
+    |> render_submit()
+
+    html = render(view)
+    assert html =~ "has already been taken"
+    refute html =~ "Submission Results"
   end
 end

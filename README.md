@@ -31,24 +31,30 @@ Whichever mode defines the form, the library owns the full lifecycle: an Ecto
 changeset built from the definition (types, required fields, validators),
 SurveyJS conditional expressions (`visible_if`, `required_if`, `enable_if`)
 evaluated live as the user types, direct-to-cloud file uploads, and
-submission through a small backend behaviour your application implements.
+submission through an `on_valid_submit` function — a Phoenix context function
+like `&Contacts.create_contact/1` fits the contract directly.
 
 ## Examples
 
-A form is a component call with fields in render order:
+A form is a component call with fields in render order. Submission goes
+through `on_valid_submit` — a 1-arity function receiving the form data once
+the changeset is valid, so a context function fits directly:
 
 ```heex
-<DynamicForm.form id="contact-form" send_messages>
+<DynamicForm.form id="contact-form" on_valid_submit={&Contacts.create_contact/1} send_messages>
   <:field type="text" name="name" label="Name" required />
   <:field type="text" name="email" input_type="email" label="Email Address" required format="email" />
 </DynamicForm.form>
 ```
 
 ```elixir
-def handle_info({:dynamic_form_submit, _id, {:ok, %{result: result}}}, socket) do
-  {:noreply, put_flash(socket, :info, result.message)}
+def handle_info({:dynamic_form_submit, _id, {:ok, %{result: contact}}}, socket) do
+  {:noreply, put_flash(socket, :info, "Created contact #{contact.id}")}
 end
 ```
+
+A context `{:error, changeset}` (a uniqueness violation, say) renders its
+errors on the form automatically.
 
 Layer in validation attrs and conditional visibility — the details field only
 appears when the subject is `support`, and hidden required fields are
@@ -109,7 +115,7 @@ depth in the [Usage guide](guides/usage.md).
 
 The `/examples` directory contains a full Phoenix demo app exercising every
 feature — declarative and data definitions, every question type, conditional
-logic, panels, custom markup, file uploads, and backend submission:
+logic, panels, custom markup, file uploads, and submission handling:
 
 ```
 git clone https://github.com/chrislaskey/dynamic_form.git
@@ -127,7 +133,7 @@ layout tweaks — lives in the overlay; edit there, copy over the demo
 
 - **[Usage](guides/usage.md)** — every feature in depth: both definition
   modes, question types, validation, conditional logic, groups, custom
-  markup, rendering options, edit mode, backends, and file uploads
+  markup, rendering options, edit mode, submission, and file uploads
 - **[SurveyJS compatibility](guides/surveyjs.md)** — defining forms as data:
   what's supported, what isn't, and DynamicForm's extensions
 - **[Lifecycle events](guides/lifecycle.md)** — the form lifecycle and

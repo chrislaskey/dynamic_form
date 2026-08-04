@@ -2,7 +2,7 @@ defmodule DynamicForm.RendererLive do
   @moduledoc """
   A LiveComponent version of the DynamicForm renderer with automatic state management.
 
-  This component handles form state, validation, and backend submission automatically,
+  This component handles form state, validation, and submission automatically,
   communicating with the parent LiveView via message passing.
 
   ## Attributes
@@ -14,6 +14,8 @@ defmodule DynamicForm.RendererLive do
 
   ### Optional
 
+    * `:on_valid_submit` - 1-arity function called with the form data on valid
+      submissions (default: `nil`; see "Submitting" below)
     * `:params` - Initial form params for edit mode (map, default: `%{}`)
     * `:form_name` - Form namespace for params (string, default: `"dynamic_form"`)
     * `:submit_text` - Submit button text (string, default: `"Submit"`, not required when `hide_submit` is `true`)
@@ -92,44 +94,32 @@ defmodule DynamicForm.RendererLive do
   Note: The form ID is automatically generated as `"\#{id}-form"`, so if your component
   ID is "my-form", the form element ID will be "my-form-form".
 
-  ## Backend Function
+  ## Submitting: `on_valid_submit`
 
-  The backend function specified in the form instance is called on every form submission with the following signature:
+  Pass a 1-arity function that receives the form data (the
+  `Ecto.Changeset.apply_changes/1` result) once the changeset is valid —
+  invalid submissions never reach it; their errors render inline. Phoenix
+  context functions fit the contract directly:
 
-      backend_function(data, changeset, config)
+      <.live_component
+        module={DynamicForm.RendererLive}
+        id="contact-form"
+        instance={@form_instance}
+        on_valid_submit={&MyApp.Contacts.create_contact/1}
+      />
 
-  Where:
-    * `data` - The form data (Ecto.Changeset.apply_changes/1 result)
-    * `changeset` - The Ecto.Changeset (may be valid or invalid)
-    * `config` - Keyword list of backend configuration from the form instance
+  The function must return:
+    * `{:ok, result}` - Success; `result` is passed to the parent in the
+      submit message
+    * `{:error, %Ecto.Changeset{}}` - Failure; the changeset's errors are
+      copied onto the form by field name and rendered inline (e.g. a context
+      returning `{:error, changeset}` for a uniqueness violation)
+    * `{:error, reason}` - General failure; `reason` is passed to the parent
+      in the submit message
 
-  **Important**: The backend function is called regardless of changeset validity. This gives
-  the application full control over validation and processing. Check `changeset.valid?` to
-  determine if built-in validations passed.
-
-  The backend function must return:
-    * `{:cont, result}` - Continue with success, where result is passed to success handlers
-    * `{:halt, %Ecto.Changeset{}}` - Halt with validation errors to display on the form
-    * `{:halt, error}` - Halt with a general error
-
-  Example backend function that adds custom errors:
-
-      def process_form(data, changeset, config) do
-        # Check if basic validations passed
-        if not changeset.valid? do
-          {:halt, changeset}
-        else
-          # Custom validation logic
-          if email_already_exists?(data.email) do
-            {:halt, Ecto.Changeset.add_error(changeset, :email, "already taken")}
-          else
-            case save_to_database(data, config) do
-              {:ok, result} -> {:cont, %{message: "Saved!", data: result}}
-              {:error, reason} -> {:halt, %{message: "Failed"}}
-            end
-          end
-        end
-      end
+  Without `on_valid_submit`, a valid submission succeeds with the form data
+  alone — pair with `send_messages` and do the work in the parent's
+  `handle_info/2`.
 
   ## Messages
 
@@ -137,12 +127,12 @@ defmodule DynamicForm.RendererLive do
   message on every submission, carrying the outcome as an ok/error tuple:
 
     * `{:dynamic_form_submit, id, {:ok, %{result: result, data: data}}}` -
-      Submission succeeded. `result` is the backend's map (typically
-      `:message` and `:data`), or `%{}` when no backend is configured; `data`
-      is the applied changeset data.
+      Submission succeeded. `result` is the `on_valid_submit` return value,
+      or `%{}` when no callback is configured; `data` is the applied
+      changeset data.
     * `{:dynamic_form_submit, id, {:error, %{changeset: changeset, reason: reason}}}` -
       Submission failed. `changeset` carries the errors rendered inline;
-      `reason` is a backend's non-changeset `{:halt, reason}` term, or `nil`.
+      `reason` is an `on_valid_submit` `{:error, reason}` term, or `nil`.
   """
 
   use Phoenix.LiveComponent
@@ -311,34 +301,12 @@ defmodule DynamicForm.RendererLive do
       |> Changeset.create_changeset(merged_params)
       |> Map.put(:action, :updated)
 
-    data = Ecto.Changeset.apply_changes(changeset)
-    instance = socket.assigns.instance
     socket = assign(socket, :submitting, true)
 
-    # Submit via backend if configured, otherwise succeed on a valid changeset
-    if instance.backend do
-      backend_module = instance.backend.module
-      backend_function = instance.backend.function
-      backend_config = Map.get(instance.backend, :config, [])
-
-      case apply(backend_module, backend_function, [data, changeset, backend_config]) do
-        {:cont, result} ->
-          socket = notify_parent(socket, {:ok, %{result: result, data: data}})
-          {:noreply, assign(socket, :submitting, false)}
-
-        {:halt, %Ecto.Changeset{} = changeset} ->
-          {:noreply, handle_invalid_submit(socket, changeset, nil)}
-
-        {:halt, reason} ->
-          {:noreply, handle_invalid_submit(socket, changeset, reason)}
-      end
+    if changeset.valid? do
+      {:noreply, handle_valid_submit(socket, changeset)}
     else
-      if changeset.valid? do
-        socket = notify_parent(socket, {:ok, %{result: %{}, data: data}})
-        {:noreply, assign(socket, :submitting, false)}
-      else
-        {:noreply, handle_invalid_submit(socket, changeset, nil)}
-      end
+      {:noreply, handle_invalid_submit(socket, changeset, nil)}
     end
   end
 
@@ -395,8 +363,54 @@ defmodule DynamicForm.RendererLive do
 
   # Helpers - Handlers
 
+  # A valid changeset submits through the on_valid_submit callback when one
+  # is given; without one the submission succeeds with the form data alone.
+  defp handle_valid_submit(socket, changeset) do
+    data = Ecto.Changeset.apply_changes(changeset)
+
+    case socket.assigns[:on_valid_submit] do
+      nil ->
+        socket
+        |> notify_parent({:ok, %{result: %{}, data: data}})
+        |> assign(:submitting, false)
+
+      fun when is_function(fun, 1) ->
+        case fun.(data) do
+          {:ok, result} ->
+            socket
+            |> notify_parent({:ok, %{result: result, data: data}})
+            |> assign(:submitting, false)
+
+          {:error, %Ecto.Changeset{} = error_changeset} ->
+            handle_invalid_submit(socket, copy_errors(error_changeset, changeset), nil)
+
+          {:error, reason} ->
+            handle_invalid_submit(socket, changeset, reason)
+
+          other ->
+            raise ArgumentError,
+                  "on_valid_submit must return {:ok, result} or " <>
+                    "{:error, changeset | reason}, got: #{inspect(other)}"
+        end
+
+      other ->
+        raise ArgumentError,
+              "on_valid_submit must be a 1-arity function receiving the form data, " <>
+                "got: #{inspect(other)}"
+    end
+  end
+
+  # Copy errors from a returned changeset (often an Ecto schema changeset from
+  # a context function) onto the form's changeset so they render inline,
+  # matched by field name.
+  defp copy_errors(%Ecto.Changeset{errors: errors}, form_changeset) do
+    Enum.reduce(errors, form_changeset, fn {field, {message, opts}}, acc ->
+      Ecto.Changeset.add_error(acc, field, message, opts)
+    end)
+  end
+
   # Render the failed changeset's errors inline and notify the parent.
-  # `reason` carries a backend's non-changeset {:halt, reason} term, nil otherwise.
+  # `reason` carries the on_valid_submit {:error, reason} term, nil otherwise.
   defp handle_invalid_submit(socket, changeset, reason) do
     changeset = Map.put(changeset, :action, :validate)
     form = to_form(changeset, as: socket.assigns.form_name)

@@ -3,7 +3,7 @@ defmodule DynamicForm.Instance do
   Configuration struct that defines the complete form structure using SurveyJS-compatible format.
 
   An Instance represents a complete form definition with all its elements (questions and panels),
-  validators, and backend submission configuration.
+  and validators.
 
   ## SurveyJS Compatibility
 
@@ -29,12 +29,7 @@ defmodule DynamicForm.Instance do
       ...>       title: "Email Address",
       ...>       isRequired: true
       ...>     }
-      ...>   ],
-      ...>   backend: %DynamicForm.Instance.Backend{
-      ...>     module: MyApp.EmailBackend,
-      ...>     function: :submit,
-      ...>     config: [recipient: "admin@example.com"]
-      ...>   }
+      ...>   ]
       ...> }
 
   ## JSON Encoding/Decoding
@@ -66,7 +61,6 @@ defmodule DynamicForm.Instance do
     :title,
     :description,
     :elements,
-    :backend,
     :metadata,
     inserted_at: nil,
     updated_at: nil
@@ -77,7 +71,6 @@ defmodule DynamicForm.Instance do
           title: String.t() | nil,
           description: String.t() | nil,
           elements: [Question.t() | Element.t()],
-          backend: Backend.t() | nil,
           metadata: map(),
           inserted_at: DateTime.t() | nil,
           updated_at: DateTime.t() | nil
@@ -379,65 +372,6 @@ defmodule DynamicForm.Instance do
     defp maybe_put(map, key, value), do: Map.put(map, key, value)
   end
 
-  defmodule Backend do
-    @moduledoc """
-    Configuration for the form submission backend.
-
-    The backend module should implement the `DynamicForm.Backend` behaviour.
-
-    ## Example
-
-        %Backend{
-          module: MyApp.EmailBackend,
-          function: :submit,
-          config: [recipient: "admin@example.com"],
-          name: "Email Backend",
-          description: "Sends form submissions via email"
-        }
-    """
-
-    @enforce_keys [:module, :function, :config]
-    defstruct [
-      :module,
-      :function,
-      :config,
-      :name,
-      :description
-    ]
-
-    @type t :: %__MODULE__{
-            module: module(),
-            function: atom(),
-            config: Keyword.t(),
-            name: String.t() | nil,
-            description: String.t() | nil
-          }
-  end
-
-  defimpl Jason.Encoder, for: Backend do
-    def encode(backend, opts) do
-      Jason.Encode.map(
-        %{
-          module: to_string(backend.module),
-          function: backend.function,
-          config: encode_config(backend.config),
-          name: backend.name,
-          description: backend.description
-        },
-        opts
-      )
-    end
-
-    # Convert keyword list to a list of maps for JSON serialization
-    defp encode_config(config) when is_list(config) do
-      Enum.map(config, fn {key, value} ->
-        %{"key" => to_string(key), "value" => value}
-      end)
-    end
-
-    defp encode_config(config), do: config
-  end
-
   defmodule Validator do
     @moduledoc """
     Represents a validation rule for a form question using SurveyJS-compatible format.
@@ -521,7 +455,6 @@ defmodule DynamicForm.Instance do
           title: instance.title,
           description: instance.description,
           elements: instance.elements,
-          backend: instance.backend,
           metadata: instance.metadata,
           inserted_at: encode_datetime(instance.inserted_at),
           updated_at: encode_datetime(instance.updated_at)

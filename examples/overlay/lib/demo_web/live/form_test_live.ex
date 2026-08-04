@@ -36,7 +36,7 @@ defmodule DemoWeb.FormTestLive do
 
         <.definition
           title="Form Definition (Instance structs)"
-          subtitle={"#{length(DynamicForm.Changeset.get_questions(@form_instance.elements))} questions — submits through #{inspect(@form_instance.backend.module)}"}
+          subtitle={"#{length(DynamicForm.Changeset.get_questions(@form_instance.elements))} questions — submits through Demo.Submissions.create/1"}
           code={inspect(@form_instance, pretty: true)}
         />
 
@@ -94,21 +94,17 @@ defmodule DemoWeb.FormTestLive do
 
     case changeset.valid? do
       true ->
-        # Submit via backend
-        instance = socket.assigns.form_instance
-        backend_module = instance.backend.module
-        backend_function = instance.backend.function
-        backend_config = instance.backend.config
+        # Submit through the context, the same function on_valid_submit takes
         form_data = Ecto.Changeset.apply_changes(changeset)
 
-        case apply(backend_module, backend_function, [form_data, changeset, backend_config]) do
-          {:cont, result} ->
+        case Demo.Submissions.create(form_data) do
+          {:ok, result} ->
             {:noreply,
              socket
              |> assign(:submitted_data, form_data)
              |> put_flash(:info, result[:message] || "Form submitted successfully!")}
 
-          {:halt, _error} ->
+          {:error, _reason} ->
             {:noreply,
              socket
              |> put_flash(:error, "Failed to submit form")}

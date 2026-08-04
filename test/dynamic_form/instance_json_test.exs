@@ -3,10 +3,6 @@ defmodule DynamicForm.InstanceJsonTest do
 
   alias DynamicForm.Instance
 
-  defmodule TestBackend do
-    def submit(_data, _changeset, _config), do: {:cont, %{message: "ok"}}
-  end
-
   defp sample_instance do
     %Instance{
       id: "contact-form",
@@ -55,11 +51,6 @@ defmodule DynamicForm.InstanceJsonTest do
           ]
         }
       ],
-      backend: %Instance.Backend{
-        module: TestBackend,
-        function: :submit,
-        config: [recipient: "admin@example.com"]
-      },
       metadata: %{"version" => 2}
     }
   end
@@ -77,9 +68,6 @@ defmodule DynamicForm.InstanceJsonTest do
       assert decoded.title == instance.title
       assert decoded.description == instance.description
       assert decoded.metadata == instance.metadata
-      assert decoded.backend.module == TestBackend
-      assert decoded.backend.function == :submit
-      assert decoded.backend.config == [recipient: "admin@example.com"]
       assert decoded.elements == instance.elements
     end
 
@@ -351,35 +339,6 @@ defmodule DynamicForm.InstanceJsonTest do
                %Instance.Validator{type: "email"},
                %Instance.Validator{type: "regex", regex: "^\\d+$", text: "Numbers only"}
              ] = question.validators
-    end
-  end
-
-  describe "decode backend" do
-    test "decodes module, function, and config" do
-      instance =
-        Instance.decode!(%{
-          "id" => "backend-form",
-          "elements" => [],
-          "backend" => %{
-            "module" => "DynamicForm.InstanceJsonTest.TestBackend",
-            "function" => "submit",
-            "config" => [%{"key" => "recipient", "value" => "admin@example.com"}]
-          }
-        })
-
-      assert instance.backend.module == TestBackend
-      assert instance.backend.function == :submit
-      assert instance.backend.config == [recipient: "admin@example.com"]
-    end
-
-    test "raises on unknown modules to prevent atom exhaustion" do
-      assert_raise ArgumentError, ~r/is not loaded/, fn ->
-        Instance.decode!(%{
-          "id" => "bad-backend",
-          "elements" => [],
-          "backend" => %{"module" => "Not.A.Real.Module", "function" => "submit"}
-        })
-      end
     end
   end
 

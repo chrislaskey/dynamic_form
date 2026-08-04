@@ -104,7 +104,7 @@ rest of the form works normally.
 | `multipletext` | Multiple inputs in one question |
 | `signaturepad`, `imagepicker`, `ranking`, `slider` | Specialized input widgets |
 | `expression` questions, calculated values, triggers | No expression *evaluation* beyond the conditional operators above (`setValueIf`, `runexpression`, quiz scoring, ...) |
-| `expression` and `answercount` validators | Use a [backend](usage.md#backends) for cross-field validation |
+| `expression` and `answercount` validators | Use [`on_valid_submit`](usage.md#submitting-on_valid_submit) for cross-field validation |
 | Multi-page navigation | Pages are flattened into one form — no page-by-page navigation, progress bar, or per-page validation |
 | Choice loading (`choicesByUrl`, lazy loading) | Provide choices in the definition |
 | `showOtherItem` / `showNoneItem` / `showSelectAllItem` | Choice extras |
@@ -116,8 +116,6 @@ rest of the form works normally.
 
 Beyond the SurveyJS format, definitions can carry:
 
-- **`backend`** — the submission target (module, function, config), decoded
-  into `Instance.Backend`. See [Usage: Backends](usage.md#backends).
 - **`metadata`** — per-question extension point: file upload configuration,
   `"style"` (`"horizontal"`/`"vertical"`) for radiogroup/checkbox layout.
 - **Declarative mode** — the same instances can be defined with `<:field>`

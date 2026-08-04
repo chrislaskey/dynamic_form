@@ -19,18 +19,15 @@ defmodule DynamicForm.Instance.FromSlotsTest do
   end
 
   describe "instance attributes" do
-    test "builds an instance with id, title, description, and backend" do
-      backend = %Instance.Backend{module: Kernel, function: :inspect, config: []}
-
+    test "builds an instance with id, title, and description" do
       instance =
         convert(
           [field(type: "text", name: "email")],
           [],
-          %{title: "Contact", description: "Get in touch", backend: backend}
+          %{title: "Contact", description: "Get in touch"}
         )
 
       assert %Instance{id: "test-form", title: "Contact", description: "Get in touch"} = instance
-      assert instance.backend == backend
     end
   end
 

@@ -158,13 +158,6 @@ defmodule Demo.FormInstances do
           ]
         }
       ],
-      backend: %Instance.Backend{
-        module: Demo.TestBackend,
-        function: :submit,
-        config: [],
-        name: "Test Backend",
-        description: "Logs form submissions for testing"
-      },
       metadata: %{
         created_at: DateTime.utc_now()
       }
@@ -352,13 +345,6 @@ defmodule Demo.FormInstances do
           ]
         }
       ],
-      backend: %Instance.Backend{
-        module: Demo.TestBackend,
-        function: :submit,
-        config: [],
-        name: "Test Backend",
-        description: "Logs form submissions for testing"
-      },
       metadata: %{
         created_at: DateTime.utc_now()
       }
@@ -762,13 +748,6 @@ defmodule Demo.FormInstances do
           "visibleIf" => "{comments} notempty"
         }
       ],
-      "backend" => %{
-        "module" => "Demo.TestBackend",
-        "function" => "submit",
-        "config" => [],
-        "name" => "Test Backend",
-        "description" => "Logs form submissions for testing"
-      },
       "metadata" => %{
         "created_at" => DateTime.utc_now()
       }

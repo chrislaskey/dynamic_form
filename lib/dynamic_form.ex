@@ -1,12 +1,12 @@
 defmodule DynamicForm do
   @moduledoc """
   DynamicForm - A Phoenix LiveView library for creating dynamic forms with full
-  backend validation using changesets and calls to backend functions. Also
-  supports building forms through a WYSIWYG interface.
+  server-side validation using changesets. Also supports building forms
+  through a WYSIWYG interface.
 
   This library enables users to build forms dynamically through a visual interface,
   then render those forms using standard Phoenix LiveView patterns with robust
-  validation and backend integration.
+  validation and submission handling.
 
   ## External Submit Buttons
 
@@ -103,8 +103,22 @@ defmodule DynamicForm do
   or `<:field>` slots (declarative mode).
 
   Wraps `DynamicForm.RendererLive`, which manages form state, validation, and
-  backend submission. Exactly one of the `instance` attribute, the `json`
-  attribute, or `<:field>` slots must be provided.
+  submission. Exactly one of the `instance` attribute, the `json` attribute,
+  or `<:field>` slots must be provided.
+
+  ## Submitting
+
+  Pass a 1-arity function via `on_valid_submit` — it receives the form data
+  once the changeset is valid (invalid submissions render errors inline and
+  never reach it). Phoenix context functions fit the contract directly:
+
+      <DynamicForm.form id="contact-form" on_valid_submit={&Contacts.create_contact/1}>
+        <:field type="text" name="email" label="Email" required format="email" />
+      </DynamicForm.form>
+
+  The function returns `{:ok, result}`, `{:error, changeset}` (errors are
+  copied onto the form by field name), or `{:error, reason}`. See
+  `DynamicForm.RendererLive` for the full contract.
 
   ## Declarative mode
 
@@ -174,9 +188,11 @@ defmodule DynamicForm do
   attr(:title, :string, default: nil, doc: "Instance title (declarative mode)")
   attr(:description, :string, default: nil, doc: "Instance description (declarative mode)")
 
-  attr(:backend, :any,
+  attr(:on_valid_submit, :any,
     default: nil,
-    doc: "Instance.Backend struct for form submission (declarative mode)"
+    doc:
+      "1-arity function called with the form data on valid submissions; " <>
+        "returns {:ok, result} | {:error, changeset | reason}"
   )
 
   attr(:params, :map, default: %{}, doc: "Initial form params for edit mode")
@@ -259,6 +275,7 @@ defmodule DynamicForm do
       module={DynamicForm.RendererLive}
       id={@id}
       instance={@resolved_instance}
+      on_valid_submit={@on_valid_submit}
       params={@params}
       form_name={@form_name}
       submit_text={@submit_text}
