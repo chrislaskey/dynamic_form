@@ -42,6 +42,7 @@ defmodule DynamicForm.MixProject do
         "LICENSE.md",
         "guides/usage.md",
         "guides/surveyjs.md",
+        "guides/lifecycle.md",
         "guides/reference.md",
         "guides/development.md"
       ],

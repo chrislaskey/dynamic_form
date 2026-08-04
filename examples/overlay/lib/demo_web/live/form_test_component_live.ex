@@ -122,8 +122,14 @@ defmodule DemoWeb.FormTestComponentLive do
             <div>
               <h4 class="font-semibold">Message Passing</h4>
               <p class="mt-1">
-                Sends messages like <code class="bg-white px-1 rounded">:dynamic_form_success</code>
-                and <code class="bg-white px-1 rounded">:dynamic_form_error</code>
+                Sends a submit-outcome message shaped like
+                <code class="bg-white px-1 rounded">
+                  &lbrace;:dynamic_form_submit, id, &lbrace;:ok, payload&rbrace;&rbrace;
+                </code>
+                or
+                <code class="bg-white px-1 rounded">
+                  &lbrace;:dynamic_form_submit, id, &lbrace;:error, payload&rbrace;&rbrace;
+                </code>
                 to the parent LiveView via <code class="bg-white px-1 rounded">handle_info/2</code>.
                 This allows the parent LiveView to update state, show flash messages, navigate, etc.
               </p>
@@ -154,7 +160,7 @@ defmodule DemoWeb.FormTestComponentLive do
 
   # Message handlers
   @impl true
-  def handle_info({:dynamic_form_success, _id, result}, socket) do
+  def handle_info({:dynamic_form_submit, _id, {:ok, %{result: result}}}, socket) do
     {:noreply,
      socket
      |> put_flash(:info, "✓ #{result.message}")
@@ -162,8 +168,8 @@ defmodule DemoWeb.FormTestComponentLive do
   end
 
   @impl true
-  def handle_info({:dynamic_form_error, _id, error}, socket) do
-    {:noreply, put_flash(socket, :error, "✗ #{error.message}")}
+  def handle_info({:dynamic_form_submit, _id, {:error, _payload}}, socket) do
+    {:noreply, put_flash(socket, :error, "✗ Please fix the errors below")}
   end
 
   # Mode switcher

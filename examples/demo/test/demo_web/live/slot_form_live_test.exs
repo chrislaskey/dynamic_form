@@ -94,6 +94,20 @@ defmodule DemoWeb.SlotFormLiveTest do
     assert html =~ "must be less than or equal to 20"
   end
 
+  test "notifies the parent with an {:error, payload} outcome on a failed submission", %{
+    conn: conn
+  } do
+    {:ok, view, _html} = live(conn, "/slot-forms")
+
+    # Required fields missing — TestBackend halts with the invalid changeset
+    view
+    |> form("#basic-slot-form-form", %{"dynamic_form" => %{"name" => "x"}})
+    |> render_submit()
+
+    # The parent's {:dynamic_form_submit, id, {:error, payload}} handler flashes
+    assert render(view) =~ "has errors"
+  end
+
   test "slot form submits through the backend", %{conn: conn} do
     {:ok, view, _html} = live(conn, "/slot-forms")
 

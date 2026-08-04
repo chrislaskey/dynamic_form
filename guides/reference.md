@@ -16,7 +16,7 @@ Quick lookup tables. For narrative documentation see the
 | `params` | map | `%{}` | Initial form params for edit mode |
 | `form_name` | string | `"dynamic_form"` | Form namespace for params |
 | `submit_text` | string | `"Submit"` | Submit button text |
-| `send_messages` | boolean | `false` | Send `{:dynamic_form_success, id, result}` to the parent LiveView |
+| `send_messages` | boolean | `false` | Send `{:dynamic_form_submit, id, outcome}` messages to the parent LiveView |
 | `hide_submit` | boolean | `false` | Hide the built-in submit button |
 | `gettext` | atom | `DynamicForm.Gettext` | Gettext backend for translations |
 | `validation_summary` | string | `nil` | Errors at top of form: `nil`, `"simple"`, or `"detailed"` |
@@ -121,11 +121,13 @@ Field references use braces: `{field_name}`. Literals: `'strings'`, numbers,
 
 ## Messages
 
-Sent to the parent LiveView when `send_messages` is set:
+Sent to the parent LiveView when `send_messages` is set, shaped
+`{:dynamic_form_submit, component_id, outcome}`:
 
-| Message | When |
-|---|---|
-| `{:dynamic_form_success, component_id, result}` | Backend returned `{:cont, result}`, or no backend and the changeset was valid |
+| Outcome | When | Payload |
+|---|---|---|
+| `{:ok, %{result: result, data: data}}` | Backend returned `{:cont, result}`, or no backend and the changeset was valid | `result` is the backend's map (`%{}` without a backend); `data` the applied changeset data |
+| `{:error, %{changeset: changeset, reason: reason}}` | Backend returned `{:halt, _}`, or no backend and the changeset was invalid | `changeset` carries the inline errors; `reason` is a non-changeset halt term or `nil` |
 
 ## Backend contract
 

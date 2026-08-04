@@ -35,7 +35,7 @@ defmodule DynamicForm.RendererLive do
         send_messages={true}
       />
 
-      def handle_info({:dynamic_form_success, _id, result}, socket) do
+      def handle_info({:dynamic_form_submit, _id, {:ok, %{result: result}}}, socket) do
         {:noreply, put_flash(socket, :info, result.message)}
       end
 
@@ -133,11 +133,16 @@ defmodule DynamicForm.RendererLive do
 
   ## Messages
 
-  When `send_messages` is `true`, the component sends these messages to the parent LiveView:
+  When `send_messages` is `true`, the component sends the parent LiveView a
+  message on every submission, carrying the outcome as an ok/error tuple:
 
-    * `{:dynamic_form_success, component_id, result}` - Sent when form submission succeeds
-      - `component_id` - The component's ID
-      - `result` - Map containing `:message` and `:data` from the backend
+    * `{:dynamic_form_submit, id, {:ok, %{result: result, data: data}}}` -
+      Submission succeeded. `result` is the backend's map (typically
+      `:message` and `:data`), or `%{}` when no backend is configured; `data`
+      is the applied changeset data.
+    * `{:dynamic_form_submit, id, {:error, %{changeset: changeset, reason: reason}}}` -
+      Submission failed. `changeset` carries the errors rendered inline;
+      `reason` is a backend's non-changeset `{:halt, reason}` term, or `nil`.
   """
 
   use Phoenix.LiveComponent
@@ -310,7 +315,7 @@ defmodule DynamicForm.RendererLive do
     instance = socket.assigns.instance
     socket = assign(socket, :submitting, true)
 
-    # Submit via backend if configured, otherwise just send success message
+    # Submit via backend if configured, otherwise succeed on a valid changeset
     if instance.backend do
       backend_module = instance.backend.module
       backend_function = instance.backend.function
@@ -318,47 +323,21 @@ defmodule DynamicForm.RendererLive do
 
       case apply(backend_module, backend_function, [data, changeset, backend_config]) do
         {:cont, result} ->
-          socket = handle_success(socket, result)
+          socket = notify_parent(socket, {:ok, %{result: result, data: data}})
           {:noreply, assign(socket, :submitting, false)}
 
         {:halt, %Ecto.Changeset{} = changeset} ->
-          changeset = Map.put(changeset, :action, :validate)
-          form = to_form(changeset, as: socket.assigns.form_name)
+          {:noreply, handle_invalid_submit(socket, changeset, nil)}
 
-          {:noreply,
-           socket
-           |> assign(:changeset, changeset)
-           |> assign(:form, form)
-           |> assign(:submitting, false)}
-
-        {:halt, _error} ->
-          changeset = Map.put(changeset, :action, :validate)
-          form = to_form(changeset, as: socket.assigns.form_name)
-
-          {:noreply,
-           socket
-           |> assign(:changeset, changeset)
-           |> assign(:form, form)
-           |> assign(:submitting, false)}
+        {:halt, reason} ->
+          {:noreply, handle_invalid_submit(socket, changeset, reason)}
       end
     else
       if changeset.valid? do
-        result = %{
-          config: [],
-          data: data
-        }
-
-        socket = handle_success(socket, result)
+        socket = notify_parent(socket, {:ok, %{result: %{}, data: data}})
         {:noreply, assign(socket, :submitting, false)}
       else
-        changeset = Map.put(changeset, :action, :validate)
-        form = to_form(changeset, as: socket.assigns.form_name)
-
-        {:noreply,
-         socket
-         |> assign(:changeset, changeset)
-         |> assign(:form, form)
-         |> assign(:submitting, false)}
+        {:noreply, handle_invalid_submit(socket, changeset, nil)}
       end
     end
   end
@@ -416,10 +395,23 @@ defmodule DynamicForm.RendererLive do
 
   # Helpers - Handlers
 
-  defp handle_success(socket, result) do
-    # Send message to parent LiveView if requested
+  # Render the failed changeset's errors inline and notify the parent.
+  # `reason` carries a backend's non-changeset {:halt, reason} term, nil otherwise.
+  defp handle_invalid_submit(socket, changeset, reason) do
+    changeset = Map.put(changeset, :action, :validate)
+    form = to_form(changeset, as: socket.assigns.form_name)
+
+    socket
+    |> notify_parent({:error, %{changeset: changeset, reason: reason}})
+    |> assign(:changeset, changeset)
+    |> assign(:form, form)
+    |> assign(:submitting, false)
+  end
+
+  # Send the submit outcome to the parent LiveView when send_messages is set
+  defp notify_parent(socket, outcome) do
     if socket.assigns[:send_messages] do
-      send(self(), {:dynamic_form_success, socket.assigns.id, result})
+      send(self(), {:dynamic_form_submit, socket.assigns.id, outcome})
     end
 
     socket

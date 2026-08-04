@@ -129,9 +129,14 @@ defmodule DemoWeb.SurveyjsTestLive do
   end
 
   @impl true
-  def handle_info({:dynamic_form_success, _id, result}, socket) do
+  def handle_info({:dynamic_form_submit, _id, {:ok, %{result: result}}}, socket) do
     message = Map.get(result, :message, "Form submitted successfully!")
     {:noreply, assign(socket, success_message: message)}
+  end
+
+  @impl true
+  def handle_info({:dynamic_form_submit, _id, {:error, _payload}}, socket) do
+    {:noreply, assign(socket, success_message: nil)}
   end
 
   defp active_instance(:test, test_form, _payment_form), do: test_form

@@ -185,7 +185,8 @@ defmodule DynamicForm do
 
   attr(:send_messages, :boolean,
     default: false,
-    doc: "Send {:dynamic_form_success, id, result} messages to the parent LiveView"
+    doc:
+      "Send {:dynamic_form_submit, id, {:ok, payload} | {:error, payload}} messages to the parent LiveView"
   )
 
   attr(:hide_submit, :boolean, default: false, doc: "Hide the submit button")

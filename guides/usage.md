@@ -231,17 +231,24 @@ preserved through submission the same way.
 ### Messages
 
 With `send_messages`, the component sends the parent LiveView a message on
-successful submission:
+every submission, carrying the outcome as an ok/error tuple —
+`{:dynamic_form_submit, id, {:ok, payload} | {:error, payload}}`:
 
 ```elixir
-def handle_info({:dynamic_form_success, component_id, result}, socket) do
+def handle_info({:dynamic_form_submit, _id, {:ok, %{result: result}}}, socket) do
   # result is the backend's map, typically %{message: ..., data: ...}
   {:noreply, put_flash(socket, :info, result.message)}
+end
+
+def handle_info({:dynamic_form_submit, _id, {:error, %{changeset: changeset}}}, socket) do
+  {:noreply, put_flash(socket, :error, "Please fix the errors below")}
 end
 ```
 
 Without `send_messages` the component is self-contained: it validates and
-submits, and the parent is not notified.
+submits, and the parent is not notified. See the
+[Lifecycle events guide](lifecycle.md) for the full lifecycle, actions, and
+payloads.
 
 ### External submit buttons
 
@@ -326,10 +333,11 @@ def submit(data, changeset, config) do
 end
 ```
 
-Return `{:cont, result}` to succeed (the result map goes to the
-`:dynamic_form_success` message), `{:halt, changeset}` to display validation
-errors, or `{:halt, error}` for a general failure. Without a backend
-configured, a valid submission succeeds with the form data as the result.
+Return `{:cont, result}` to succeed (the result map goes to the `{:ok, _}`
+submit message), `{:halt, changeset}` to display validation errors, or
+`{:halt, reason}` for a general failure (both halts produce the
+`{:error, _}` submit message). Without a backend configured, a valid
+submission succeeds with the form data.
 
 ## File uploads
 

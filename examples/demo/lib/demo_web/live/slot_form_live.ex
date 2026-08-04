@@ -119,11 +119,16 @@ defmodule DemoWeb.SlotFormLive do
   end
 
   @impl true
-  def handle_info({:dynamic_form_success, id, result}, socket) do
+  def handle_info({:dynamic_form_submit, id, {:ok, payload}}, socket) do
     {:noreply,
      socket
-     |> update(:results, &Map.put(&1, id, result))
+     |> update(:results, &Map.put(&1, id, payload))
      |> put_flash(:info, "Form #{id} submitted successfully")}
+  end
+
+  @impl true
+  def handle_info({:dynamic_form_submit, id, {:error, _payload}}, socket) do
+    {:noreply, put_flash(socket, :error, "Form #{id} has errors — see below")}
   end
 
   @impl true

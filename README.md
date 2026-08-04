@@ -45,7 +45,7 @@ A form is a component call with fields in render order:
 ```
 
 ```elixir
-def handle_info({:dynamic_form_success, _id, result}, socket) do
+def handle_info({:dynamic_form_submit, _id, {:ok, %{result: result}}}, socket) do
   {:noreply, put_flash(socket, :info, result.message)}
 end
 ```
@@ -130,6 +130,8 @@ layout tweaks — lives in the overlay; edit there, copy over the demo
   markup, rendering options, edit mode, backends, and file uploads
 - **[SurveyJS compatibility](guides/surveyjs.md)** — defining forms as data:
   what's supported, what isn't, and DynamicForm's extensions
+- **[Lifecycle events](guides/lifecycle.md)** — the form lifecycle and
+  notifying the parent LiveView with `send_messages`
 - **[Reference](guides/reference.md)** — quick tables for every attribute,
   slot, question type, validator, and expression operator
 - **[Development](guides/development.md)** — the demo app workflow,

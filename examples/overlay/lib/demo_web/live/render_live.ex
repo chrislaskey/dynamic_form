@@ -195,21 +195,21 @@ defmodule DemoWeb.RenderLive do
 
   # Handle success message from the form component
   @impl true
-  def handle_info({:dynamic_form_success, _id, result}, socket) do
+  def handle_info({:dynamic_form_submit, _id, {:ok, %{result: result, data: data}}}, socket) do
     {:noreply,
      socket
      |> put_flash(:info, "✓ #{result.message}")
      |> assign(:last_submission, %{
        mode: socket.assigns.mode,
-       data: result.data,
+       data: data,
        timestamp: DateTime.utc_now()
      })}
   end
 
   # Handle error message from the form component
   @impl true
-  def handle_info({:dynamic_form_error, _id, error}, socket) do
-    {:noreply, put_flash(socket, :error, "✗ #{error.message}")}
+  def handle_info({:dynamic_form_submit, _id, {:error, _payload}}, socket) do
+    {:noreply, put_flash(socket, :error, "✗ Please fix the errors below")}
   end
 
   # Handle mode changes
