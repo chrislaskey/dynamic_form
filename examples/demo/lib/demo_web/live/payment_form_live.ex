@@ -115,21 +115,15 @@ defmodule DemoWeb.PaymentFormLive do
 
     case changeset.valid? do
       true ->
-        # Submit through the context — the action half of an on_submit callback
+        # This page drives the plain functional Renderer itself, so the side
+        # effect runs right here instead of in a handle_info/2 handler
         form_data = Ecto.Changeset.apply_changes(changeset)
+        {:ok, result} = Demo.Submissions.create(form_data)
 
-        case Demo.Submissions.create(form_data) do
-          {:ok, result} ->
-            {:noreply,
-             socket
-             |> assign(:submitted_data, form_data)
-             |> put_flash(:info, result[:message] || "Payment submitted successfully!")}
-
-          {:error, _reason} ->
-            {:noreply,
-             socket
-             |> put_flash(:error, "Failed to submit payment")}
-        end
+        {:noreply,
+         socket
+         |> assign(:submitted_data, form_data)
+         |> put_flash(:info, result[:message] || "Payment submitted successfully!")}
 
       false ->
         changeset = Map.put(changeset, :action, :validate)

@@ -328,19 +328,12 @@ defmodule DemoWeb.SectionFormLive do
     {:noreply, assign(socket, :use_json, !socket.assigns.use_json)}
   end
 
-  # Handle lifecycle messages from the form component
+  # Handle the valid-submission message from the form component
   @impl true
-  def handle_info({:dynamic_form_submit, _id, {:ok, %{result: result, data: data}}}, socket) do
-    message = Map.get(result, :message, "Profile saved successfully!")
-
+  def handle_info({:dynamic_form, %DynamicForm.Payload{data: data}}, socket) do
     {:noreply,
      socket
      |> assign(:submitted_data, data)
-     |> put_flash(:info, message)}
-  end
-
-  @impl true
-  def handle_info({:dynamic_form_submit, _id, {:error, _payload}}, socket) do
-    {:noreply, put_flash(socket, :error, "Failed to save profile")}
+     |> put_flash(:info, "Profile saved successfully!")}
   end
 end

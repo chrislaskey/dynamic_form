@@ -108,22 +108,27 @@ defmodule DynamicForm do
 
   ## Lifecycle callbacks
 
-  Two optional hooks mirror the form's `phx-change`/`phx-submit` events, both
-  receiving `(changeset, data)`:
+  Two optional hooks mirror the form's `phx-change`/`phx-submit` events. Each
+  is a 1-arity function receiving a `DynamicForm.Payload` and returning it,
+  transformed or untouched. They extend **validation** — reject a submission
+  with `DynamicForm.Payload.add_error/4` — while side effects belong in the
+  parent's `handle_info/2`:
 
-    * `on_change` — extends validation; runs after the built-in validations
-      on every change (and during the submit validation pass) and returns a
-      changeset. Keep it cheap — it runs per keystroke.
+    * `on_change` — runs after the built-in validations on every change (and
+      during the submit validation pass). Keep it cheap — it runs per
+      keystroke.
     * `on_submit` — runs on **every** submit, valid or not, so it can batch
-      expensive checks with the built-in errors and decide whether to perform
-      the action. Returns `{:ok, result}` or `{:error, changeset | reason}`.
-      Check `changeset.valid?` before acting.
+      expensive checks with the built-in errors into one complete error list.
 
-      <DynamicForm.form id="contact-form" on_submit={&Contacts.submit/2}>
+      <DynamicForm.form id="contact-form" on_submit={&Contacts.verify/1} send_messages>
         <:field type="text" name="email" label="Email" required format="email" />
       </DynamicForm.form>
 
-  See `DynamicForm.RendererLive` for the full contracts.
+  When `send_messages` is set, a **valid** submission delivers
+  `{:dynamic_form, payload}` to the parent LiveView; invalid submissions
+  render their errors inline and never message the parent. See
+  `DynamicForm.RendererLive` and `DynamicForm.Payload` for the full
+  contracts.
 
   ## Declarative mode
 
@@ -196,15 +201,15 @@ defmodule DynamicForm do
   attr(:on_change, :any,
     default: nil,
     doc:
-      "2-arity function (changeset, data) -> changeset, run after built-in " <>
-        "validations on every change and during the submit validation pass"
+      "1-arity function (DynamicForm.Payload) -> DynamicForm.Payload, run after " <>
+        "built-in validations on every change and during the submit validation pass"
   )
 
   attr(:on_submit, :any,
     default: nil,
     doc:
-      "2-arity function (changeset, data) -> {:ok, result} | {:error, changeset | reason}, " <>
-        "run on every submit — valid or not"
+      "1-arity function (DynamicForm.Payload) -> DynamicForm.Payload, run on " <>
+        "every submit — valid or not"
   )
 
   attr(:params, :map, default: %{}, doc: "Initial form params for edit mode")
@@ -214,7 +219,8 @@ defmodule DynamicForm do
   attr(:send_messages, :boolean,
     default: false,
     doc:
-      "Send {:dynamic_form_submit, id, {:ok, payload} | {:error, payload}} messages to the parent LiveView"
+      "Send {:dynamic_form, %DynamicForm.Payload{}} messages to the parent " <>
+        "LiveView on valid submissions"
   )
 
   attr(:hide_submit, :boolean, default: false, doc: "Hide the submit button")

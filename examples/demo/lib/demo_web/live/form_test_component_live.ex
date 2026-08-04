@@ -89,7 +89,7 @@ defmodule DemoWeb.FormTestComponentLive do
               module={DynamicForm.RendererLive}
               id="contact-form"
               instance={@form_instance}
-              on_submit={&Demo.Submissions.submit/2}
+              on_submit={&Demo.Submissions.verify/1}
               send_messages={true}
               hide_submit={true}
               submit_text="Submit with Messages"
@@ -101,7 +101,7 @@ defmodule DemoWeb.FormTestComponentLive do
               module={DynamicForm.RendererLive}
               id="contact-form"
               instance={@form_instance}
-              on_submit={&Demo.Submissions.submit/2}
+              on_submit={&Demo.Submissions.verify/1}
               hide_submit={true}
               submit_text="Submit (No Messages)"
             />
@@ -124,16 +124,15 @@ defmodule DemoWeb.FormTestComponentLive do
             <div>
               <h4 class="font-semibold">Message Passing</h4>
               <p class="mt-1">
-                Sends a submit-outcome message shaped like
+                Sends a message shaped like
                 <code class="bg-white px-1 rounded">
-                  &lbrace;:dynamic_form_submit, id, &lbrace;:ok, payload&rbrace;&rbrace;
+                  &lbrace;:dynamic_form, %DynamicForm.Payload&lbrace;&rbrace;&rbrace;
                 </code>
-                or
-                <code class="bg-white px-1 rounded">
-                  &lbrace;:dynamic_form_submit, id, &lbrace;:error, payload&rbrace;&rbrace;
-                </code>
-                to the parent LiveView via <code class="bg-white px-1 rounded">handle_info/2</code>.
-                This allows the parent LiveView to update state, show flash messages, navigate, etc.
+                to the parent LiveView via <code class="bg-white px-1 rounded">handle_info/2</code>
+                on every <em>valid</em>
+                submission — invalid ones render their errors
+                inline on the form. This is where the parent performs the side effect:
+                insert a record, show a flash message, navigate, etc.
               </p>
             </div>
             <div>
@@ -160,18 +159,15 @@ defmodule DemoWeb.FormTestComponentLive do
     """
   end
 
-  # Message handlers
+  # Valid submissions arrive here; the side effect (create) runs in the parent
   @impl true
-  def handle_info({:dynamic_form_submit, _id, {:ok, %{result: result}}}, socket) do
+  def handle_info({:dynamic_form, %DynamicForm.Payload{data: data}}, socket) do
+    {:ok, result} = Demo.Submissions.create(data)
+
     {:noreply,
      socket
      |> put_flash(:info, "✓ #{result.message}")
      |> assign(:last_result, result)}
-  end
-
-  @impl true
-  def handle_info({:dynamic_form_submit, _id, {:error, _payload}}, socket) do
-    {:noreply, put_flash(socket, :error, "✗ Please fix the errors below")}
   end
 
   # Mode switcher

@@ -94,21 +94,24 @@ defmodule DemoWeb.SlotFormLiveTest do
     assert html =~ "must be less than or equal to 20"
   end
 
-  test "notifies the parent with an {:error, payload} outcome on a failed submission", %{
+  test "invalid submissions render errors inline and never message the parent", %{
     conn: conn
   } do
     {:ok, view, _html} = live(conn, "/slot-forms")
 
-    # Required fields missing — Demo.Submissions.submit/2 gates on changeset.valid?
-    view
-    |> form("#basic-slot-form-form", %{"dynamic_form" => %{"name" => "x"}})
-    |> render_submit()
+    # The one-character name violates min_length — errors render inline; no
+    # {:dynamic_form, _} message reaches the parent, so no submission result
+    # appears
+    html =
+      view
+      |> form("#basic-slot-form-form", %{"dynamic_form" => %{"name" => "x"}})
+      |> render_submit()
 
-    # The parent's {:dynamic_form_submit, id, {:error, payload}} handler flashes
-    assert render(view) =~ "has errors"
+    assert html =~ "should be at least 2 character(s)"
+    refute render(view) =~ "Submission Results"
   end
 
-  test "slot form submits through on_submit", %{conn: conn} do
+  test "valid submission messages the parent, which performs the side effect", %{conn: conn} do
     {:ok, view, _html} = live(conn, "/slot-forms")
 
     view
@@ -148,10 +151,10 @@ defmodule DemoWeb.SlotFormLiveTest do
     refute html =~ "must be at least $50 per attendee"
   end
 
-  test "on_submit {:error, changeset} renders context errors on the form", %{conn: conn} do
+  test "on_submit Payload.add_error renders submit-only checks on the form", %{conn: conn} do
     {:ok, view, _html} = live(conn, "/slot-forms")
 
-    # Demo.Submissions.create/1 rejects this email with {:error, changeset}
+    # Demo.Submissions.verify/1 rejects this email via Payload.add_error/4
     view
     |> form("#basic-slot-form-form", %{
       "dynamic_form" => %{

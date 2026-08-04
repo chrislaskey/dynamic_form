@@ -32,34 +32,43 @@ changeset built from the definition (types, required fields, validators),
 SurveyJS conditional expressions (`visible_if`, `required_if`, `enable_if`)
 evaluated live as the user types, direct-to-cloud file uploads, and two
 lifecycle callbacks mirroring the form's events — `on_change` to extend
-validation live, and `on_submit` for expensive checks and the action.
+validation live, and `on_submit` for expensive submit-only checks. Valid
+submissions message the parent LiveView, where the application performs the
+side effect.
 
 ## Examples
 
-A form is a component call with fields in render order. Submission goes
-through `on_submit` — mirroring `phx-submit`, it receives the changeset and
-form data on every submit, so the app decides when to act:
+A form is a component call with fields in render order. The library runs the
+whole validation lifecycle itself and messages the parent LiveView on every
+valid submission — the `handle_info/2` handler is where the side effect
+happens:
 
 ```heex
-<DynamicForm.form id="contact-form" on_submit={&Contacts.submit/2} send_messages>
+<DynamicForm.form id="contact-form" on_submit={&Contacts.verify/1} send_messages>
   <:field type="text" name="name" label="Name" required />
   <:field type="text" name="email" input_type="email" label="Email Address" required format="email" />
 </DynamicForm.form>
 ```
 
 ```elixir
-def submit(changeset, data) do
-  if changeset.valid?, do: Contacts.create_contact(data), else: {:error, changeset}
+def verify(payload) do
+  if email_taken?(payload.data[:email]) do
+    DynamicForm.Payload.add_error(payload, :email, "has already been taken")
+  else
+    payload
+  end
 end
 
-def handle_info({:dynamic_form_submit, _id, {:ok, %{result: contact}}}, socket) do
+def handle_info({:dynamic_form, %DynamicForm.Payload{data: data}}, socket) do
+  {:ok, contact} = Contacts.create_contact(data)
   {:noreply, put_flash(socket, :info, "Created contact #{contact.id}")}
 end
 ```
 
-A context `{:error, changeset}` (a uniqueness violation, say) renders its
-errors on the form automatically, and an `on_change` callback extends
-validation live as the user types.
+`on_submit` mirrors `phx-submit`: it runs on every submit — valid or not —
+so expensive checks (like the uniqueness lookup above) batch with the
+built-in errors into one complete list, rendered inline on the form. An
+`on_change` callback extends validation live as the user types the same way.
 
 Layer in validation attrs and conditional visibility — the details field only
 appears when the subject is `support`, and hidden required fields are
@@ -141,8 +150,8 @@ layout tweaks — lives in the overlay; edit there, copy over the demo
   markup, rendering options, edit mode, submission, and file uploads
 - **[SurveyJS compatibility](guides/surveyjs.md)** — defining forms as data:
   what's supported, what isn't, and DynamicForm's extensions
-- **[Lifecycle events](guides/lifecycle.md)** — the form lifecycle and
-  notifying the parent LiveView with `send_messages`
+- **[Lifecycle events](guides/lifecycle.md)** — the form lifecycle, the
+  `{:dynamic_form, payload}` message, and the `on_change`/`on_submit` hooks
 - **[Reference](guides/reference.md)** — quick tables for every attribute,
   slot, question type, validator, and expression operator
 - **[Development](guides/development.md)** — the demo app workflow,

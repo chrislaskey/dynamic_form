@@ -98,7 +98,7 @@ defmodule DemoWeb.RenderLive do
               module={DynamicForm.RendererLive}
               id="contact-form"
               instance={@create_form}
-              on_submit={&Demo.Submissions.submit/2}
+              on_submit={&Demo.Submissions.verify/1}
               params={%{}}
               send_messages={true}
               submit_text="Create Contact"
@@ -115,7 +115,7 @@ defmodule DemoWeb.RenderLive do
               module={DynamicForm.RendererLive}
               id="contact-form-edit"
               instance={@edit_form}
-              on_submit={&Demo.Submissions.submit/2}
+              on_submit={&Demo.Submissions.verify/1}
               params={sample_edit_data()}
               send_messages={true}
               submit_text="Update Contact"
@@ -195,9 +195,12 @@ defmodule DemoWeb.RenderLive do
     """
   end
 
-  # Handle success message from the form component
+  # Handle the valid-submission message from the form component — this is
+  # where the side effect happens. Invalid submissions render inline only.
   @impl true
-  def handle_info({:dynamic_form_submit, _id, {:ok, %{result: result, data: data}}}, socket) do
+  def handle_info({:dynamic_form, %DynamicForm.Payload{data: data}}, socket) do
+    {:ok, result} = Demo.Submissions.create(data)
+
     {:noreply,
      socket
      |> put_flash(:info, "✓ #{result.message}")
@@ -206,12 +209,6 @@ defmodule DemoWeb.RenderLive do
        data: data,
        timestamp: DateTime.utc_now()
      })}
-  end
-
-  # Handle error message from the form component
-  @impl true
-  def handle_info({:dynamic_form_submit, _id, {:error, _payload}}, socket) do
-    {:noreply, put_flash(socket, :error, "✗ Please fix the errors below")}
   end
 
   # Handle mode changes

@@ -21,7 +21,7 @@ defmodule DemoWeb.SlotFormLive do
   <DynamicForm.form
     id="basic-slot-form"
     title="Contact Form"
-    on_submit={&Demo.Submissions.submit/2}
+    on_submit={&Demo.Submissions.verify/1}
     send_messages
   >
     <:field type="text" name="name" label="Name" required min_length={2} />
@@ -53,7 +53,7 @@ defmodule DemoWeb.SlotFormLive do
   """
 
   @src_custom ~S"""
-  <DynamicForm.form id="custom-slot-form" on_change={&budget_per_attendee/2} send_messages>
+  <DynamicForm.form id="custom-slot-form" on_change={&budget_per_attendee/1} send_messages>
     <%!-- Tier 1: html slot body reading parent assigns --%>
     <:field type="html" name="intro">
       <div class="rounded-md bg-indigo-50 p-4">
@@ -120,28 +120,27 @@ defmodule DemoWeb.SlotFormLive do
 
   # An on_change callback: a cheap cross-field rule the built-in validators
   # can't express, validated live as the user types.
-  defp budget_per_attendee(changeset, data) do
-    attendees = data[:attendees]
-    budget = data[:budget]
+  defp budget_per_attendee(payload) do
+    attendees = payload.data[:attendees]
+    budget = payload.data[:budget]
 
     if attendees && budget && Decimal.compare(budget, Decimal.mult(attendees, 50)) == :lt do
-      Ecto.Changeset.add_error(changeset, :budget, "must be at least $50 per attendee")
+      DynamicForm.Payload.add_error(payload, :budget, "must be at least $50 per attendee")
     else
-      changeset
+      payload
     end
   end
 
+  # Only valid submissions arrive here — invalid ones render their errors
+  # inline on the form. This is where the side effect happens.
   @impl true
-  def handle_info({:dynamic_form_submit, id, {:ok, payload}}, socket) do
+  def handle_info({:dynamic_form, %DynamicForm.Payload{} = payload}, socket) do
+    {:ok, result} = Demo.Submissions.create(payload.data)
+
     {:noreply,
      socket
-     |> update(:results, &Map.put(&1, id, payload))
-     |> put_flash(:info, "Form #{id} submitted successfully")}
-  end
-
-  @impl true
-  def handle_info({:dynamic_form_submit, id, {:error, _payload}}, socket) do
-    {:noreply, put_flash(socket, :error, "Form #{id} has errors — see below")}
+     |> update(:results, &Map.put(&1, payload.id, result))
+     |> put_flash(:info, "Form #{payload.id} submitted successfully")}
   end
 
   @impl true
@@ -181,9 +180,9 @@ defmodule DemoWeb.SlotFormLive do
         <p class="text-sm text-gray-500 mb-6">
           Question types, flattened validators (<code>format</code>, <code>min_length</code>),
           and <code>visible_if</code> (pick subject "Support" to reveal details).
-          Submits through <code>on_submit={"{&Demo.Submissions.submit/2}"}</code> —
-          try the email <code>taken@example.com</code> to see a context error render
-          on the form.
+          Validates through <code>on_submit={"{&Demo.Submissions.verify/1}"}</code> —
+          try the email <code>taken@example.com</code> to see an expensive
+          uniqueness-style check render on the form.
         </p>
 
         <.definition title="Template definition" code={@src_basic} />
@@ -192,7 +191,7 @@ defmodule DemoWeb.SlotFormLive do
           <DynamicForm.form
             id="basic-slot-form"
             title="Contact Form"
-            on_submit={&Demo.Submissions.submit/2}
+            on_submit={&Demo.Submissions.verify/1}
             send_messages
           >
             <:field type="text" name="name" label="Name" required min_length={2} />
@@ -271,7 +270,7 @@ defmodule DemoWeb.SlotFormLive do
         <.definition title="Template definition" code={@src_custom} />
 
         <div class="rounded-lg bg-white shadow-sm ring-1 ring-gray-900/5 p-6">
-          <DynamicForm.form id="custom-slot-form" on_change={&budget_per_attendee/2} send_messages>
+          <DynamicForm.form id="custom-slot-form" on_change={&budget_per_attendee/1} send_messages>
             <:field type="html" name="intro">
               <div class="rounded-md bg-indigo-50 p-4">
                 <h3 class="font-semibold text-indigo-900">

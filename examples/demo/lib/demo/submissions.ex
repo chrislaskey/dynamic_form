@@ -2,46 +2,40 @@ defmodule Demo.Submissions do
   @moduledoc """
   A stand-in Phoenix context for form submissions.
 
-  `submit/2` demonstrates the canonical `on_submit` shape: the hook runs on
-  every submit — valid or not — so it gates on `changeset.valid?` before
-  performing the action. A real application would insert a record, send an
-  email, call an API, etc.
+  `verify/1` demonstrates the canonical `on_submit` shape: a validation hook
+  that runs on every submit — valid or not — batching expensive checks (here
+  a fake uniqueness lookup) with the built-in errors into one complete error
+  list. The action itself (`create/1`) belongs in the parent LiveView's
+  `handle_info/2`, which only hears about valid submissions.
   """
 
   require Logger
 
+  alias DynamicForm.Payload
+
   @doc """
-  The `on_submit` callback: gate on validity, then perform the action.
+  The `on_submit` callback: expensive, submit-only validation.
+
+  Rejects the email `taken@example.com` to demonstrate a uniqueness-style
+  check rendering on the form alongside the built-in errors.
   """
-  def submit(changeset, data) do
-    if changeset.valid? do
-      create(data)
+  def verify(payload) do
+    if Map.get(payload.data, :email) == "taken@example.com" do
+      Payload.add_error(payload, :email, "has already been taken")
     else
-      {:error, changeset}
+      payload
     end
   end
 
   @doc """
   "Creates" a submission by logging it.
 
-  Returns `{:error, changeset}` when the email is `taken@example.com` to
-  demonstrate how context-level errors (like uniqueness violations) render
-  on the form.
+  The side-effect half of the lifecycle — called from the parent LiveView's
+  `handle_info/2` when a `{:dynamic_form, payload}` message arrives. A real
+  application would insert a record, send an email, call an API, etc.
   """
   def create(data) do
-    if Map.get(data, :email) == "taken@example.com" do
-      {:error, email_taken_changeset(data)}
-    else
-      Logger.info("Form submitted successfully: #{inspect(data)}")
-      {:ok, %{message: "Form submitted successfully!", data: data}}
-    end
-  end
-
-  # A context function typically returns its schema's changeset; the library
-  # copies the errors onto the form's changeset by field name.
-  defp email_taken_changeset(data) do
-    {data, %{email: :string}}
-    |> Ecto.Changeset.cast(%{}, [])
-    |> Ecto.Changeset.add_error(:email, "has already been taken")
+    Logger.info("Form submitted successfully: #{inspect(data)}")
+    {:ok, %{message: "Form submitted successfully!", data: data}}
   end
 end

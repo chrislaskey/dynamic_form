@@ -12,12 +12,12 @@ Quick lookup tables. For narrative documentation see the
 | `json` | string | `nil` | Data mode: SurveyJS-compatible JSON string, decoded via `Instance.decode!/1` |
 | `title` | string | `nil` | Instance title (declarative mode) |
 | `description` | string | `nil` | Instance description (declarative mode) |
-| `on_change` | function | `nil` | 2-arity `(changeset, data) -> changeset`, after built-in validations on every change and during the submit validation pass |
-| `on_submit` | function | `nil` | 2-arity `(changeset, data) -> {:ok, result}` \| `{:error, changeset \| reason}`, on every submit — valid or not |
+| `on_change` | function | `nil` | 1-arity `(payload) -> payload`, after built-in validations on every change and during the submit validation pass |
+| `on_submit` | function | `nil` | 1-arity `(payload) -> payload`, on every submit — valid or not |
 | `params` | map | `%{}` | Initial form params for edit mode |
 | `form_name` | string | `"dynamic_form"` | Form namespace for params |
 | `submit_text` | string | `"Submit"` | Submit button text |
-| `send_messages` | boolean | `false` | Send `{:dynamic_form_submit, id, outcome}` messages to the parent LiveView |
+| `send_messages` | boolean | `false` | Send `{:dynamic_form, payload}` messages to the parent LiveView on valid submissions |
 | `hide_submit` | boolean | `false` | Hide the built-in submit button |
 | `gettext` | atom | `DynamicForm.Gettext` | Gettext backend for translations |
 | `validation_summary` | string | `nil` | Errors at top of form: `nil`, `"simple"`, or `"detailed"` |
@@ -122,27 +122,37 @@ Field references use braces: `{field_name}`. Literals: `'strings'`, numbers,
 
 ## Messages
 
-Sent to the parent LiveView when `send_messages` is set, shaped
-`{:dynamic_form_submit, component_id, outcome}`:
+Sent to the parent LiveView when `send_messages` is set, on **valid**
+submissions only — invalid submissions render their errors inline and never
+message the parent:
 
-| Outcome | When | Payload |
-|---|---|---|
-| `{:ok, %{result: result, data: data}}` | `on_submit` returned `{:ok, result}`, or no callback and the changeset was valid | `result` is the callback's return value (`%{}` without a callback); `data` the applied changeset data |
-| `{:error, %{changeset: changeset, reason: reason}}` | The changeset was invalid, or `on_submit` returned `{:error, _}` | `changeset` carries the inline errors; `reason` is an `{:error, reason}` term or `nil` |
+```elixir
+{:dynamic_form, %DynamicForm.Payload{}}
+```
+
+`%DynamicForm.Payload{}` fields:
+
+| Field | Value |
+|---|---|
+| `id` | The form component's id |
+| `changeset` | The form's final `Ecto.Changeset`; its `valid?` flag is the source of truth for validity (always `true` for delivered messages) |
+| `data` | The applied changeset data |
+| `extra` | Empty map by default; written by `on_submit` via `Payload.put_extra/3` |
 
 ## Lifecycle callback contracts
 
 ```elixir
-on_change: (changeset, data) -> Ecto.Changeset.t()
-on_submit: (changeset, data) -> {:ok, result} | {:error, Ecto.Changeset.t()} | {:error, reason}
+on_change: (DynamicForm.Payload.t()) -> DynamicForm.Payload.t()
+on_submit: (DynamicForm.Payload.t()) -> DynamicForm.Payload.t()
 ```
 
 `on_change` runs after built-in validations, on every change and during the
 submit validation pass. `on_submit` runs on every submit — valid or not —
-so implementations gate on `changeset.valid?` before performing the action.
-An `{:error, changeset}` derived from the form's own changeset renders
-directly; a foreign changeset (e.g. from `Repo.insert`) has its errors
-copied onto the form by field name.
+so it can batch expensive checks with the built-in errors into one complete
+error list. Both are validation hooks: reject a submission with
+`DynamicForm.Payload.add_error/4` (validity lives on the changeset, so
+adding an error marks the submission invalid); perform side effects in the
+parent's `handle_info/2` instead.
 
 ## Upload metadata keys
 
@@ -169,4 +179,6 @@ Uploaded files are stored in the form data as maps with `filename`,
 | `DynamicForm.Instance.FromSlots.convert!/1` | Slot entries → `Instance` (used by `DynamicForm.form/1`) |
 | `DynamicForm.Changeset.create_changeset/2` | Instance + params → Ecto changeset |
 | `DynamicForm.Changeset.get_questions/1` | Flat list of questions, including nested panels |
+| `DynamicForm.Payload.add_error/4` | Add a changeset error, marking the submission invalid |
+| `DynamicForm.Payload.put_extra/3` | Stash derived data on the payload for the parent's `handle_info/2` |
 | `DynamicForm.submit_button/1` | Submit button component usable outside the form element |

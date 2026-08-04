@@ -230,25 +230,26 @@ preserved through submission the same way.
 
 ### Messages
 
-With `send_messages`, the component sends the parent LiveView a message on
-every submission, carrying the outcome as an ok/error tuple —
-`{:dynamic_form_submit, id, {:ok, payload} | {:error, payload}}`:
+With `send_messages`, the component sends the parent LiveView a
+`{:dynamic_form, %DynamicForm.Payload{}}` message on every **valid**
+submission — this is where the application performs the side effect (insert
+a record, send an email, navigate). Invalid submissions render their errors
+inline on the form and never message the parent:
 
 ```elixir
-def handle_info({:dynamic_form_submit, _id, {:ok, %{result: result}}}, socket) do
-  # result is the on_submit return value, typically %{message: ..., data: ...}
-  {:noreply, put_flash(socket, :info, result.message)}
-end
-
-def handle_info({:dynamic_form_submit, _id, {:error, %{changeset: changeset}}}, socket) do
-  {:noreply, put_flash(socket, :error, "Please fix the errors below")}
+def handle_info({:dynamic_form, %DynamicForm.Payload{data: data}}, socket) do
+  {:ok, contact} = MyApp.Contacts.create_contact(data)
+  {:noreply, put_flash(socket, :info, "Created contact #{contact.id}")}
 end
 ```
 
+The payload carries the form's `id` (for matching when a page renders
+several forms), the final `changeset`, the applied `data`, and an `extra`
+map that `on_submit` can write derived values into.
+
 Without `send_messages` the component is self-contained: it validates and
 submits, and the parent is not notified. See the
-[Lifecycle events guide](lifecycle.md) for the full lifecycle, actions, and
-payloads.
+[Lifecycle events guide](lifecycle.md) for the full lifecycle and payload.
 
 ### External submit buttons
 
@@ -302,73 +303,72 @@ instance; the `/form-test` demo page shows the complete pattern.
 
 ## Lifecycle callbacks: `on_change` and `on_submit`
 
-Two optional hooks mirror the form's `phx-change`/`phx-submit` events. Both
-are 2-arity functions receiving `(changeset, data)`, where `data` is the
-applied changeset data.
+Two optional hooks mirror the form's `phx-change`/`phx-submit` events. Each
+is a 1-arity function that receives a `DynamicForm.Payload` — the changeset
+after the built-in validations, the applied `data`, and an `extra` map —
+and returns the payload, transformed or untouched.
 
-### `on_change` — extend validation
+Both hooks extend **validation**, and the changeset's `valid?` flag is the
+single source of truth for whether the submission is valid. To reject a
+submission, add an error with `DynamicForm.Payload.add_error/4`. Side
+effects (database writes, emails, navigation) belong in the parent's
+`handle_info/2`, which only hears about valid submissions.
+
+### `on_change` — extend validation live
 
 Runs after the built-in validations on every change (and during the submit
-validation pass) and returns a changeset. Use it for cheap, synchronous
-rules the built-in validators can't express — errors it adds render inline
-live and clear as the user fixes fields:
+validation pass). Use it for cheap, synchronous rules the built-in
+validators can't express — errors it adds render inline live and clear as
+the user fixes fields:
 
 ```heex
-<DynamicForm.form id="signup" on_change={&password_confirmation/2}>
+<DynamicForm.form id="signup" on_change={&password_confirmation/1}>
 ```
 
 ```elixir
-defp password_confirmation(changeset, data) do
-  if data[:password] == data[:password_confirmation] do
-    changeset
+defp password_confirmation(payload) do
+  if payload.data[:password] == payload.data[:password_confirmation] do
+    payload
   else
-    Ecto.Changeset.add_error(changeset, :password_confirmation, "does not match")
+    DynamicForm.Payload.add_error(payload, :password_confirmation, "does not match")
   end
 end
 ```
 
 Keep it cheap — it runs per keystroke.
 
-### `on_submit` — expensive checks and the action
+### `on_submit` — expensive, submit-only checks
 
 Runs on **every** submit — valid or not — so it can batch expensive checks
 (third-party APIs, database lookups) with the built-in errors into one
-complete error list, and decide whether to perform the action. Because it
-also receives invalid changesets, gate on `changeset.valid?` before acting:
+complete error list. Uniqueness-style checks that a context would normally
+catch at insert time belong here, so their errors render on the form:
 
 ```heex
-<DynamicForm.form id="contact-form" on_submit={&Contacts.submit/2} send_messages>
+<DynamicForm.form id="contact-form" on_submit={&Contacts.verify/1} send_messages>
   <:field type="text" name="email" label="Email" required format="email" />
 </DynamicForm.form>
 ```
 
 ```elixir
-def submit(changeset, data) do
-  changeset = verify_phone_number(changeset, data)   # expensive, submit-only
+def verify(payload) do
+  case verify_phone_number(payload.data[:phone]) do   # expensive, submit-only
+    {:ok, normalized} ->
+      DynamicForm.Payload.put_extra(payload, :normalized_phone, normalized)
 
-  if changeset.valid? do
-    create_contact(data)                             # {:ok, _} | {:error, changeset}
-  else
-    {:error, changeset}
+    :error ->
+      DynamicForm.Payload.add_error(payload, :phone, "is not a valid phone number")
   end
 end
 ```
 
-The function must return:
+When the returned payload is valid, it's delivered to the parent in the
+`{:dynamic_form, payload}` message — including anything stored in `extra` —
+and the parent performs the action. When it's invalid, the errors render
+inline and the parent is never messaged.
 
-- `{:ok, result}` — success; `result` flows to the parent in the `{:ok, _}`
-  submit message.
-- `{:error, %Ecto.Changeset{}}` — failure with field errors. A changeset
-  derived from the form's own (the gate pattern above) is rendered directly;
-  a foreign changeset — e.g. what a context returns for a uniqueness
-  violation via `Repo.insert` — has its errors copied onto the form by
-  field name.
-- `{:error, reason}` — general failure; `reason` flows to the parent in the
-  `{:error, _}` submit message.
-
-Without `on_submit`, a valid submission succeeds with the form data alone —
-pair with `send_messages` and do the work in the parent's `handle_info/2`
-instead — and an invalid one renders its errors inline.
+Without `on_submit`, a valid submission delivers the payload as-is and an
+invalid one renders its errors inline.
 
 ## File uploads
 
