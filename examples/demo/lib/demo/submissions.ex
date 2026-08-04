@@ -2,12 +2,24 @@ defmodule Demo.Submissions do
   @moduledoc """
   A stand-in Phoenix context for form submissions.
 
-  Demonstrates the `on_valid_submit` contract: a 1-arity function receiving
-  the form data and returning `{:ok, result}` or `{:error, changeset | reason}`.
-  A real application would insert a record, send an email, call an API, etc.
+  `submit/2` demonstrates the canonical `on_submit` shape: the hook runs on
+  every submit — valid or not — so it gates on `changeset.valid?` before
+  performing the action. A real application would insert a record, send an
+  email, call an API, etc.
   """
 
   require Logger
+
+  @doc """
+  The `on_submit` callback: gate on validity, then perform the action.
+  """
+  def submit(changeset, data) do
+    if changeset.valid? do
+      create(data)
+    else
+      {:error, changeset}
+    end
+  end
 
   @doc """
   "Creates" a submission by logging it.

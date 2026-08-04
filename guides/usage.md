@@ -236,7 +236,7 @@ every submission, carrying the outcome as an ok/error tuple —
 
 ```elixir
 def handle_info({:dynamic_form_submit, _id, {:ok, %{result: result}}}, socket) do
-  # result is the on_valid_submit return value, typically %{message: ..., data: ...}
+  # result is the on_submit return value, typically %{message: ..., data: ...}
   {:noreply, put_flash(socket, :info, result.message)}
 end
 
@@ -300,40 +300,75 @@ end
 `DynamicForm.Changeset.create_changeset/2` builds the changeset from any
 instance; the `/form-test` demo page shows the complete pattern.
 
-## Submitting: `on_valid_submit`
+## Lifecycle callbacks: `on_change` and `on_submit`
 
-Pass a 1-arity function that receives the form data once the changeset is
-valid — invalid submissions render errors inline and never reach it. Phoenix
-context functions fit the contract directly:
+Two optional hooks mirror the form's `phx-change`/`phx-submit` events. Both
+are 2-arity functions receiving `(changeset, data)`, where `data` is the
+applied changeset data.
+
+### `on_change` — extend validation
+
+Runs after the built-in validations on every change (and during the submit
+validation pass) and returns a changeset. Use it for cheap, synchronous
+rules the built-in validators can't express — errors it adds render inline
+live and clear as the user fixes fields:
 
 ```heex
-<DynamicForm.form id="contact-form" on_valid_submit={&Contacts.create_contact/1} send_messages>
+<DynamicForm.form id="signup" on_change={&password_confirmation/2}>
+```
+
+```elixir
+defp password_confirmation(changeset, data) do
+  if data[:password] == data[:password_confirmation] do
+    changeset
+  else
+    Ecto.Changeset.add_error(changeset, :password_confirmation, "does not match")
+  end
+end
+```
+
+Keep it cheap — it runs per keystroke.
+
+### `on_submit` — expensive checks and the action
+
+Runs on **every** submit — valid or not — so it can batch expensive checks
+(third-party APIs, database lookups) with the built-in errors into one
+complete error list, and decide whether to perform the action. Because it
+also receives invalid changesets, gate on `changeset.valid?` before acting:
+
+```heex
+<DynamicForm.form id="contact-form" on_submit={&Contacts.submit/2} send_messages>
   <:field type="text" name="email" label="Email" required format="email" />
 </DynamicForm.form>
+```
+
+```elixir
+def submit(changeset, data) do
+  changeset = verify_phone_number(changeset, data)   # expensive, submit-only
+
+  if changeset.valid? do
+    create_contact(data)                             # {:ok, _} | {:error, changeset}
+  else
+    {:error, changeset}
+  end
+end
 ```
 
 The function must return:
 
 - `{:ok, result}` — success; `result` flows to the parent in the `{:ok, _}`
   submit message.
-- `{:error, %Ecto.Changeset{}}` — failure with field errors: the changeset's
-  errors are copied onto the form by field name and rendered inline. This is
-  exactly what a context returns for a uniqueness violation:
-
-  ```elixir
-  def create_contact(attrs) do
-    %Contact{}
-    |> Contact.changeset(attrs)
-    |> Repo.insert()
-  end
-  ```
-
+- `{:error, %Ecto.Changeset{}}` — failure with field errors. A changeset
+  derived from the form's own (the gate pattern above) is rendered directly;
+  a foreign changeset — e.g. what a context returns for a uniqueness
+  violation via `Repo.insert` — has its errors copied onto the form by
+  field name.
 - `{:error, reason}` — general failure; `reason` flows to the parent in the
-  `{:error, _}` submit message and the form re-renders unchanged.
+  `{:error, _}` submit message.
 
-Without `on_valid_submit`, a valid submission succeeds with the form data
-alone — pair with `send_messages` and do the work in the parent's
-`handle_info/2` instead.
+Without `on_submit`, a valid submission succeeds with the form data alone —
+pair with `send_messages` and do the work in the parent's `handle_info/2`
+instead — and an invalid one renders its errors inline.
 
 ## File uploads
 

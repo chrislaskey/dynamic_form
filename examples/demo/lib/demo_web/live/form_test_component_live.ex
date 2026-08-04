@@ -89,7 +89,7 @@ defmodule DemoWeb.FormTestComponentLive do
               module={DynamicForm.RendererLive}
               id="contact-form"
               instance={@form_instance}
-              on_valid_submit={&Demo.Submissions.create/1}
+              on_submit={&Demo.Submissions.submit/2}
               send_messages={true}
               hide_submit={true}
               submit_text="Submit with Messages"
@@ -101,7 +101,7 @@ defmodule DemoWeb.FormTestComponentLive do
               module={DynamicForm.RendererLive}
               id="contact-form"
               instance={@form_instance}
-              on_valid_submit={&Demo.Submissions.create/1}
+              on_submit={&Demo.Submissions.submit/2}
               hide_submit={true}
               submit_text="Submit (No Messages)"
             />

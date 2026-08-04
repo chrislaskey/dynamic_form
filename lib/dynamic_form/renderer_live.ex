@@ -14,8 +14,12 @@ defmodule DynamicForm.RendererLive do
 
   ### Optional
 
-    * `:on_valid_submit` - 1-arity function called with the form data on valid
-      submissions (default: `nil`; see "Submitting" below)
+    * `:on_change` - 2-arity function `(changeset, data) -> changeset` run
+      after the built-in validations on every change and during the submit
+      validation pass (default: `nil`; see "Lifecycle callbacks" below)
+    * `:on_submit` - 2-arity function `(changeset, data) ->
+      {:ok, result} | {:error, changeset | reason}` run on every submit —
+      valid or not (default: `nil`; see "Lifecycle callbacks" below)
     * `:params` - Initial form params for edit mode (map, default: `%{}`)
     * `:form_name` - Form namespace for params (string, default: `"dynamic_form"`)
     * `:submit_text` - Submit button text (string, default: `"Submit"`, not required when `hide_submit` is `true`)
@@ -94,32 +98,52 @@ defmodule DynamicForm.RendererLive do
   Note: The form ID is automatically generated as `"\#{id}-form"`, so if your component
   ID is "my-form", the form element ID will be "my-form-form".
 
-  ## Submitting: `on_valid_submit`
+  ## Lifecycle callbacks: `on_change` and `on_submit`
 
-  Pass a 1-arity function that receives the form data (the
-  `Ecto.Changeset.apply_changes/1` result) once the changeset is valid —
-  invalid submissions never reach it; their errors render inline. Phoenix
-  context functions fit the contract directly:
+  Both hooks mirror the form's `phx-change`/`phx-submit` events and receive
+  `(changeset, data)`, where `data` is the `Ecto.Changeset.apply_changes/1`
+  result.
+
+  `on_change` extends validation: it runs after the built-in validations on
+  every change (and during the submit validation pass) and must return a
+  changeset. Errors it adds render inline live, exactly like built-in
+  validations. Keep it cheap — it runs per keystroke.
+
+  `on_submit` runs on **every** submit — valid or not — so it can batch
+  expensive checks (API calls, database lookups) with the built-in errors
+  and decide whether to perform the action. Check `changeset.valid?` before
+  acting:
 
       <.live_component
         module={DynamicForm.RendererLive}
         id="contact-form"
         instance={@form_instance}
-        on_valid_submit={&MyApp.Contacts.create_contact/1}
+        on_submit={&MyApp.Contacts.submit/2}
       />
 
-  The function must return:
+      def submit(changeset, data) do
+        changeset = verify_phone_number(changeset, data)   # expensive, submit-only
+
+        if changeset.valid? do
+          create_contact(data)                             # {:ok, _} | {:error, changeset}
+        else
+          {:error, changeset}
+        end
+      end
+
+  `on_submit` must return:
     * `{:ok, result}` - Success; `result` is passed to the parent in the
       submit message
-    * `{:error, %Ecto.Changeset{}}` - Failure; the changeset's errors are
-      copied onto the form by field name and rendered inline (e.g. a context
-      returning `{:error, changeset}` for a uniqueness violation)
+    * `{:error, %Ecto.Changeset{}}` - Failure; a changeset derived from the
+      form's own is rendered directly, while a foreign changeset (e.g. an
+      Ecto schema changeset from `Repo.insert`) has its errors copied onto
+      the form by field name
     * `{:error, reason}` - General failure; `reason` is passed to the parent
       in the submit message
 
-  Without `on_valid_submit`, a valid submission succeeds with the form data
-  alone — pair with `send_messages` and do the work in the parent's
-  `handle_info/2`.
+  Without `on_submit`, a valid submission succeeds with the form data alone
+  (pair with `send_messages` and do the work in the parent's `handle_info/2`)
+  and an invalid one renders its errors inline.
 
   ## Messages
 
@@ -127,12 +151,12 @@ defmodule DynamicForm.RendererLive do
   message on every submission, carrying the outcome as an ok/error tuple:
 
     * `{:dynamic_form_submit, id, {:ok, %{result: result, data: data}}}` -
-      Submission succeeded. `result` is the `on_valid_submit` return value,
-      or `%{}` when no callback is configured; `data` is the applied
-      changeset data.
+      Submission succeeded. `result` is the `on_submit` return value, or
+      `%{}` when no callback is configured; `data` is the applied changeset
+      data.
     * `{:dynamic_form_submit, id, {:error, %{changeset: changeset, reason: reason}}}` -
       Submission failed. `changeset` carries the errors rendered inline;
-      `reason` is an `on_valid_submit` `{:error, reason}` term, or `nil`.
+      `reason` is an `on_submit` `{:error, reason}` term, or `nil`.
   """
 
   use Phoenix.LiveComponent
@@ -281,6 +305,7 @@ defmodule DynamicForm.RendererLive do
     changeset =
       socket.assigns.instance
       |> Changeset.create_changeset(merged_params)
+      |> apply_on_change(socket)
       |> Map.put(:action, socket.assigns.changeset.action)
 
     form = to_form(changeset, as: socket.assigns.form_name)
@@ -299,14 +324,31 @@ defmodule DynamicForm.RendererLive do
     changeset =
       socket.assigns.instance
       |> Changeset.create_changeset(merged_params)
+      |> apply_on_change(socket)
       |> Map.put(:action, :updated)
 
     socket = assign(socket, :submitting, true)
 
-    if changeset.valid? do
-      {:noreply, handle_valid_submit(socket, changeset)}
-    else
-      {:noreply, handle_invalid_submit(socket, changeset, nil)}
+    case socket.assigns[:on_submit] do
+      nil ->
+        if changeset.valid? do
+          data = Ecto.Changeset.apply_changes(changeset)
+
+          {:noreply,
+           socket
+           |> notify_parent({:ok, %{result: %{}, data: data}})
+           |> assign(:submitting, false)}
+        else
+          {:noreply, handle_invalid_submit(socket, changeset, nil)}
+        end
+
+      fun when is_function(fun, 2) ->
+        {:noreply, handle_on_submit(socket, fun, changeset)}
+
+      other ->
+        raise ArgumentError,
+              "on_submit must be a 2-arity function receiving the changeset and " <>
+                "the form data, got: #{inspect(other)}"
     end
   end
 
@@ -363,54 +405,72 @@ defmodule DynamicForm.RendererLive do
 
   # Helpers - Handlers
 
-  # A valid changeset submits through the on_valid_submit callback when one
-  # is given; without one the submission succeeds with the form data alone.
-  defp handle_valid_submit(socket, changeset) do
-    data = Ecto.Changeset.apply_changes(changeset)
-
-    case socket.assigns[:on_valid_submit] do
+  # Pipe the changeset through the on_change callback when one is given.
+  # Runs after the built-in validations, on every change and during the
+  # submit validation pass.
+  defp apply_on_change(changeset, socket) do
+    case socket.assigns[:on_change] do
       nil ->
-        socket
-        |> notify_parent({:ok, %{result: %{}, data: data}})
-        |> assign(:submitting, false)
+        changeset
 
-      fun when is_function(fun, 1) ->
-        case fun.(data) do
-          {:ok, result} ->
-            socket
-            |> notify_parent({:ok, %{result: result, data: data}})
-            |> assign(:submitting, false)
-
-          {:error, %Ecto.Changeset{} = error_changeset} ->
-            handle_invalid_submit(socket, copy_errors(error_changeset, changeset), nil)
-
-          {:error, reason} ->
-            handle_invalid_submit(socket, changeset, reason)
+      fun when is_function(fun, 2) ->
+        case fun.(changeset, Ecto.Changeset.apply_changes(changeset)) do
+          %Ecto.Changeset{} = changeset ->
+            changeset
 
           other ->
             raise ArgumentError,
-                  "on_valid_submit must return {:ok, result} or " <>
-                    "{:error, changeset | reason}, got: #{inspect(other)}"
+                  "on_change must return an Ecto.Changeset, got: #{inspect(other)}"
         end
 
       other ->
         raise ArgumentError,
-              "on_valid_submit must be a 1-arity function receiving the form data, " <>
-                "got: #{inspect(other)}"
+              "on_change must be a 2-arity function receiving the changeset and " <>
+                "the form data, got: #{inspect(other)}"
     end
   end
 
-  # Copy errors from a returned changeset (often an Ecto schema changeset from
-  # a context function) onto the form's changeset so they render inline,
-  # matched by field name.
-  defp copy_errors(%Ecto.Changeset{errors: errors}, form_changeset) do
-    Enum.reduce(errors, form_changeset, fn {field, {message, opts}}, acc ->
-      Ecto.Changeset.add_error(acc, field, message, opts)
-    end)
+  # The on_submit callback runs on every submit — valid or not — so it can
+  # batch expensive checks with the built-in errors, decide whether to
+  # perform the action, or both.
+  defp handle_on_submit(socket, fun, changeset) do
+    data = Ecto.Changeset.apply_changes(changeset)
+
+    case fun.(changeset, data) do
+      {:ok, result} ->
+        socket
+        |> notify_parent({:ok, %{result: result, data: data}})
+        |> assign(:submitting, false)
+
+      {:error, %Ecto.Changeset{} = error_changeset} ->
+        handle_invalid_submit(socket, merge_error_changeset(error_changeset, changeset), nil)
+
+      {:error, reason} ->
+        handle_invalid_submit(socket, changeset, reason)
+
+      other ->
+        raise ArgumentError,
+              "on_submit must return {:ok, result} or " <>
+                "{:error, changeset | reason}, got: #{inspect(other)}"
+    end
+  end
+
+  # An error changeset derived from the form's own changeset (same schemaless
+  # types) is used directly. A foreign changeset — typically an Ecto schema
+  # changeset from a context function like Repo.insert — has its errors copied
+  # onto the form's changeset by field name so they render inline.
+  defp merge_error_changeset(%Ecto.Changeset{} = error_changeset, form_changeset) do
+    if error_changeset.types == form_changeset.types do
+      error_changeset
+    else
+      Enum.reduce(error_changeset.errors, form_changeset, fn {field, {message, opts}}, acc ->
+        Ecto.Changeset.add_error(acc, field, message, opts)
+      end)
+    end
   end
 
   # Render the failed changeset's errors inline and notify the parent.
-  # `reason` carries the on_valid_submit {:error, reason} term, nil otherwise.
+  # `reason` carries the on_submit {:error, reason} term, nil otherwise.
   defp handle_invalid_submit(socket, changeset, reason) do
     changeset = Map.put(changeset, :action, :validate)
     form = to_form(changeset, as: socket.assigns.form_name)

@@ -143,7 +143,7 @@ defmodule DemoWeb.ShowcaseFormLive do
 
     case changeset.valid? do
       true ->
-        # Submit through the context, the same function on_valid_submit takes
+        # Submit through the context — the action half of an on_submit callback
         form_data = Ecto.Changeset.apply_changes(changeset)
 
         case Demo.Submissions.create(form_data) do

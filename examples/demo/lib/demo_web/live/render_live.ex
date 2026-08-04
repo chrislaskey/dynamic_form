@@ -98,7 +98,7 @@ defmodule DemoWeb.RenderLive do
               module={DynamicForm.RendererLive}
               id="contact-form"
               instance={@create_form}
-              on_valid_submit={&Demo.Submissions.create/1}
+              on_submit={&Demo.Submissions.submit/2}
               params={%{}}
               send_messages={true}
               submit_text="Create Contact"
@@ -115,7 +115,7 @@ defmodule DemoWeb.RenderLive do
               module={DynamicForm.RendererLive}
               id="contact-form-edit"
               instance={@edit_form}
-              on_valid_submit={&Demo.Submissions.create/1}
+              on_submit={&Demo.Submissions.submit/2}
               params={sample_edit_data()}
               send_messages={true}
               submit_text="Update Contact"

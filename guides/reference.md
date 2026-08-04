@@ -12,7 +12,8 @@ Quick lookup tables. For narrative documentation see the
 | `json` | string | `nil` | Data mode: SurveyJS-compatible JSON string, decoded via `Instance.decode!/1` |
 | `title` | string | `nil` | Instance title (declarative mode) |
 | `description` | string | `nil` | Instance description (declarative mode) |
-| `on_valid_submit` | function | `nil` | 1-arity function receiving the form data on valid submissions; returns `{:ok, result}` \| `{:error, changeset \| reason}` |
+| `on_change` | function | `nil` | 2-arity `(changeset, data) -> changeset`, after built-in validations on every change and during the submit validation pass |
+| `on_submit` | function | `nil` | 2-arity `(changeset, data) -> {:ok, result}` \| `{:error, changeset \| reason}`, on every submit — valid or not |
 | `params` | map | `%{}` | Initial form params for edit mode |
 | `form_name` | string | `"dynamic_form"` | Form namespace for params |
 | `submit_text` | string | `"Submit"` | Submit button text |
@@ -126,21 +127,22 @@ Sent to the parent LiveView when `send_messages` is set, shaped
 
 | Outcome | When | Payload |
 |---|---|---|
-| `{:ok, %{result: result, data: data}}` | `on_valid_submit` returned `{:ok, result}`, or no callback and the changeset was valid | `result` is the callback's return value (`%{}` without a callback); `data` the applied changeset data |
-| `{:error, %{changeset: changeset, reason: reason}}` | The changeset was invalid, or `on_valid_submit` returned `{:error, _}` | `changeset` carries the inline errors; `reason` is an `{:error, reason}` term or `nil` |
+| `{:ok, %{result: result, data: data}}` | `on_submit` returned `{:ok, result}`, or no callback and the changeset was valid | `result` is the callback's return value (`%{}` without a callback); `data` the applied changeset data |
+| `{:error, %{changeset: changeset, reason: reason}}` | The changeset was invalid, or `on_submit` returned `{:error, _}` | `changeset` carries the inline errors; `reason` is an `{:error, reason}` term or `nil` |
 
-## `on_valid_submit` contract
-
-A 1-arity function receiving the form data (the applied changeset), called
-only when the changeset is valid:
+## Lifecycle callback contracts
 
 ```elixir
-(data :: map()) -> {:ok, result} | {:error, Ecto.Changeset.t()} | {:error, reason}
+on_change: (changeset, data) -> Ecto.Changeset.t()
+on_submit: (changeset, data) -> {:ok, result} | {:error, Ecto.Changeset.t()} | {:error, reason}
 ```
 
-`{:error, changeset}` errors are copied onto the form by field name and
-rendered inline. Phoenix context functions
-(`&Contacts.create_contact/1`) fit the contract directly.
+`on_change` runs after built-in validations, on every change and during the
+submit validation pass. `on_submit` runs on every submit — valid or not —
+so implementations gate on `changeset.valid?` before performing the action.
+An `{:error, changeset}` derived from the form's own changeset renders
+directly; a foreign changeset (e.g. from `Repo.insert`) has its errors
+copied onto the form by field name.
 
 ## Upload metadata keys
 

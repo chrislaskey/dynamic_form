@@ -1,8 +1,8 @@
 # Lifecycle Events
 
 How a form moves through its lifecycle, and how the parent LiveView is
-notified. For the submission contract itself see
-[Usage: Submitting](usage.md#submitting-on_valid_submit).
+notified. For the `on_change`/`on_submit` callback contracts see
+[Usage: Lifecycle callbacks](usage.md#lifecycle-callbacks-on_change-and-on_submit).
 
 ## Notifying the parent: `send_messages`
 
@@ -80,8 +80,8 @@ submits, and renders errors, and the parent is never notified.
 
 | Outcome | When | Payload |
 |---|---|---|
-| `{:ok, %{result: result, data: data}}` | `on_valid_submit` returned `{:ok, result}`, or no callback and the changeset was valid | `result` is the callback's return value (typically `:message`/`:data`), or `%{}` without a callback; `data` is the applied changeset data |
-| `{:error, %{changeset: changeset, reason: reason}}` | The changeset was invalid, or `on_valid_submit` returned `{:error, _}` | `changeset` carries the errors rendered inline; `reason` is an `on_valid_submit` `{:error, reason}` term, or `nil` |
+| `{:ok, %{result: result, data: data}}` | `on_submit` returned `{:ok, result}`, or no callback and the changeset was valid | `result` is the callback's return value (typically `:message`/`:data`), or `%{}` without a callback; `data` is the applied changeset data |
+| `{:error, %{changeset: changeset, reason: reason}}` | The changeset was invalid, or `on_submit` returned `{:error, _}` | `changeset` carries the errors rendered inline; `reason` is an `on_submit` `{:error, reason}` term, or `nil` |
 
 Validation (`phx-change`) does not notify the parent — inline errors and
 conditional logic are handled inside the component.
@@ -92,20 +92,23 @@ conditional logic are handled inside the component.
 internally:
 
 ```
-user types ──▶ phx-change ──▶ changeset rebuilt, conditional logic re-evaluated
+user types ──▶ phx-change ──▶ built-in validations ──▶ on_change(changeset, data)
+                              conditional logic re-evaluated
                               (inline errors display once the form has been submitted)
 
-user submits ─▶ phx-submit ─▶ changeset rebuilt
+user submits ─▶ phx-submit ─▶ built-in validations ──▶ on_change(changeset, data)
                     │
-                    ├─ invalid ──▶ {:error, payload}, errors rendered inline
+                    ├─ on_submit given ──▶ on_submit(changeset, data)   [valid or not]
+                    │      {:ok, result}       ──▶ {:ok, payload}
+                    │      {:error, changeset} ──▶ {:error, payload}, errors rendered inline
+                    │      {:error, reason}    ──▶ {:error, payload}
                     │
-                    └─ valid ──▶ on_valid_submit called (when given)
-                           {:ok, result}      ──▶ {:ok, payload}
-                           {:error, changeset} ──▶ {:error, payload}, errors copied onto the form
-                           {:error, reason}    ──▶ {:error, payload}
-                           (no callback)       ──▶ {:ok, payload} with the form data
+                    └─ no on_submit ──▶ valid   ──▶ {:ok, payload} with the form data
+                                        invalid ──▶ {:error, payload}, errors rendered inline
 ```
 
 Validation runs on every change and every submit — the component handles it
-without involving the parent LiveView. The parent hears about submissions
-when `send_messages` is enabled.
+without involving the parent LiveView. `on_change` and `on_submit` extend
+the cycle from the application side (see
+[Usage: Lifecycle callbacks](usage.md#lifecycle-callbacks-on_change-and-on_submit));
+the parent hears about submissions when `send_messages` is enabled.

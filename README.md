@@ -30,31 +30,36 @@ In declarative mode, everything is composed from slots:
 Whichever mode defines the form, the library owns the full lifecycle: an Ecto
 changeset built from the definition (types, required fields, validators),
 SurveyJS conditional expressions (`visible_if`, `required_if`, `enable_if`)
-evaluated live as the user types, direct-to-cloud file uploads, and
-submission through an `on_valid_submit` function — a Phoenix context function
-like `&Contacts.create_contact/1` fits the contract directly.
+evaluated live as the user types, direct-to-cloud file uploads, and two
+lifecycle callbacks mirroring the form's events — `on_change` to extend
+validation live, and `on_submit` for expensive checks and the action.
 
 ## Examples
 
 A form is a component call with fields in render order. Submission goes
-through `on_valid_submit` — a 1-arity function receiving the form data once
-the changeset is valid, so a context function fits directly:
+through `on_submit` — mirroring `phx-submit`, it receives the changeset and
+form data on every submit, so the app decides when to act:
 
 ```heex
-<DynamicForm.form id="contact-form" on_valid_submit={&Contacts.create_contact/1} send_messages>
+<DynamicForm.form id="contact-form" on_submit={&Contacts.submit/2} send_messages>
   <:field type="text" name="name" label="Name" required />
   <:field type="text" name="email" input_type="email" label="Email Address" required format="email" />
 </DynamicForm.form>
 ```
 
 ```elixir
+def submit(changeset, data) do
+  if changeset.valid?, do: Contacts.create_contact(data), else: {:error, changeset}
+end
+
 def handle_info({:dynamic_form_submit, _id, {:ok, %{result: contact}}}, socket) do
   {:noreply, put_flash(socket, :info, "Created contact #{contact.id}")}
 end
 ```
 
 A context `{:error, changeset}` (a uniqueness violation, say) renders its
-errors on the form automatically.
+errors on the form automatically, and an `on_change` callback extends
+validation live as the user types.
 
 Layer in validation attrs and conditional visibility — the details field only
 appears when the subject is `support`, and hidden required fields are

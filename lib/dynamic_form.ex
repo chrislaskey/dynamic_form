@@ -106,19 +106,24 @@ defmodule DynamicForm do
   submission. Exactly one of the `instance` attribute, the `json` attribute,
   or `<:field>` slots must be provided.
 
-  ## Submitting
+  ## Lifecycle callbacks
 
-  Pass a 1-arity function via `on_valid_submit` — it receives the form data
-  once the changeset is valid (invalid submissions render errors inline and
-  never reach it). Phoenix context functions fit the contract directly:
+  Two optional hooks mirror the form's `phx-change`/`phx-submit` events, both
+  receiving `(changeset, data)`:
 
-      <DynamicForm.form id="contact-form" on_valid_submit={&Contacts.create_contact/1}>
+    * `on_change` — extends validation; runs after the built-in validations
+      on every change (and during the submit validation pass) and returns a
+      changeset. Keep it cheap — it runs per keystroke.
+    * `on_submit` — runs on **every** submit, valid or not, so it can batch
+      expensive checks with the built-in errors and decide whether to perform
+      the action. Returns `{:ok, result}` or `{:error, changeset | reason}`.
+      Check `changeset.valid?` before acting.
+
+      <DynamicForm.form id="contact-form" on_submit={&Contacts.submit/2}>
         <:field type="text" name="email" label="Email" required format="email" />
       </DynamicForm.form>
 
-  The function returns `{:ok, result}`, `{:error, changeset}` (errors are
-  copied onto the form by field name), or `{:error, reason}`. See
-  `DynamicForm.RendererLive` for the full contract.
+  See `DynamicForm.RendererLive` for the full contracts.
 
   ## Declarative mode
 
@@ -188,11 +193,18 @@ defmodule DynamicForm do
   attr(:title, :string, default: nil, doc: "Instance title (declarative mode)")
   attr(:description, :string, default: nil, doc: "Instance description (declarative mode)")
 
-  attr(:on_valid_submit, :any,
+  attr(:on_change, :any,
     default: nil,
     doc:
-      "1-arity function called with the form data on valid submissions; " <>
-        "returns {:ok, result} | {:error, changeset | reason}"
+      "2-arity function (changeset, data) -> changeset, run after built-in " <>
+        "validations on every change and during the submit validation pass"
+  )
+
+  attr(:on_submit, :any,
+    default: nil,
+    doc:
+      "2-arity function (changeset, data) -> {:ok, result} | {:error, changeset | reason}, " <>
+        "run on every submit — valid or not"
   )
 
   attr(:params, :map, default: %{}, doc: "Initial form params for edit mode")
@@ -275,7 +287,8 @@ defmodule DynamicForm do
       module={DynamicForm.RendererLive}
       id={@id}
       instance={@resolved_instance}
-      on_valid_submit={@on_valid_submit}
+      on_change={@on_change}
+      on_submit={@on_submit}
       params={@params}
       form_name={@form_name}
       submit_text={@submit_text}

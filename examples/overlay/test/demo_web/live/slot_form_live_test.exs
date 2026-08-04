@@ -99,7 +99,7 @@ defmodule DemoWeb.SlotFormLiveTest do
   } do
     {:ok, view, _html} = live(conn, "/slot-forms")
 
-    # Required fields missing — the invalid changeset never reaches on_valid_submit
+    # Required fields missing — Demo.Submissions.submit/2 gates on changeset.valid?
     view
     |> form("#basic-slot-form-form", %{"dynamic_form" => %{"name" => "x"}})
     |> render_submit()
@@ -108,7 +108,7 @@ defmodule DemoWeb.SlotFormLiveTest do
     assert render(view) =~ "has errors"
   end
 
-  test "slot form submits through on_valid_submit", %{conn: conn} do
+  test "slot form submits through on_submit", %{conn: conn} do
     {:ok, view, _html} = live(conn, "/slot-forms")
 
     view
@@ -125,7 +125,30 @@ defmodule DemoWeb.SlotFormLiveTest do
     assert render(view) =~ "Submission Results"
   end
 
-  test "on_valid_submit {:error, changeset} renders context errors on the form", %{conn: conn} do
+  test "on_change adds live cross-field validation", %{conn: conn} do
+    {:ok, view, _html} = live(conn, "/slot-forms")
+
+    # $100 for 5 attendees violates the $50-per-attendee on_change rule
+    view
+    |> form("#custom-slot-form-form", %{
+      "dynamic_form" => %{"attendees" => "5", "budget" => "100"}
+    })
+    |> render_submit()
+
+    assert render(view) =~ "must be at least $50 per attendee"
+
+    # Fixing the budget clears the error live, without another submit
+    html =
+      view
+      |> form("#custom-slot-form-form", %{
+        "dynamic_form" => %{"attendees" => "5", "budget" => "500"}
+      })
+      |> render_change()
+
+    refute html =~ "must be at least $50 per attendee"
+  end
+
+  test "on_submit {:error, changeset} renders context errors on the form", %{conn: conn} do
     {:ok, view, _html} = live(conn, "/slot-forms")
 
     # Demo.Submissions.create/1 rejects this email with {:error, changeset}
