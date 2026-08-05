@@ -456,11 +456,12 @@ defmodule DemoWeb.SlotFormLive do
         <h2 class="mt-12 text-xl font-semibold text-gray-900 mb-1">6. Custom Components</h2>
         <p class="text-sm text-gray-500 mb-6">
           With <code>components={"{DemoWeb.CoreComponents}"}</code>, inputs render
-          through this app's own Phoenix-generated components (daisyUI styling
-          here) instead of the library's built-ins. Dispatch is per function:
-          text and dropdown delegate to <code>DemoWeb.CoreComponents.input/1</code>,
-          while the rating control falls back to the built-in — the app module
-          doesn't define <code>input_radio_group/1</code>.
+          through this app's own Phoenix-generated components instead of the
+          library's built-ins — restyle <code>core_components.ex</code> and every
+          dynamic form follows. Dispatch is per function: text and dropdown
+          delegate to <code>DemoWeb.CoreComponents.input/1</code>, while the
+          rating control falls back to the built-in — the app module doesn't
+          define <code>input_radio_group/1</code>.
         </p>
 
         <.definition title="Template definition" code={@src_components} />

@@ -181,8 +181,10 @@ defmodule DemoWeb.SlotFormLiveTest do
   test "custom components delegate per function with built-in fallback", %{conn: conn} do
     {:ok, view, html} = live(conn, "/slot-forms")
 
-    # The name input delegates to DemoWeb.CoreComponents.input/1 (Phoenix 1.8
-    # daisyUI markup); scope to the custom-components form
+    # The name input delegates to DemoWeb.CoreComponents.input/1. The library
+    # built-ins now share the same phx.new 1.8 markup, so these assertions
+    # smoke the integration; the library's components_test pins delegation
+    # itself with a distinctly-marked fixture module.
     [_, components_form] = String.split(html, ~s(id="custom-components-form-form"), parts: 2)
     [components_form | _] = String.split(components_form, "</form>", parts: 2)
 

@@ -43,7 +43,7 @@ perl -pi -e 's{get "/", PageController, :home}{live "/", IndexLive\n    live "/s
 rm -f demo/test/demo_web/controllers/page_controller_test.exs
 
 echo "==> Pointing Tailwind at DynamicForm's classes"
-perl -pi -e 's{\@source "\.\./\.\./lib/demo_web";}{$&\n/* DynamicForm is a path dependency here, so point Tailwind at its source\n   directly. Apps installing dynamic_form from Hex use\n   "../../deps/dynamic_form/lib" instead. */\n\@source "../../../../lib";\n\n/* DynamicForm\x27s form components are styled against \@tailwindcss/forms\n   (border widths, input appearance resets, checkbox/radio styling). The\n   Phoenix-managed standalone Tailwind CLI bundles this first-party plugin. */\n\@plugin "\@tailwindcss/forms";}' demo/assets/css/app.css
+perl -pi -e 's{\@source "\.\./\.\./lib/demo_web";}{$&\n/* DynamicForm is a path dependency here, so point Tailwind at its source\n   directly. Apps installing dynamic_form from Hex use\n   "../../deps/dynamic_form/lib" instead. DynamicForm\x27s built-in components\n   use daisyUI classes, which phx.new 1.8+ vendors by default. */\n\@source "../../../../lib";}' demo/assets/css/app.css
 
 echo "==> Registering a stub uploader for the direct-upload demo"
 perl -0777 -pi -e 's{(const liveSocket = new LiveSocket)}{// Stub uploader for the direct-upload demo: simulates a successful upload\n// without a real cloud bucket. Real apps PUT the file to the presigned URL\n// in entry.meta.url. See DynamicForm.DirectUpload.\nconst GoogleStorage = (entries, _onViewError) => {\n  entries.forEach(entry => setTimeout(() => entry.progress(100), 300))\n}\n\n$1}' demo/assets/js/app.js

@@ -21,7 +21,7 @@ The demo is generated, following the same pattern as
   two stay identical.
 - `examples/regenerate.sh` — rebuilds `demo/` from scratch with a pinned
   `phx.new` release, applies DynamicForm-specific edits (path dependency,
-  routes, Tailwind `@source` + `@tailwindcss/forms` plugin, a stub uploader
+  routes, Tailwind `@source`, a stub uploader
   for the direct-upload demo), and copies the overlay on top. Run it whenever
   the skeleton drifts out of date. Never edit generated files directly.
 

@@ -219,25 +219,25 @@ defmodule DynamicForm.CoreComponents do
   ## Examples
 
       <.button>Send!</.button>
-      <.button phx-click="go" class="ml-2">Send!</.button>
+      <.button phx-click="go" variant="primary">Send!</.button>
   """
   attr(:type, :string, default: nil)
-  attr(:class, :string, default: nil)
+  attr(:class, :any, default: nil, doc: "classes to use over the button defaults")
+  attr(:variant, :string, values: ~w(primary))
   attr(:rest, :global, include: ~w(disabled form name value))
 
   slot(:inner_block, required: true)
 
   def button(assigns) do
+    variants = %{"primary" => "btn-primary", nil => "btn-primary btn-soft"}
+
+    assigns =
+      assign_new(assigns, :button_class, fn ->
+        assigns.class || ["btn", Map.fetch!(variants, assigns[:variant])]
+      end)
+
     ~H"""
-    <button
-      type={@type}
-      class={[
-        "phx-submit-loading:opacity-75 rounded-lg bg-zinc-900 hover:bg-zinc-700 py-2 px-3",
-        "text-sm font-semibold leading-6 text-white active:text-white/80",
-        @class
-      ]}
-      {@rest}
-    >
+    <button type={@type} class={["phx-submit-loading:opacity-75", @button_class]} {@rest}>
       {render_slot(@inner_block)}
     </button>
     """
@@ -291,12 +291,7 @@ defmodule DynamicForm.CoreComponents do
       type="submit"
       form={@form}
       disabled={@disabled}
-      class={[
-        "phx-submit-loading:opacity-75 rounded-lg bg-zinc-900 hover:bg-zinc-700 py-2 px-3",
-        "text-sm font-semibold leading-6 text-white active:text-white/80",
-        "disabled:opacity-50 disabled:cursor-not-allowed",
-        @class
-      ]}
+      class={["phx-submit-loading:opacity-75 btn btn-primary", @class]}
       {@rest}
     >
       {render_slot(@inner_block)}
@@ -337,7 +332,7 @@ defmodule DynamicForm.CoreComponents do
 
   attr(:type, :string,
     default: "text",
-    values: ~w(checkbox color date datetime-local email file month number password
+    values: ~w(checkbox color date datetime-local email file hidden month number password
                range search select tel text textarea time url week radio radio-group)
   )
 
@@ -351,6 +346,8 @@ defmodule DynamicForm.CoreComponents do
   attr(:options, :list, doc: "the options to pass to Phoenix.HTML.Form.options_for_select/2")
   attr(:multiple, :boolean, default: false, doc: "the multiple flag for select inputs")
   attr(:style, :atom, doc: "the layout style for radio-group inputs (:vertical or :horizontal)")
+  attr(:class, :any, default: nil, doc: "the input class to use over defaults")
+  attr(:error_class, :any, default: nil, doc: "the input error class to use over defaults")
 
   attr(:rest, :global,
     include: ~w(accept autocomplete capture cols disabled form list max maxlength min minlength
@@ -368,6 +365,12 @@ defmodule DynamicForm.CoreComponents do
     |> input()
   end
 
+  def input(%{type: "hidden"} = assigns) do
+    ~H"""
+    <input type="hidden" id={@id} name={@name} value={@value} {@rest} />
+    """
+  end
+
   def input(%{type: "checkbox"} = assigns) do
     assigns =
       assign_new(assigns, :checked, fn ->
@@ -375,19 +378,26 @@ defmodule DynamicForm.CoreComponents do
       end)
 
     ~H"""
-    <div>
-      <label class="flex items-center gap-4 text-sm leading-6 text-zinc-600">
-        <input type="hidden" name={@name} value="false" disabled={@rest[:disabled]} />
+    <div class="fieldset mb-2">
+      <label for={@id}>
         <input
-          type="checkbox"
-          id={@id}
+          type="hidden"
           name={@name}
-          value="true"
-          checked={@checked}
-          class="rounded border-zinc-300 text-zinc-900 focus:ring-0"
-          {@rest}
+          value="false"
+          disabled={@rest[:disabled]}
+          form={@rest[:form]}
         />
-        {@label}
+        <span class="label">
+          <input
+            type="checkbox"
+            id={@id}
+            name={@name}
+            value="true"
+            checked={@checked}
+            class={@class || "checkbox checkbox-sm"}
+            {@rest}
+          />{@label}
+        </span>
       </label>
       <.error :for={msg <- @errors}>{msg}</.error>
     </div>
@@ -396,18 +406,20 @@ defmodule DynamicForm.CoreComponents do
 
   def input(%{type: "select"} = assigns) do
     ~H"""
-    <div>
-      <.label for={@id}>{@label}</.label>
-      <select
-        id={@id}
-        name={@name}
-        class="mt-2 block w-full rounded-md border border-gray-300 bg-white shadow-sm focus:border-zinc-400 focus:ring-0 sm:text-sm"
-        multiple={@multiple}
-        {@rest}
-      >
-        <option :if={@prompt} value="">{@prompt}</option>
-        {Phoenix.HTML.Form.options_for_select(@options, @value)}
-      </select>
+    <div class="fieldset mb-2">
+      <label for={@id}>
+        <span :if={@label} class="label mb-1">{@label}</span>
+        <select
+          id={@id}
+          name={@name}
+          class={[@class || "w-full select", @errors != [] && (@error_class || "select-error")]}
+          multiple={@multiple}
+          {@rest}
+        >
+          <option :if={@prompt} value="">{@prompt}</option>
+          {Phoenix.HTML.Form.options_for_select(@options, @value)}
+        </select>
+      </label>
       <.error :for={msg <- @errors}>{msg}</.error>
     </div>
     """
@@ -415,18 +427,19 @@ defmodule DynamicForm.CoreComponents do
 
   def input(%{type: "textarea"} = assigns) do
     ~H"""
-    <div>
-      <.label for={@id}>{@label}</.label>
-      <textarea
-        id={@id}
-        name={@name}
-        class={[
-          "mt-2 block w-full rounded-lg text-zinc-900 focus:ring-0 sm:text-sm sm:leading-6 min-h-[6rem]",
-          @errors == [] && "border-zinc-300 focus:border-zinc-400",
-          @errors != [] && "border-rose-400 focus:border-rose-400"
-        ]}
-        {@rest}
-      >{Phoenix.HTML.Form.normalize_value("textarea", @value)}</textarea>
+    <div class="fieldset mb-2">
+      <label for={@id}>
+        <span :if={@label} class="label mb-1">{@label}</span>
+        <textarea
+          id={@id}
+          name={@name}
+          class={[
+            @class || "w-full textarea",
+            @errors != [] && (@error_class || "textarea-error")
+          ]}
+          {@rest}
+        >{Phoenix.HTML.Form.normalize_value("textarea", @value)}</textarea>
+      </label>
       <.error :for={msg <- @errors}>{msg}</.error>
     </div>
     """
@@ -439,20 +452,21 @@ defmodule DynamicForm.CoreComponents do
   # All other inputs text, datetime-local, url, password, etc. are handled here...
   def input(assigns) do
     ~H"""
-    <div>
-      <.label for={@id}>{@label}</.label>
-      <input
-        type={@type}
-        name={@name}
-        id={@id}
-        value={Phoenix.HTML.Form.normalize_value(@type, @value)}
-        class={[
-          "mt-2 block w-full rounded-lg text-zinc-900 focus:ring-0 sm:text-sm sm:leading-6",
-          @errors == [] && "border-zinc-300 focus:border-zinc-400",
-          @errors != [] && "border-rose-400 focus:border-rose-400"
-        ]}
-        {@rest}
-      />
+    <div class="fieldset mb-2">
+      <label for={@id}>
+        <span :if={@label} class="label mb-1">{@label}</span>
+        <input
+          type={@type}
+          name={@name}
+          id={@id}
+          value={Phoenix.HTML.Form.normalize_value(@type, @value)}
+          class={[
+            @class || "w-full input",
+            @errors != [] && (@error_class || "input-error")
+          ]}
+          {@rest}
+        />
+      </label>
       <.error :for={msg <- @errors}>{msg}</.error>
     </div>
     """
@@ -466,7 +480,7 @@ defmodule DynamicForm.CoreComponents do
 
   def label(assigns) do
     ~H"""
-    <label for={@for} class="block text-sm font-semibold leading-6 text-zinc-800">
+    <label for={@for} class="label mb-1">
       {render_slot(@inner_block)}
     </label>
     """
@@ -479,8 +493,8 @@ defmodule DynamicForm.CoreComponents do
 
   def error(assigns) do
     ~H"""
-    <p class="mt-3 flex gap-3 text-sm leading-6 text-rose-600">
-      <.icon name="hero-exclamation-circle-mini" class="mt-0.5 h-5 w-5 flex-none" />
+    <p class="mt-1.5 flex gap-2 items-center text-sm text-error">
+      <.icon name="hero-exclamation-circle" class="size-5" />
       {render_slot(@inner_block)}
     </p>
     """
@@ -893,21 +907,7 @@ defmodule DynamicForm.CoreComponents do
 
   def input_radio(assigns) do
     ~H"""
-    <input
-      type="radio"
-      id={@id}
-      name={@name}
-      value={@value}
-      checked={@checked}
-      class={[
-        "size-5 mr-2 border-zinc-300 text-zinc-900 hover:border-zinc-900",
-        "placeholder:text-gray-400",
-        "checked:border-zinc-900 checked:bg-zinc-900",
-        "disabled:cursor-default disabled:border-zinc-400 disabled:bg-zinc-400",
-        "focus:outline-none focus:ring-1 focus:ring-zinc-900"
-      ]}
-      {@rest}
-    />
+    <input type="radio" id={@id} name={@name} value={@value} checked={@checked} class="radio radio-sm mr-2" {@rest} />
     """
   end
 
@@ -947,28 +947,22 @@ defmodule DynamicForm.CoreComponents do
 
   def input_radio_group(assigns) do
     ~H"""
-    <div>
-      <.label for={@id}>{@label}</.label>
+    <div class="fieldset mb-2">
+      <span :if={@label} class="label mb-1">{@label}</span>
       <div class={[
-        "flex gap-4 mt-2",
+        "flex gap-4",
         @style == :vertical && "flex-col",
         @style == :horizontal && "flex-row items-center"
       ]}>
         <%= for {text, value} <- @options do %>
-          <label class="flex items-center text-sm leading-6 text-zinc-600">
+          <label class="flex items-center gap-2 text-sm">
             <input
               type="radio"
               id={"#{@id}-#{value}"}
               name={@name}
               value={value}
               checked={to_string(@value) == to_string(value)}
-              class={[
-                "size-5 mr-2 border-zinc-300 text-zinc-900 hover:border-zinc-900",
-                "placeholder:text-gray-400",
-                "checked:border-zinc-900 checked:bg-zinc-900",
-                "disabled:cursor-default disabled:border-zinc-400 disabled:bg-zinc-400",
-                "focus:outline-none focus:ring-1 focus:ring-zinc-900"
-              ]}
+              class="radio radio-sm"
               {@rest}
             />
             {text}
@@ -1021,27 +1015,23 @@ defmodule DynamicForm.CoreComponents do
     assigns = assign(assigns, :selected, Enum.map(List.wrap(assigns.value), &to_string/1))
 
     ~H"""
-    <div>
-      <.label for={@id}>{@label}</.label>
+    <div class="fieldset mb-2">
+      <span :if={@label} class="label mb-1">{@label}</span>
       <input type="hidden" name={@name} value="" disabled={@rest[:disabled]} />
       <div class={[
-        "flex gap-4 mt-2",
+        "flex gap-4",
         @style == :vertical && "flex-col",
         @style == :horizontal && "flex-row items-center"
       ]}>
         <%= for {text, value} <- @options do %>
-          <label class="flex items-center text-sm leading-6 text-zinc-600">
+          <label class="flex items-center gap-2 text-sm">
             <input
               type="checkbox"
               id={"#{@id}-#{value}"}
               name={@name}
               value={value}
               checked={to_string(value) in @selected}
-              class={[
-                "size-5 mr-2 rounded border-zinc-300 text-zinc-900 hover:border-zinc-900",
-                "disabled:cursor-default disabled:border-zinc-400 disabled:bg-zinc-400",
-                "focus:outline-none focus:ring-1 focus:ring-zinc-900"
-              ]}
+              class="checkbox checkbox-sm"
               {@rest}
             />
             {text}

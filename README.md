@@ -182,28 +182,23 @@ end
 
 ### Tailwind CSS
 
-The components are styled with Tailwind utility classes and assume the
-[@tailwindcss/forms](https://github.com/tailwindlabs/tailwindcss-forms)
-plugin (input border widths, appearance resets, checkbox/radio styling).
+The built-in components use the same markup as `phx.new` 1.8 generates:
+Tailwind utility classes plus [daisyUI](https://daisyui.com) component
+classes (`input`, `select`, `checkbox`, `radio`, `btn`, `fieldset`, ...).
 
-Tailwind v4 (`assets/css/app.css`) — Phoenix 1.8+ generators do **not**
-include the forms plugin, so add both lines (no npm install needed; the
-Phoenix-managed standalone Tailwind CLI bundles the first-party plugins):
+Phoenix 1.8+ apps vendor daisyUI by default, so the only step is pointing
+Tailwind at DynamicForm's source in `assets/css/app.css`:
 
 ```css
 @source "../../deps/dynamic_form/lib";
-@plugin "@tailwindcss/forms";
 ```
 
-Tailwind v3 (`assets/tailwind.config.js`) — Phoenix ≤ 1.7 generators already
-include the forms plugin, so only the source path is needed:
-
-```js
-content: [
-  // ...existing paths
-  "../deps/dynamic_form/lib/**/*.ex",
-],
-```
+Apps without daisyUI (Phoenix ≤ 1.7, or apps that removed it) have two
+options: vendor daisyUI the way `phx.new` 1.8 does (see the comments in a
+freshly generated `assets/css/app.css`), or point the library at your own
+components with the `components` attribute/config — your module's markup
+then replaces the built-ins entirely (see
+[Usage: Custom components](guides/usage.md#custom-components)).
 
 ### File uploads (optional)
 

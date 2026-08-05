@@ -117,14 +117,14 @@ defmodule DynamicForm.ComponentsTest do
 
       # button/1 delegated: custom submit button replaces the built-in
       assert html =~ "data-custom-button"
-      refute html =~ "bg-indigo-600"
+      refute html =~ ~s(class="phx-submit-loading:opacity-75 btn btn-primary")
     end
 
     test "without a components module everything renders built-in" do
       html = render_form()
 
       refute html =~ "data-custom"
-      assert html =~ "bg-indigo-600"
+      assert html =~ ~s(class="phx-submit-loading:opacity-75 btn btn-primary")
     end
 
     test "the application config applies without a per-form attribute" do
