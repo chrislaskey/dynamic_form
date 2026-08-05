@@ -318,6 +318,39 @@ The Render Only section of the `/slot-forms` demo page shows the complete
 pattern. `DynamicForm.Renderer.render/1` is the underlying function
 component if you need to drive it directly.
 
+### Custom components
+
+By default DynamicForm renders inputs, labels, and errors with its built-in
+components. Point the library at your own components module — typically the
+Phoenix-generated `MyAppWeb.CoreComponents` — globally:
+
+```elixir
+config :dynamic_form, components: MyAppWeb.CoreComponents
+```
+
+or per form (the attribute wins over the config):
+
+```heex
+<DynamicForm.form id="contact-form" components={MyAppWeb.CoreComponents}>
+```
+
+Dispatch is per function with fallback: each component the renderer needs is
+looked up on your module, and anything it doesn't define renders through the
+built-ins. A stock Phoenix 1.8 `CoreComponents` works out of the box — its
+`input/1` takes over text, email, number, textarea, select, and checkbox
+controls, `button/1` takes over the submit button, and `translate_error/1`
+routes error messages through your app's Gettext — while radio groups,
+checkbox groups, rating rows, panels, and the label/error pair around
+custom-control slot bodies fall back to the built-ins unless your module
+defines them (`input_radio_group/1`, `input_checkbox_group/1`, `section/1`,
+`label/1`, `error/1`).
+
+See `DynamicForm.Components` for the full contract and the assigns each
+function receives. A module that can't be loaded raises — a typo fails
+loudly rather than silently rendering built-in styling. The Custom
+Components section of the `/slot-forms` demo page shows delegation and
+fallback side by side in one form.
+
 ## Lifecycle callbacks: `on_change` and `on_submit`
 
 Two optional hooks mirror the form's `phx-change`/`phx-submit` events. Each

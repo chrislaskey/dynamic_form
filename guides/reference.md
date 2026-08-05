@@ -20,6 +20,7 @@ Quick lookup tables. For narrative documentation see the
 | `submit_text` | string | `"Submit"` | Submit button text |
 | `hide_submit` | boolean | `false` | Hide the built-in submit button |
 | `gettext` | atom | `DynamicForm.Gettext` | Gettext backend for translations |
+| `components` | atom | `nil` | Custom components module; falls back to the `:dynamic_form, :components` config, then the built-ins per function |
 | `validation_summary` | string | `nil` | Errors at top of form: `nil`, `"simple"`, or `"detailed"` |
 | `render_only` | boolean | `false` | Render markup only: events go to the parent LiveView's `handle_event/3`; requires `form` |
 | `form` | `Phoenix.HTML.Form` | `nil` | Render-only mode: the parent-owned form to render against |
@@ -180,6 +181,21 @@ invalid); perform side effects in the parent's `handle_info/2` instead.
 
 Uploaded files are stored in the form data as maps with `filename`,
 `cloud_bucket`, `cloud_path`, `cloud_provider`, and `uploaded_on`.
+
+## Components contract
+
+Functions the renderer dispatches through the `components` module
+(per-function fallback to `DynamicForm.CoreComponents`):
+
+| Function | Renders | In Phoenix-generated CoreComponents? |
+|---|---|---|
+| `input/1` | text/email/number, textarea, select, checkbox controls | yes — works out of the box |
+| `input_radio_group/1` | radiogroup and rating questions | no — built-in fallback |
+| `input_checkbox_group/1` | multi-select checkbox groups | no — built-in fallback |
+| `label/1`, `error/1` | around custom-control slot bodies | no — built-in fallback |
+| `section/1` | panels | no — built-in fallback |
+| `button/1` | the submit button | yes — delegates |
+| `translate_error/1` | error messages via the app's Gettext | yes — delegates |
 
 ## Helper functions
 

@@ -28,6 +28,10 @@ defmodule DynamicForm.RendererLive do
     * `:hide_submit` - Whether to hide the submit button (boolean, default: `false`)
     * `:gettext` - Gettext backend module for translations (atom, default: `DynamicForm.Gettext`)
     * `:validation_summary` - Display validation errors at top of form (string, `nil`, `"simple"`, or `"detailed"`, default: `nil`)
+    * `:components` - Custom components module (e.g. the app's
+      Phoenix-generated CoreComponents); functions it exports override the
+      built-ins per function — see `DynamicForm.Components` (atom, default:
+      `nil`, falling back to the `:dynamic_form, :components` config)
 
   ## Usage
 
@@ -257,6 +261,7 @@ defmodule DynamicForm.RendererLive do
     submit_text = Map.get(assigns, :submit_text, "Submit")
     validation_summary = Map.get(assigns, :validation_summary, nil)
     uploads = assigns[:uploads] || %{}
+    components = Map.get(assigns, :components)
 
     assigns =
       assigns
@@ -264,6 +269,7 @@ defmodule DynamicForm.RendererLive do
       |> assign(:submit_text, submit_text)
       |> assign(:validation_summary, validation_summary)
       |> assign(:uploads, uploads)
+      |> assign(:components, components)
 
     ~H"""
     <div>
@@ -287,6 +293,7 @@ defmodule DynamicForm.RendererLive do
         gettext={@gettext}
         uploads={@uploads}
         parent_id={@id}
+        components={@components}
       />
     </div>
     """

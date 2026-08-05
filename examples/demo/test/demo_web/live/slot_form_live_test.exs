@@ -178,6 +178,33 @@ defmodule DemoWeb.SlotFormLiveTest do
     assert render(view) =~ "Submission Results"
   end
 
+  test "custom components delegate per function with built-in fallback", %{conn: conn} do
+    {:ok, view, html} = live(conn, "/slot-forms")
+
+    # The name input delegates to DemoWeb.CoreComponents.input/1 (Phoenix 1.8
+    # daisyUI markup); scope to the custom-components form
+    [_, components_form] = String.split(html, ~s(id="custom-components-form-form"), parts: 2)
+    [components_form | _] = String.split(components_form, "</form>", parts: 2)
+
+    assert components_form =~ "fieldset"
+    assert components_form =~ "w-full input"
+    assert components_form =~ "w-full select"
+
+    # The rating question falls back to the built-in radio group —
+    # DemoWeb.CoreComponents doesn't define input_radio_group/1
+    assert components_form =~ ~s(type="radio")
+    assert components_form =~ ~s(name="dynamic_form[fit]")
+
+    # And the form still runs the managed lifecycle: valid submit → message
+    view
+    |> form("#custom-components-form-form", %{
+      "dynamic_form" => %{"name" => "Chris", "plan" => "team", "fit" => "5"}
+    })
+    |> render_submit()
+
+    assert render(view) =~ "Submission Results"
+  end
+
   test "on_submit Payload.add_error renders submit-only checks on the form", %{conn: conn} do
     {:ok, view, _html} = live(conn, "/slot-forms")
 

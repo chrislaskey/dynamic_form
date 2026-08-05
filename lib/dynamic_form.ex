@@ -258,6 +258,14 @@ defmodule DynamicForm do
   attr(:hide_submit, :boolean, default: false, doc: "Hide the submit button")
   attr(:gettext, :atom, default: DynamicForm.Gettext, doc: "Gettext backend for translations")
 
+  attr(:components, :atom,
+    default: nil,
+    doc:
+      "Custom components module (e.g. the app's Phoenix-generated CoreComponents); " <>
+        "functions it exports override the built-ins per function. Falls back to the " <>
+        ":dynamic_form, :components config — see DynamicForm.Components"
+  )
+
   attr(:validation_summary, :string,
     default: nil,
     doc: "Display validation errors at the top of the form: nil, \"simple\", or \"detailed\""
@@ -358,6 +366,7 @@ defmodule DynamicForm do
       submit_text={@submit_text}
       hide_submit={@hide_submit}
       gettext={@gettext}
+      components={@components}
     />
     """
   end
@@ -380,6 +389,7 @@ defmodule DynamicForm do
       hide_submit={@hide_submit}
       gettext={@gettext}
       validation_summary={@validation_summary}
+      components={@components}
     />
     """
   end

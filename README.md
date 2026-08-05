@@ -39,6 +39,11 @@ completion behavior). For full control, `render_only` renders the
 definition against a parent-owned form and sends the events to the parent's
 `handle_event/3`, like an idiomatic `<form phx-change phx-submit>`.
 
+Rendering is pluggable too: point `components` (per form, or via config) at
+your app's Phoenix-generated `CoreComponents` and inputs, the submit button,
+and error translation render through it, with per-function fallback to the
+built-ins for everything it doesn't define.
+
 ## Examples
 
 A form is a component call with fields in render order. The library runs the

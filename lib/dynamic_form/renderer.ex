@@ -44,7 +44,7 @@ defmodule DynamicForm.Renderer do
 
   use Phoenix.Component
 
-  alias DynamicForm.CoreComponents
+  alias DynamicForm.Components
   alias DynamicForm.Instance
 
   attr(:instance, :any,
@@ -86,12 +86,20 @@ defmodule DynamicForm.Renderer do
     doc: "Parent component ID for LiveComponent communication"
   )
 
+  attr(:components, :atom,
+    default: nil,
+    doc:
+      "Custom components module (e.g. the app's Phoenix-generated CoreComponents); " <>
+        "functions it exports override the built-ins per function — see DynamicForm.Components"
+  )
+
   def render(assigns) do
     # Decode instance if needed
     instance = decode_instance(assigns.instance)
     submit_text = assigns.submit_text || "Submit"
     uploads = Map.get(assigns, :uploads, %{})
     parent_id = Map.get(assigns, :parent_id)
+    components = Components.resolve(Map.get(assigns, :components))
 
     assigns =
       assigns
@@ -99,6 +107,7 @@ defmodule DynamicForm.Renderer do
       |> assign(:submit_text, submit_text)
       |> assign(:uploads, uploads)
       |> assign(:parent_id, parent_id)
+      |> assign(:components, components)
 
     ~H"""
     <.form
@@ -110,24 +119,39 @@ defmodule DynamicForm.Renderer do
       phx-target={@target}
     >
       <%= for element <- visible_elements(@instance.elements, @form) do %>
-        <%= render_element(element, f, disabled: @disabled, gettext: @gettext, uploads: @uploads, parent_id: @parent_id) %>
+        <%= render_element(element, f, disabled: @disabled, gettext: @gettext, uploads: @uploads, parent_id: @parent_id, components: @components) %>
       <% end %>
 
       <div :if={!@hide_submit} class="mt-6 flex items-center justify-end gap-x-6">
-        <button
-          type="submit"
-          disabled={@disabled}
-          class="rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          <%= if @disabled do %>
-            Saving...
-          <% else %>
-            <%= @submit_text %>
-          <% end %>
-        </button>
+        <%= if Components.provides?(@components, :button) do %>
+          {Components.render(@components, :button, %{
+            type: "submit",
+            disabled: @disabled,
+            inner_block: submit_label_slot(@disabled, @submit_text)
+          })}
+        <% else %>
+          <button
+            type="submit"
+            disabled={@disabled}
+            class="rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <%= if @disabled do %>
+              Saving...
+            <% else %>
+              <%= @submit_text %>
+            <% end %>
+          </button>
+        <% end %>
       </div>
     </.form>
     """
+  end
+
+  # Minimal inner_block slot carrying the submit button label, for delegating
+  # the submit button to a components module's button/1
+  defp submit_label_slot(disabled, submit_text) do
+    text = if disabled, do: "Saving...", else: submit_text
+    [%{__slot__: :inner_block, inner_block: fn _changed, _arg -> text end}]
   end
 
   # Filter elements (questions and panels) based on visibility conditions
@@ -238,20 +262,20 @@ defmodule DynamicForm.Renderer do
       title: title,
       elements: visible_panel_elements,
       form: form,
-      opts: opts
+      opts: opts,
+      components: Keyword.get(opts, :components)
     }
 
     ~H"""
-    <CoreComponents.section title={@title}>
-      <%= for item <- @elements do %>
-        <%= case item do %>
-          <% %Instance.Question{} = question -> %>
-            <%= render_question(question, @form, @opts) %>
-          <% %Instance.Element{} = nested_element -> %>
-            <%= render_panel_or_html(nested_element, @form, @opts) %>
-        <% end %>
-      <% end %>
-    </CoreComponents.section>
+    {Components.render(@components, :section, %{
+      title: @title,
+      inner_block: [
+        %{
+          __slot__: :inner_block,
+          inner_block: fn _changed, _arg -> render_panel_elements(@elements, @form, @opts) end
+        }
+      ]
+    })}
     """
   end
 
@@ -273,6 +297,22 @@ defmodule DynamicForm.Renderer do
     """
   end
 
+  # The contents of a panel, wrapped in a slot for the section component
+  defp render_panel_elements(elements, form, opts) do
+    assigns = %{elements: elements, form: form, opts: opts}
+
+    ~H"""
+    <%= for item <- @elements do %>
+      <%= case item do %>
+        <% %Instance.Question{} = question -> %>
+          <%= render_question(question, @form, @opts) %>
+        <% %Instance.Element{} = nested_element -> %>
+          <%= render_panel_or_html(nested_element, @form, @opts) %>
+      <% end %>
+    <% end %>
+    """
+  end
+
   # Render a question defined with a slot body: the body receives the
   # Phoenix.HTML.FormField and takes over the control, while the library keeps
   # the label, description, error display, and changeset validation. E.g.
@@ -280,24 +320,35 @@ defmodule DynamicForm.Renderer do
   #   <:field type="text" name="amount" label="Amount" :let={field}>
   #     <input type="range" name={field.name} id={field.id} value={field.value} />
   #   </:field>
-  defp render_question(%Instance.Question{slot: entry} = question, form, _opts)
+  defp render_question(%Instance.Question{slot: entry} = question, form, opts)
        when not is_nil(entry) do
     field = form[String.to_atom(question.name)]
     errors = if Phoenix.Component.used_input?(field), do: field.errors, else: []
+    components = Keyword.get(opts, :components)
 
     assigns = %{
       question: question,
       field: field,
       entry: entry,
       label: question_label(question),
-      errors: Enum.map(errors, &CoreComponents.translate_error/1)
+      errors: Enum.map(errors, &Components.translate_error(components, &1)),
+      components: components
     }
 
     ~H"""
     <div class="mb-4">
-      <CoreComponents.label for={@field.id}>{@label}</CoreComponents.label>
+      {Components.render(@components, :label, %{
+        for: @field.id,
+        inner_block: [
+          %{__slot__: :inner_block, inner_block: fn _changed, _arg -> @label end}
+        ]
+      })}
       {render_slot(@entry, @field)}
-      <CoreComponents.error :for={msg <- @errors}>{msg}</CoreComponents.error>
+      <%= for msg <- @errors do %>
+        {Components.render(@components, :error, %{
+          inner_block: [%{__slot__: :inner_block, inner_block: fn _changed, _arg -> msg end}]
+        })}
+      <% end %>
       <%= if @question.description do %>
         <p class="mt-2 text-sm text-gray-500"><%= @question.description %></p>
       <% end %>
@@ -321,18 +372,19 @@ defmodule DynamicForm.Renderer do
       field_atom: field_atom,
       disabled: disabled,
       label: label,
-      input_type: input_type
+      input_type: input_type,
+      components: Keyword.get(opts, :components)
     }
 
     ~H"""
     <div class="mb-4">
-      <CoreComponents.input
-        field={@form[@field_atom]}
-        type={@input_type}
-        label={@label}
-        placeholder={@question.placeholder}
-        disabled={@disabled}
-      />
+      {Components.render(@components, :input, %{
+        field: @form[@field_atom],
+        type: @input_type,
+        label: @label,
+        placeholder: @question.placeholder,
+        disabled: @disabled
+      })}
       <%= if @question.description do %>
         <p class="mt-2 text-sm text-gray-500"><%= @question.description %></p>
       <% end %>
@@ -352,19 +404,20 @@ defmodule DynamicForm.Renderer do
       form: form,
       field_atom: field_atom,
       disabled: disabled,
-      label: label
+      label: label,
+      components: Keyword.get(opts, :components)
     }
 
     ~H"""
     <div class="mb-4">
-      <CoreComponents.input
-        field={@form[@field_atom]}
-        type="textarea"
-        label={@label}
-        placeholder={@question.placeholder}
-        disabled={@disabled}
-        rows="4"
-      />
+      {Components.render(@components, :input, %{
+        field: @form[@field_atom],
+        type: "textarea",
+        label: @label,
+        placeholder: @question.placeholder,
+        disabled: @disabled,
+        rows: "4"
+      })}
       <%= if @question.description do %>
         <p class="mt-2 text-sm text-gray-500"><%= @question.description %></p>
       <% end %>
@@ -386,19 +439,20 @@ defmodule DynamicForm.Renderer do
       field_atom: field_atom,
       disabled: disabled,
       choices: choices,
-      label: label
+      label: label,
+      components: Keyword.get(opts, :components)
     }
 
     ~H"""
     <div class="mb-4">
-      <CoreComponents.input
-        field={@form[@field_atom]}
-        type="select"
-        label={@label}
-        options={@choices}
-        prompt="Select an option..."
-        disabled={@disabled}
-      />
+      {Components.render(@components, :input, %{
+        field: @form[@field_atom],
+        type: "select",
+        label: @label,
+        options: @choices,
+        prompt: "Select an option...",
+        disabled: @disabled
+      })}
       <%= if @question.description do %>
         <p class="mt-2 text-sm text-gray-500"><%= @question.description %></p>
       <% end %>
@@ -431,18 +485,19 @@ defmodule DynamicForm.Renderer do
       disabled: disabled,
       choices: choices,
       label: label,
-      style: style
+      style: style,
+      components: Keyword.get(opts, :components)
     }
 
     ~H"""
     <div class="mb-4">
-      <CoreComponents.input_radio_group
-        field={@form[@field_atom]}
-        label={@label}
-        options={@choices}
-        style={@style}
-        disabled={@disabled}
-      />
+      {Components.render(@components, :input_radio_group, %{
+        field: @form[@field_atom],
+        label: @label,
+        options: @choices,
+        style: @style,
+        disabled: @disabled
+      })}
       <%= if @question.description do %>
         <p class="mt-2 text-sm text-gray-500"><%= @question.description %></p>
       <% end %>
@@ -470,17 +525,18 @@ defmodule DynamicForm.Renderer do
       form: form,
       field_atom: field_atom,
       disabled: disabled,
-      label: label
+      label: label,
+      components: Keyword.get(opts, :components)
     }
 
     ~H"""
     <div class="mb-4">
-      <CoreComponents.input
-        field={@form[@field_atom]}
-        type="checkbox"
-        label={@label}
-        disabled={@disabled}
-      />
+      {Components.render(@components, :input, %{
+        field: @form[@field_atom],
+        type: "checkbox",
+        label: @label,
+        disabled: @disabled
+      })}
     </div>
     """
   end
@@ -533,18 +589,19 @@ defmodule DynamicForm.Renderer do
       disabled: disabled,
       choices: choices,
       label: label,
-      style: style
+      style: style,
+      components: Keyword.get(opts, :components)
     }
 
     ~H"""
     <div class="mb-4">
-      <CoreComponents.input_checkbox_group
-        field={@form[@field_atom]}
-        label={@label}
-        options={@choices}
-        style={@style}
-        disabled={@disabled}
-      />
+      {Components.render(@components, :input_checkbox_group, %{
+        field: @form[@field_atom],
+        label: @label,
+        options: @choices,
+        style: @style,
+        disabled: @disabled
+      })}
       <%= if @question.description do %>
         <p class="mt-2 text-sm text-gray-500"><%= @question.description %></p>
       <% end %>
@@ -565,19 +622,20 @@ defmodule DynamicForm.Renderer do
       field_atom: field_atom,
       disabled: disabled,
       choices: choices,
-      label: label
+      label: label,
+      components: Keyword.get(opts, :components)
     }
 
     ~H"""
     <div class="mb-4">
-      <CoreComponents.input
-        field={@form[@field_atom]}
-        type="select"
-        label={@label}
-        options={@choices}
-        multiple={true}
-        disabled={@disabled}
-      />
+      {Components.render(@components, :input, %{
+        field: @form[@field_atom],
+        type: "select",
+        label: @label,
+        options: @choices,
+        multiple: true,
+        disabled: @disabled
+      })}
       <%= if @question.description do %>
         <p class="mt-2 text-sm text-gray-500"><%= @question.description %></p>
       <% end %>
@@ -607,18 +665,19 @@ defmodule DynamicForm.Renderer do
       field_atom: field_atom,
       disabled: disabled,
       choices: choices,
-      label: label
+      label: label,
+      components: Keyword.get(opts, :components)
     }
 
     ~H"""
     <div class="mb-4">
-      <CoreComponents.input_radio_group
-        field={@form[@field_atom]}
-        label={@label}
-        options={@choices}
-        style={:horizontal}
-        disabled={@disabled}
-      />
+      {Components.render(@components, :input_radio_group, %{
+        field: @form[@field_atom],
+        label: @label,
+        options: @choices,
+        style: :horizontal,
+        disabled: @disabled
+      })}
       <%= if @question.description do %>
         <p class="mt-2 text-sm text-gray-500"><%= @question.description %></p>
       <% end %>

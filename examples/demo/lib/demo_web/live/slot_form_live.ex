@@ -11,6 +11,9 @@ defmodule DemoWeb.SlotFormLive do
     definition-equality guard)
   - Render-only mode: the definition drives presentation while this LiveView
     owns the changeset and handles the events
+  - Custom components: `components={DemoWeb.CoreComponents}` renders inputs
+    through the app's own Phoenix-generated components, with per-function
+    fallback to the built-ins
   """
 
   use DemoWeb, :live_view
@@ -132,6 +135,18 @@ defmodule DemoWeb.SlotFormLive do
   end
   """
 
+  @src_components ~S"""
+  <DynamicForm.form id="custom-components-form" components={DemoWeb.CoreComponents}>
+    <:field type="text" name="name" label="Name" required />
+    <:field type="dropdown" name="plan" label="Plan" required
+            options={[{"Starter", "starter"}, {"Team", "team"}, {"Enterprise", "enterprise"}]} />
+    <:field type="rating" name="fit" label="How good a fit is it?" rate_min={1} rate_max={5} />
+  </DynamicForm.form>
+
+  # Or set it globally instead:
+  #   config :dynamic_form, components: DemoWeb.CoreComponents
+  """
+
   @impl true
   def mount(_params, _session, socket) do
     {:ok,
@@ -144,7 +159,8 @@ defmodule DemoWeb.SlotFormLive do
        src_groups: @src_groups,
        src_custom: @src_custom,
        src_data: @src_data,
-       src_render_only: @src_render_only
+       src_render_only: @src_render_only,
+       src_components: @src_components
      )}
   end
 
@@ -433,6 +449,33 @@ defmodule DemoWeb.SlotFormLive do
           <DynamicForm.form id="render-only-form" render_only form={@ro_form}>
             <:field type="text" name="name" label="Name" required />
             <:field type="comment" name="feedback" label="Feedback" required />
+          </DynamicForm.form>
+        </div>
+
+        <%!-- 6. Custom components --%>
+        <h2 class="mt-12 text-xl font-semibold text-gray-900 mb-1">6. Custom Components</h2>
+        <p class="text-sm text-gray-500 mb-6">
+          With <code>components={"{DemoWeb.CoreComponents}"}</code>, inputs render
+          through this app's own Phoenix-generated components (daisyUI styling
+          here) instead of the library's built-ins. Dispatch is per function:
+          text and dropdown delegate to <code>DemoWeb.CoreComponents.input/1</code>,
+          while the rating control falls back to the built-in — the app module
+          doesn't define <code>input_radio_group/1</code>.
+        </p>
+
+        <.definition title="Template definition" code={@src_components} />
+
+        <div class="rounded-lg bg-white shadow-sm ring-1 ring-gray-900/5 p-6">
+          <DynamicForm.form id="custom-components-form" components={DemoWeb.CoreComponents}>
+            <:field type="text" name="name" label="Name" required />
+            <:field
+              type="dropdown"
+              name="plan"
+              label="Plan"
+              required
+              options={[{"Starter", "starter"}, {"Team", "team"}, {"Enterprise", "enterprise"}]}
+            />
+            <:field type="rating" name="fit" label="How good a fit is it?" rate_min={1} rate_max={5} />
           </DynamicForm.form>
         </div>
 
