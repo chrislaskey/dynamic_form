@@ -366,6 +366,53 @@ defmodule DynamicForm.ChangesetTest do
     end
   end
 
+  # Browsers submit "" for every untouched text/number input. These pin that
+  # empty strings are treated as empty values, not cast as real ones.
+  describe "create_changeset/2 - empty string params" do
+    test "empty strings fail required validation" do
+      instance = %Instance{
+        id: "blank-required-form",
+        elements: [
+          %Instance.Question{name: "name", type: "text", isRequired: true},
+          %Instance.Question{name: "city", type: "text", isRequired: true}
+        ]
+      }
+
+      changeset = Changeset.create_changeset(instance, %{"name" => "", "city" => ""})
+
+      refute changeset.valid?
+      assert {"can't be blank", _} = changeset.errors[:name]
+      assert {"can't be blank", _} = changeset.errors[:city]
+    end
+
+    test "an empty string on an optional number field is not a cast error" do
+      instance = %Instance{
+        id: "optional-number-form",
+        elements: [
+          %Instance.Question{name: "name", type: "text", isRequired: true},
+          %Instance.Question{name: "age", type: "text", inputType: "number"}
+        ]
+      }
+
+      changeset =
+        Changeset.create_changeset(instance, %{"name" => "Chris", "age" => ""})
+
+      assert changeset.valid?
+      assert Ecto.Changeset.get_change(changeset, :age) == nil
+    end
+
+    test "an empty string on an optional rating field is not a cast error" do
+      instance = %Instance{
+        id: "optional-rating-form",
+        elements: [%Instance.Question{name: "score", type: "rating"}]
+      }
+
+      changeset = Changeset.create_changeset(instance, %{"score" => ""})
+
+      assert changeset.valid?
+    end
+  end
+
   describe "create_changeset/2 - file uploads" do
     test "decodes JSON-encoded file upload params" do
       instance = %Instance{

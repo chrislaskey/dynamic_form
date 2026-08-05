@@ -141,8 +141,7 @@ defmodule DemoWeb.FormTestComponentLive do
                 Defining <code class="bg-white px-1 rounded">on_success</code>
                 replaces the default message: the function is called with the payload on
                 every valid submission instead. Use it to send a differently-shaped message
-                (this page sends
-                <code class="bg-white px-1 rounded">&lbrace;:custom_success, data&rbrace;</code>),
+                (this page sends <code class="bg-white px-1 rounded">&lbrace;:custom_success, data&rbrace;</code>),
                 broadcast over PubSub, or make the form fully self-contained.
               </p>
             </div>

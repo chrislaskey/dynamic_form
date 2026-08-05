@@ -181,7 +181,8 @@ defmodule DemoWeb.RenderLive do
                 automatically handles the changeset creation and validation.
               </p>
               <p class="mt-1 text-xs text-gray-600">
-                Valid submissions arrive as <code class="bg-white px-1 rounded">&lbrace;:dynamic_form, payload&rbrace;</code>
+                Valid submissions arrive as
+                <code class="bg-white px-1 rounded">&lbrace;:dynamic_form, payload&rbrace;</code>
                 messages via <code class="bg-white px-1 rounded">handle_info/2</code>,
                 allowing the parent LiveView to update state and display the submitted data.
               </p>

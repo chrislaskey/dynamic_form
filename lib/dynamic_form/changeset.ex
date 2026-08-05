@@ -49,8 +49,13 @@ defmodule DynamicForm.Changeset do
       |> decode_upload_params(questions)
       |> normalize_array_params(questions)
 
+    # Ecto's default empty_values treats the "" a browser submits for every
+    # untouched input as empty: required fields error with "can't be blank"
+    # and optional non-string fields (number, rating) skip the cast instead
+    # of failing it. Array fields are unaffected — normalize_array_params
+    # handles their hidden-input empty strings above.
     {%{}, types}
-    |> Ecto.Changeset.cast(decoded_params, Map.keys(types), empty_values: [])
+    |> Ecto.Changeset.cast(decoded_params, Map.keys(types))
     |> Ecto.Changeset.validate_required(required_fields)
     |> apply_custom_validations(questions)
   end

@@ -99,7 +99,8 @@ defmodule DemoWeb.SlotFormLiveTest do
   } do
     {:ok, view, _html} = live(conn, "/slot-forms")
 
-    # The one-character name violates min_length — errors render inline; no
+    # The one-character name violates min_length and the untouched required
+    # fields (email, subject) submit "" — all errors render inline; no
     # {:dynamic_form, _} message reaches the parent, so no submission result
     # appears
     html =
@@ -108,6 +109,7 @@ defmodule DemoWeb.SlotFormLiveTest do
       |> render_submit()
 
     assert html =~ "should be at least 2 character(s)"
+    assert html =~ "can&#39;t be blank"
     refute render(view) =~ "Submission Results"
   end
 

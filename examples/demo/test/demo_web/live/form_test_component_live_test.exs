@@ -3,16 +3,14 @@ defmodule DemoWeb.FormTestComponentLiveTest do
 
   import Phoenix.LiveViewTest
 
-  # priority is optional but must be present: the browser submits "" for an
-  # untouched number input, and create_changeset casts with empty_values: []
-  # so "" fails the decimal cast
+  # Optional fields (like the priority number input) are omitted: the ""
+  # a browser submits for untouched inputs is treated as an empty value
   @valid_params %{
     "dynamic_form" => %{
       "name" => "Chris Laskey",
       "email" => "chris@example.com",
       "subject" => "general",
-      "message" => "Hello from the test suite",
-      "priority" => "5"
+      "message" => "Hello from the test suite"
     }
   }
 
