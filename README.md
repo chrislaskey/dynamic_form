@@ -136,6 +136,14 @@ Every example runs live in the demo app — the
 each definition alongside its rendered form. Every feature is explained in
 depth in the [Usage guide](guides/usage.md).
 
+**Data**
+
+Use the `data` attribute to prefill the form with existing data:
+
+```heex
+<DynamicForm.form id="contact-form" data={%{email: "hello@world.com"}} />
+```
+
 ## Demo app
 
 The `/examples` directory contains a full Phoenix demo app exercising every
@@ -179,8 +187,7 @@ in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:dynamic_form, path: "../dynamic_form"}
-    # or: {:dynamic_form, git: "https://github.com/chrislaskey/dynamic_form.git"}
+    {:dynamic_form, "~> 1.0"}
   ]
 end
 ```

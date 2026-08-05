@@ -76,7 +76,7 @@ defmodule DemoWeb.RenderLive do
         <%= if @mode == :edit do %>
           <.definition
             title="Initial Params (edit mode)"
-            subtitle="Passed as params={...}; the definition below stays the same, with the email field switched to readOnly"
+            subtitle="Passed as data={...}; the definition below stays the same, with the email field switched to readOnly"
             code={inspect(sample_edit_data(), pretty: true)}
           />
         <% end %>
@@ -99,7 +99,7 @@ defmodule DemoWeb.RenderLive do
               id="contact-form"
               instance={@create_form}
               on_submit={&Demo.Submissions.verify/1}
-              params={%{}}
+              data={%{}}
               submit_text="Create Contact"
             />
           <% end %>
@@ -115,7 +115,7 @@ defmodule DemoWeb.RenderLive do
               id="contact-form-edit"
               instance={@edit_form}
               on_submit={&Demo.Submissions.verify/1}
-              params={sample_edit_data()}
+              data={sample_edit_data()}
               submit_text="Update Contact"
             />
           <% end %>
@@ -152,7 +152,7 @@ defmodule DemoWeb.RenderLive do
               <h4 class="font-semibold">Create Mode</h4>
               <p class="mt-1">
                 The form is initialized with empty params:
-                <code class="bg-white px-2 py-1 rounded">params={inspect(%{})}</code>
+                <code class="bg-white px-2 py-1 rounded">data={inspect(%{})}</code>
               </p>
             </div>
             <div>
@@ -160,7 +160,7 @@ defmodule DemoWeb.RenderLive do
               <p class="mt-1">
                 The form is initialized with existing data:
                 <code class="bg-white px-2 py-1 rounded">
-                  params={inspect(%{"name" => "...", "email" => "..."})}
+                  data={inspect(%{"name" => "...", "email" => "..."})}
                 </code>
               </p>
               <p class="mt-1 text-xs text-gray-600">
@@ -176,7 +176,7 @@ defmodule DemoWeb.RenderLive do
                 Both modes use the same
                 <code class="bg-white px-2 py-1 rounded">DynamicForm.RendererLive</code>
                 component,
-                just with different <code class="bg-white px-2 py-1 rounded">:params</code>
+                just with different <code class="bg-white px-2 py-1 rounded">:data</code>
                 values. The component
                 automatically handles the changeset creation and validation.
               </p>

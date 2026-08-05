@@ -22,8 +22,9 @@ defmodule DynamicForm.RendererLive do
     * `:on_success` - 1-arity function `(payload)` run on every valid
       submission *instead of* the default `{:dynamic_form, payload}` message
       to the parent LiveView (default: `nil`; see "Messages" below)
-    * `:params` - Initial form params for edit mode (map, default: `%{}`)
-    * `:form_name` - Form namespace for params (string, default: `"dynamic_form"`)
+    * `:data` - Initial form data for edit mode — existing record values;
+      a payload's `data` round-trips directly (map, default: `%{}`)
+    * `:form_name` - Form namespace for submitted params (string, default: `"dynamic_form"`)
     * `:submit_text` - Submit button text (string, default: `"Submit"`, not required when `hide_submit` is `true`)
     * `:hide_submit` - Whether to hide the submit button (boolean, default: `false`)
     * `:gettext` - Gettext backend module for translations (atom, default: `DynamicForm.Gettext`)
@@ -74,7 +75,7 @@ defmodule DynamicForm.RendererLive do
         module={DynamicForm.RendererLive}
         id="user-profile"
         instance={@form_instance}
-        params={%{"name" => "John", "email" => "john@example.com"}}
+        data={%{"name" => "John", "email" => "john@example.com"}}
         form_name="user_profile"
       />
 
@@ -84,7 +85,7 @@ defmodule DynamicForm.RendererLive do
   Disabled fields are displayed but cannot be edited by the user.
 
   **Important**: Disabled HTML fields are not submitted by browsers, so their values
-  are automatically preserved by merging the initial `:params` with form submissions.
+  are automatically preserved by merging the initial `:data` with form submissions.
   This ensures disabled field values remain in the changeset throughout validation
   and submission.
 
@@ -191,13 +192,13 @@ defmodule DynamicForm.RendererLive do
 
     form_name = Map.get(assigns, :form_name, "dynamic_form")
 
-    initial_params =
+    initial_data =
       assigns
-      |> Map.get(:params, %{})
+      |> Map.get(:data, %{})
       |> apply_default_values(instance)
 
-    if definition_unchanged?(socket, instance, initial_params, form_name) do
-      # The form definition and initial params are the same — keep the live
+    if definition_unchanged?(socket, instance, initial_data, form_name) do
+      # The form definition and initial data are the same — keep the live
       # changeset so a parent re-render doesn't wipe in-progress user input.
       # The fresh instance is still assigned because slot-defined elements may
       # carry new closures that must re-render with current parent assigns.
@@ -205,12 +206,12 @@ defmodule DynamicForm.RendererLive do
        socket
        |> assign(assigns)
        |> assign(:instance, instance)
-       |> assign(:initial_params, initial_params)}
+       |> assign(:initial_data, initial_data)}
     else
       gettext = Map.get(assigns, :gettext, DynamicForm.Gettext)
 
       changeset =
-        Changeset.create_changeset(instance, initial_params,
+        Changeset.create_changeset(instance, initial_data,
           custom_field_types: Map.get(assigns, :custom_field_types)
         )
 
@@ -223,7 +224,7 @@ defmodule DynamicForm.RendererLive do
         |> assign(:changeset, changeset)
         |> assign(:form, form)
         |> assign(:form_name, form_name)
-        |> assign(:initial_params, initial_params)
+        |> assign(:initial_data, initial_data)
         |> assign(:gettext, gettext)
         |> assign(:submitting, false)
         |> allow_uploads_for_direct_upload_fields(instance)
@@ -233,15 +234,15 @@ defmodule DynamicForm.RendererLive do
   end
 
   # True when the component is already initialized and neither the form
-  # definition nor the initial params changed. Instances are compared with
+  # definition nor the initial data changed. Instances are compared with
   # their slot entries stripped: slot bodies hold closures over the parent's
   # assigns, which compare unequal whenever those assigns change even though
   # the form definition itself is identical.
-  defp definition_unchanged?(socket, instance, initial_params, form_name) do
+  defp definition_unchanged?(socket, instance, initial_data, form_name) do
     Map.has_key?(socket.assigns, :changeset) and
       form_name == socket.assigns.form_name and
       Instance.strip_slots(instance) == Instance.strip_slots(socket.assigns.instance) and
-      initial_params == socket.assigns.initial_params
+      initial_data == socket.assigns.initial_data
   end
 
   defp handle_delete_file_update(assigns, socket) do
@@ -317,7 +318,7 @@ defmodule DynamicForm.RendererLive do
   @impl true
   def handle_event("validate", params, socket) do
     form_params = Map.get(params, socket.assigns.form_name, %{})
-    merged_params = merge_data(socket.assigns.initial_params, form_params)
+    merged_params = merge_data(socket.assigns.initial_data, form_params)
 
     payload =
       socket.assigns.instance
@@ -339,7 +340,7 @@ defmodule DynamicForm.RendererLive do
   @impl true
   def handle_event("submit", params, socket) do
     form_params = Map.get(params, socket.assigns.form_name, %{})
-    merged_params = merge_data(socket.assigns.initial_params, form_params)
+    merged_params = merge_data(socket.assigns.initial_data, form_params)
 
     socket = assign(socket, :submitting, true)
 
@@ -364,7 +365,7 @@ defmodule DynamicForm.RendererLive do
 
   # Helpers - Data
 
-  # Seed initial params with each question's defaultValue. Explicitly provided
+  # Seed initial data with each question's defaultValue. Explicitly provided
   # params always win over defaults.
   defp apply_default_values(params, instance) do
     params = recursively_convert_to_string_keys(params)
@@ -379,7 +380,7 @@ defmodule DynamicForm.RendererLive do
     end)
   end
 
-  defp merge_data(initial_params, changeset_data) do
+  defp merge_data(initial_data, changeset_data) do
     # Merging data helps solve a few different scenarios:
     #
     # - Editing an existing record that has additional fields like `id` we want
@@ -390,7 +391,7 @@ defmodule DynamicForm.RendererLive do
     # - Handling disabled fields. Disabled inputs aren't included in the changeset
     #   which can cause disabled field values to disappear.
     #
-    initial = recursively_convert_to_string_keys(initial_params)
+    initial = recursively_convert_to_string_keys(initial_data)
     changeset = recursively_convert_to_string_keys(changeset_data)
 
     Map.merge(initial, changeset)

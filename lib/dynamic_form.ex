@@ -204,7 +204,7 @@ defmodule DynamicForm do
   visibility — while the parent's changeset drives the data. Override the
   event names with `phx_change` and `phx_submit`.
 
-  Lifecycle attributes (`on_change`, `on_submit`, `on_success`, `params`,
+  Lifecycle attributes (`on_change`, `on_submit`, `on_success`, `data`,
   `form_name`, `validation_summary`) have no meaning without the managed
   lifecycle and raise. File upload questions require the stateful component
   and raise.
@@ -244,8 +244,14 @@ defmodule DynamicForm do
         "every submit — valid or not"
   )
 
-  attr(:params, :map, default: %{}, doc: "Initial form params for edit mode")
-  attr(:form_name, :string, default: "dynamic_form", doc: "Form namespace for params")
+  attr(:data, :map,
+    default: %{},
+    doc:
+      "Initial form data for edit mode — existing record values (a payload's " <>
+        "data round-trips directly)"
+  )
+
+  attr(:form_name, :string, default: "dynamic_form", doc: "Form namespace for submitted params")
   attr(:submit_text, :string, default: "Submit", doc: "Submit button text")
 
   attr(:on_success, :any,
@@ -393,7 +399,7 @@ defmodule DynamicForm do
       on_change={@on_change}
       on_submit={@on_submit}
       on_success={@on_success}
-      params={@params}
+      data={@data}
       form_name={@form_name}
       submit_text={@submit_text}
       hide_submit={@hide_submit}
@@ -422,7 +428,7 @@ defmodule DynamicForm do
         validation_summary: assigns.validation_summary
       ]
       |> Enum.reject(fn {_attr, value} -> is_nil(value) end)
-      |> then(&if assigns.params == %{}, do: &1, else: [{:params, assigns.params} | &1])
+      |> then(&if assigns.data == %{}, do: &1, else: [{:data, assigns.data} | &1])
       |> then(
         &if assigns.form_name == "dynamic_form",
           do: &1,

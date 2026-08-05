@@ -15,7 +15,7 @@ Quick lookup tables. For narrative documentation see the
 | `on_change` | function | `nil` | 1-arity `(payload) -> payload`, after built-in validations on every change and during the submit validation pass |
 | `on_submit` | function | `nil` | 1-arity `(payload) -> payload`, on every submit — valid or not |
 | `on_success` | function | `nil` | 1-arity `(payload)`, on every valid submission — replaces the default `{:dynamic_form, payload}` message |
-| `params` | map | `%{}` | Initial form params for edit mode |
+| `data` | map | `%{}` | Initial form data for edit mode — existing record values; a payload's `data` round-trips directly |
 | `form_name` | string | `"dynamic_form"` | Form namespace for params |
 | `submit_text` | string | `"Submit"` | Submit button text |
 | `hide_submit` | boolean | `false` | Hide the built-in submit button |
@@ -30,11 +30,11 @@ Quick lookup tables. For narrative documentation see the
 
 Exactly one of `instance`, `json`, or `<:field>` slots must be provided.
 `render_only` excludes the lifecycle attributes (`on_change`, `on_submit`,
-`on_success`, `params`, `form_name`, `validation_summary`) and file upload
+`on_success`, `data`, `form_name`, `validation_summary`) and file upload
 questions — both raise.
 
 `DynamicForm.RendererLive` (used directly via `<.live_component>`) accepts
-`id`, `instance`, and the same optional attributes from `params` down.
+`id`, `instance`, and the same optional attributes from `data` down.
 
 ## `<:field>` attributes
 

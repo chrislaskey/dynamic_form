@@ -106,7 +106,7 @@ register their own types — see
 | `multipletext` | Multiple inputs in one question |
 | `signaturepad`, `imagepicker`, `ranking`, `slider` | Specialized input widgets |
 | `expression` questions, calculated values, triggers | No expression *evaluation* beyond the conditional operators above (`setValueIf`, `runexpression`, quiz scoring, ...) |
-| `expression` and `answercount` validators | Use [`on_change`](usage.md#lifecycle-callbacks-on_change-and-on_submit) for cross-field validation |
+| `expression` and `answercount` validators | Use [`on_change`](lifecycle.md#optional-enhancement-on_change) for cross-field validation |
 | Multi-page navigation | Pages are flattened into one form — no page-by-page navigation, progress bar, or per-page validation |
 | Choice loading (`choicesByUrl`, lazy loading) | Provide choices in the definition |
 | `showOtherItem` / `showNoneItem` / `showSelectAllItem` | Choice extras |

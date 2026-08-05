@@ -195,8 +195,8 @@ and `on_submit`, which run *alongside* the built-in behavior, `on_success`
 
 ## More details
 
-See [Usage: Lifecycle callbacks](usage.md#lifecycle-callbacks-on_change-and-on_submit)
-for the full contracts.
+See the [Reference](reference.md#lifecycle-callback-contracts) for the
+callback signatures and the payload fields in table form.
 
 ## Architecture
 
@@ -219,10 +219,9 @@ user submits ─▶ phx-submit ─▶ built-in validations ──▶ on_change(p
 
 Validation runs on every change and every submit — the component handles it
 without involving the parent LiveView. `on_change` and `on_submit` extend
-the cycle from the application side (see
-[Usage: Lifecycle callbacks](usage.md#lifecycle-callbacks-on_change-and-on_submit));
-the parent hears about valid submissions and performs the side effect in
-`handle_info/2`, unless `on_success` overrides how success completes.
+the cycle from the application side; the parent hears about valid
+submissions and performs the side effect in `handle_info/2`, unless
+`on_success` overrides how success completes.
 
 To opt out of the managed lifecycle entirely, use
 [render-only mode](usage.md#render-only-mode): the definition renders

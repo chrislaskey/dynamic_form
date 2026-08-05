@@ -197,7 +197,7 @@ The unified entry point. Requires exactly one of the `instance` attribute
 <DynamicForm.form
   id="profile-form"
   instance={@form_instance}
-  params={%{"name" => "Jane"}}
+  data={%{"name" => "Jane"}}
   form_name="profile"
   submit_text="Save Profile"
   validation_summary="detailed"
@@ -210,20 +210,20 @@ directly with `<.live_component>` is equivalent.
 
 ### Edit mode
 
-Pre-populate a form by passing `params`. Fields marked `read_only`
+Pre-populate a form by passing `data`. Fields marked `read_only`
 (`readOnly` in data mode) display their values but can't be edited — and
-because browsers don't submit read-only/disabled inputs, the initial params
+because browsers don't submit read-only/disabled inputs, the initial data
 are merged back into every submission so those values survive validation:
 
 ```heex
 <DynamicForm.form
   id="user-profile"
   instance={@form_instance}
-  params={%{"id" => @user.id, "name" => @user.name, "email" => @user.email}}
+  data={%{"id" => .id, "name" => .name, "email" => .email}}
 />
 ```
 
-Extra keys in `params` that have no matching question (like `id` above) are
+Extra keys in `data` that have no matching question (like `id` above) are
 preserved through submission the same way.
 
 ### Messages
@@ -310,7 +310,7 @@ end
 ```
 
 Override the event names with `phx_change` and `phx_submit`. The lifecycle
-attributes (`on_change`, `on_submit`, `on_success`, `params`, `form_name`,
+attributes (`on_change`, `on_submit`, `on_success`, `data`, `form_name`,
 `validation_summary`) have no meaning without the managed lifecycle and
 raise, and file upload questions require the stateful component.
 
@@ -410,74 +410,17 @@ in production), while a *registered* type without a matching `input/1`
 clause falls to the module's catch-all and renders as a plain text input —
 a graceful degradation that still round-trips the value.
 
-## Lifecycle callbacks: `on_change` and `on_submit`
+## Lifecycle callbacks
 
-Two optional hooks mirror the form's `phx-change`/`phx-submit` events. Each
-is a 1-arity function that receives a `DynamicForm.Payload` — the changeset
-after the built-in validations, the applied `data`, and an `extra` map —
-and returns the payload, transformed or untouched.
+Three optional hooks let the application participate in the form lifecycle:
+`on_change` extends validation live as the user types, `on_submit` batches
+expensive submit-only checks (each receives a `DynamicForm.Payload` and
+returns it), and `on_success` replaces the default success message for
+forms that complete some other way.
 
-Both hooks extend **validation**, and the changeset's `valid?` flag is the
-single source of truth for whether the submission is valid. To reject a
-submission, add an error with `DynamicForm.Payload.add_error/4`. Side
-effects (database writes, emails, navigation) belong in the parent's
-`handle_info/2`, which only hears about valid submissions.
-
-### `on_change` — extend validation live
-
-Runs after the built-in validations on every change (and during the submit
-validation pass). Use it for cheap, synchronous rules the built-in
-validators can't express — errors it adds render inline live and clear as
-the user fixes fields:
-
-```heex
-<DynamicForm.form id="signup" on_change={&password_confirmation/1}>
-```
-
-```elixir
-defp password_confirmation(payload) do
-  if payload.data[:password] == payload.data[:password_confirmation] do
-    payload
-  else
-    DynamicForm.Payload.add_error(payload, :password_confirmation, "does not match")
-  end
-end
-```
-
-Keep it cheap — it runs per keystroke.
-
-### `on_submit` — expensive, submit-only checks
-
-Runs on **every** submit — valid or not — so it can batch expensive checks
-(third-party APIs, database lookups) with the built-in errors into one
-complete error list. Uniqueness-style checks that a context would normally
-catch at insert time belong here, so their errors render on the form:
-
-```heex
-<DynamicForm.form id="contact-form" on_submit={&Contacts.verify/1}>
-  <:field type="text" name="email" label="Email" required format="email" />
-</DynamicForm.form>
-```
-
-```elixir
-def verify(payload) do
-  case verify_phone_number(payload.data[:phone]) do   # expensive, submit-only
-    {:ok, normalized} ->
-      DynamicForm.Payload.put_extra(payload, :normalized_phone, normalized)
-
-    :error ->
-      DynamicForm.Payload.add_error(payload, :phone, "is not a valid phone number")
-  end
-end
-```
-
-When the returned payload is valid, it's delivered to the parent in the
-`{:dynamic_form, payload}` message — including anything stored in `extra` —
-and the parent performs the action. When it's invalid, the errors render
-inline and the parent is never messaged.
-
-Without `on_submit`, a valid submission delivers the payload as-is and an
-invalid one renders its errors inline.
+They are documented in one place — the
+[Lifecycle events guide](lifecycle.md) — with the signatures summarized in
+the [Reference](reference.md#lifecycle-callback-contracts).
 
 ## File uploads
 

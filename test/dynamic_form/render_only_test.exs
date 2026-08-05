@@ -98,7 +98,7 @@ defmodule DynamicForm.RenderOnlyTest do
             [on_change: fn payload -> payload end],
             [on_submit: fn payload -> payload end],
             [on_success: fn _payload -> :ok end],
-            [params: %{"name" => "Chris"}],
+            [data: %{"name" => "Chris"}],
             [form_name: "custom"],
             [validation_summary: "detailed"]
           ] do
