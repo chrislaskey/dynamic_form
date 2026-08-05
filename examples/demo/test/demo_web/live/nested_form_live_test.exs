@@ -10,33 +10,33 @@ defmodule DemoWeb.NestedFormLiveTest do
     refute html =~ ~s(name="dynamic_form[addresses][1][street]")
     assert html =~ "Add another address"
     # minPanelCount: 1 — the only panel can't be removed
-    refute html =~ ~s(phx-click="remove_entry")
+    refute html =~ ~s(phx-click="remove_nested_entry")
   end
 
-  test "add_entry appends an entry, remove_entry deletes it", %{conn: conn} do
+  test "add_nested_entry appends an entry, remove_nested_entry deletes it", %{conn: conn} do
     {:ok, view, _html} = live(conn, "/nested-forms")
 
     html =
       view
-      |> element(~s{button[phx-click="add_entry"][phx-value-path="addresses"]})
+      |> element(~s{button[phx-click="add_nested_entry"][phx-value-path="addresses"]})
       |> render_click()
 
     assert html =~ ~s(name="dynamic_form[addresses][1][street]")
     assert html =~ "Address 2"
     # Two panels now — above minPanelCount, so remove buttons appear
-    assert html =~ ~s(phx-click="remove_entry")
+    assert html =~ ~s(phx-click="remove_nested_entry")
 
     html =
       view
       |> element(
-        ~s{button[phx-click="remove_entry"][phx-value-path="addresses"][phx-value-index="1"]}
+        ~s{button[phx-click="remove_nested_entry"][phx-value-path="addresses"][phx-value-index="1"]}
       )
       |> render_click()
 
     refute html =~ ~s(name="dynamic_form[addresses][1][street]")
   end
 
-  test "add_entry preserves values already typed into other panels", %{conn: conn} do
+  test "add_nested_entry preserves values already typed into other panels", %{conn: conn} do
     {:ok, view, _html} = live(conn, "/nested-forms")
 
     view
@@ -50,7 +50,7 @@ defmodule DemoWeb.NestedFormLiveTest do
 
     html =
       view
-      |> element(~s{button[phx-click="add_entry"]})
+      |> element(~s{button[phx-click="add_nested_entry"]})
       |> render_click()
 
     assert html =~ ~s(value="110 Main St")
@@ -82,7 +82,7 @@ defmodule DemoWeb.NestedFormLiveTest do
     {:ok, view, _html} = live(conn, "/nested-forms")
 
     view
-    |> element(~s{button[phx-click="add_entry"]})
+    |> element(~s{button[phx-click="add_nested_entry"]})
     |> render_click()
 
     view
@@ -111,7 +111,7 @@ defmodule DemoWeb.NestedFormLiveTest do
     {:ok, view, _html} = live(conn, "/nested-forms")
 
     view
-    |> element(~s{button[phx-click="add_entry"]})
+    |> element(~s{button[phx-click="add_nested_entry"]})
     |> render_click()
 
     html =

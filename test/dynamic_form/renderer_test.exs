@@ -323,10 +323,10 @@ defmodule DynamicForm.RendererTest do
           %{"addresses" => [%{"street" => "x", "city" => "y"}]}
         )
 
-      assert html =~ ~s(phx-click="add_entry")
+      assert html =~ ~s(phx-click="add_nested_entry")
       assert html =~ ~s(phx-value-path="addresses")
       assert html =~ "Add address"
-      assert html =~ ~s(phx-click="remove_entry")
+      assert html =~ ~s(phx-click="remove_nested_entry")
       assert html =~ ~s(phx-value-index="0")
     end
 
@@ -349,7 +349,7 @@ defmodule DynamicForm.RendererTest do
         )
 
       assert html =~ "No addresses yet."
-      refute html =~ ~s(phx-click="remove_entry")
+      refute html =~ ~s(phx-click="remove_nested_entry")
     end
 
     test "hides add at maxPanelCount and remove at minPanelCount" do
@@ -359,8 +359,8 @@ defmodule DynamicForm.RendererTest do
           %{"addresses" => [%{"street" => "x", "city" => "y"}]}
         )
 
-      refute html =~ ~s(phx-click="add_entry")
-      refute html =~ ~s(phx-click="remove_entry")
+      refute html =~ ~s(phx-click="add_nested_entry")
+      refute html =~ ~s(phx-click="remove_nested_entry")
     end
 
     test "confirmDelete adds a data-confirm attribute" do

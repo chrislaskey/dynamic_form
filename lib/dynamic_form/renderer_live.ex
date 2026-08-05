@@ -342,7 +342,7 @@ defmodule DynamicForm.RendererLive do
   # ("addresses", or "contacts.0.phones" when nested inside another
   # nested form).
   @impl true
-  def handle_event("add_entry", %{"path" => path}, socket) do
+  def handle_event("add_nested_entry", %{"path" => path}, socket) do
     segments = String.split(path, ".")
     question = find_nested_question(socket.assigns.instance.elements, List.last(segments))
     seed = NestedForms.new_entry(question)
@@ -356,7 +356,7 @@ defmodule DynamicForm.RendererLive do
   end
 
   @impl true
-  def handle_event("remove_entry", %{"path" => path, "index" => index}, socket) do
+  def handle_event("remove_nested_entry", %{"path" => path, "index" => index}, socket) do
     segments = String.split(path, ".")
     index = String.to_integer(index)
 

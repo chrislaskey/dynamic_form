@@ -689,7 +689,7 @@ defmodule DynamicForm.Renderer do
   # built by DynamicForm.NestedForms.entry_changesets/3 — the same function the
   # validation path uses, so rendered errors always match validation.
   #
-  # The add/remove buttons emit "add_entry"/"remove_entry" events carrying a
+  # The add/remove buttons emit "add_nested_entry"/"remove_nested_entry" events carrying a
   # dot-separated `path` (e.g. "addresses" or "contacts.0.phones" when
   # nested). DynamicForm.RendererLive handles these automatically; standalone
   # Renderer users must handle them in their own LiveView.
@@ -716,8 +716,8 @@ defmodule DynamicForm.Renderer do
       path: Enum.join(Keyword.get(opts, :entry_path, []) ++ [question.name], "."),
       target: Keyword.get(opts, :target),
       confirm_text: entry_confirm_text(question),
-      show_add?: show_add_entry?(question, count, disabled),
-      show_remove?: show_remove_entry?(question, count, disabled)
+      show_add?: show_add_nested_entry?(question, count, disabled),
+      show_remove?: show_remove_nested_entry?(question, count, disabled)
     }
 
     ~H"""
@@ -745,7 +745,7 @@ defmodule DynamicForm.Renderer do
           <button
             :if={@show_remove?}
             type="button"
-            phx-click="remove_entry"
+            phx-click="remove_nested_entry"
             phx-value-path={@path}
             phx-value-index={index}
             phx-target={@target}
@@ -765,7 +765,7 @@ defmodule DynamicForm.Renderer do
       <div :if={@show_add?} class="mt-3">
         <button
           type="button"
-          phx-click="add_entry"
+          phx-click="add_nested_entry"
           phx-value-path={@path}
           phx-target={@target}
           class="btn btn-sm"
@@ -876,12 +876,12 @@ defmodule DynamicForm.Renderer do
 
   defp entry_confirm_text(_question), do: nil
 
-  defp show_add_entry?(question, count, disabled) do
+  defp show_add_nested_entry?(question, count, disabled) do
     question.allowAddPanel != false && !disabled &&
       (is_nil(question.maxPanelCount) || count < question.maxPanelCount)
   end
 
-  defp show_remove_entry?(question, count, disabled) do
+  defp show_remove_nested_entry?(question, count, disabled) do
     question.allowRemovePanel != false && !disabled && count > (question.minPanelCount || 0)
   end
 
