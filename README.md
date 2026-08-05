@@ -35,7 +35,9 @@ lifecycle callbacks mirroring the form's events — `on_change` to extend
 validation live, and `on_submit` for expensive submit-only checks. Valid
 submissions message the parent LiveView, where the application performs the
 side effect (or define `on_success` to replace the message with custom
-completion behavior).
+completion behavior). For full control, `render_only` renders the
+definition against a parent-owned form and sends the events to the parent's
+`handle_event/3`, like an idiomatic `<form phx-change phx-submit>`.
 
 ## Examples
 

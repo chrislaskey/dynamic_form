@@ -281,35 +281,42 @@ Display errors at the top of the form in addition to inline errors:
 `validation_summary="simple"` shows a generic message,
 `validation_summary="detailed"` adds a list of each field error.
 
-### Stateless rendering
+### Render-only mode
 
-For full control over form state, skip the LiveComponent and use the pure
-function component — your LiveView owns the changeset and the
-`validate`/`submit` events:
+For full control over the form lifecycle, add `render_only` and pass the
+parent-owned form: the component renders the definition's markup and emits
+`phx-change`/`phx-submit` with no `phx-target`, so events land in the parent
+LiveView's `handle_event/3` — exactly like an idiomatic
+`<form phx-change="validate" phx-submit="submit">`. The definition drives
+presentation (inputs, labels, errors, conditional visibility); the parent's
+changeset drives the data:
 
 ```heex
-<DynamicForm.Renderer.render
-  instance={@form_instance}
-  form={@form}
-  phx_submit="submit"
-  phx_change="validate"
-  form_id="my-form"
-/>
+<DynamicForm.form id="signup" render_only form={@form}>
+  <:field type="text" name="name" label="Name" required />
+  <:field type="text" name="email" input_type="email" label="Email" required />
+</DynamicForm.form>
 ```
 
 ```elixir
-def handle_event("validate", %{"form" => params}, socket) do
-  changeset =
-    socket.assigns.form_instance
-    |> DynamicForm.Changeset.create_changeset(params)
-    |> Map.put(:action, :validate)
+def handle_event("validate", %{"signup" => params}, socket) do
+  changeset = Accounts.change_user(%User{}, params) |> Map.put(:action, :validate)
+  {:noreply, assign(socket, form: to_form(changeset, as: "signup"))}
+end
 
-  {:noreply, assign(socket, form: to_form(changeset, as: "form"))}
+def handle_event("submit", %{"signup" => params}, socket) do
+  # entirely yours
 end
 ```
 
-`DynamicForm.Changeset.create_changeset/2` builds the changeset from any
-instance; the `/form-test` demo page shows the complete pattern.
+Override the event names with `phx_change` and `phx_submit`. The lifecycle
+attributes (`on_change`, `on_submit`, `on_success`, `params`, `form_name`,
+`validation_summary`) have no meaning without the managed lifecycle and
+raise, and file upload questions require the stateful component.
+
+The Render Only section of the `/slot-forms` demo page shows the complete
+pattern. `DynamicForm.Renderer.render/1` is the underlying function
+component if you need to drive it directly.
 
 ## Lifecycle callbacks: `on_change` and `on_submit`
 

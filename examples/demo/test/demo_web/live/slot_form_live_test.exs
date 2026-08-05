@@ -153,6 +153,31 @@ defmodule DemoWeb.SlotFormLiveTest do
     refute html =~ "must be at least $50 per attendee"
   end
 
+  test "render-only form events are handled by the parent LiveView", %{conn: conn} do
+    {:ok, view, _html} = live(conn, "/slot-forms")
+
+    # Invalid: feedback too short — the parent's own changeset (not the
+    # library's) produces the error, rendered through the definition
+    html =
+      view
+      |> form("#render-only-form-form", %{
+        "feedback" => %{"name" => "Chris", "feedback" => "short"}
+      })
+      |> render_submit()
+
+    assert html =~ "should be at least 10 character(s)"
+    refute render(view) =~ "Submission Results"
+
+    # Valid: the parent's handle_event("submit", ...) stores the result
+    view
+    |> form("#render-only-form-form", %{
+      "feedback" => %{"name" => "Chris", "feedback" => "This library is great!"}
+    })
+    |> render_submit()
+
+    assert render(view) =~ "Submission Results"
+  end
+
   test "on_submit Payload.add_error renders submit-only checks on the form", %{conn: conn} do
     {:ok, view, _html} = live(conn, "/slot-forms")
 

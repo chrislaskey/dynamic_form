@@ -9,6 +9,8 @@ defmodule DemoWeb.SlotFormLive do
     and fully custom elements with `:let={form}`
   - Input preservation across parent re-renders (the RendererLive
     definition-equality guard)
+  - Render-only mode: the definition drives presentation while this LiveView
+    owns the changeset and handles the events
   """
 
   use DemoWeb, :live_view
@@ -97,6 +99,39 @@ defmodule DemoWeb.SlotFormLive do
   />
   """
 
+  @src_render_only ~S"""
+  <DynamicForm.form id="render-only-form" render_only form={@ro_form}>
+    <:field type="text" name="name" label="Name" required />
+    <:field type="comment" name="feedback" label="Feedback" required />
+  </DynamicForm.form>
+
+  # The parent LiveView owns the changeset and handles the events:
+
+  defp ro_changeset(params) do
+    {%{}, %{name: :string, feedback: :string}}
+    |> Ecto.Changeset.cast(params, [:name, :feedback])
+    |> Ecto.Changeset.validate_required([:name, :feedback])
+    |> Ecto.Changeset.validate_length(:feedback, min: 10)
+  end
+
+  def handle_event("validate", %{"feedback" => params}, socket) do
+    form = params |> ro_changeset() |> Map.put(:action, :validate) |> to_form(as: "feedback")
+    {:noreply, assign(socket, :ro_form, form)}
+  end
+
+  def handle_event("submit", %{"feedback" => params}, socket) do
+    changeset = ro_changeset(params)
+
+    if changeset.valid? do
+      data = Ecto.Changeset.apply_changes(changeset)
+      # entirely yours: insert, navigate, broadcast, ...
+    else
+      form = changeset |> Map.put(:action, :validate) |> to_form(as: "feedback")
+      {:noreply, assign(socket, :ro_form, form)}
+    end
+  end
+  """
+
   @impl true
   def mount(_params, _session, socket) do
     {:ok,
@@ -104,16 +139,51 @@ defmodule DemoWeb.SlotFormLive do
        company_name: "Acme Corp",
        render_count: 0,
        results: %{},
+       ro_form: to_form(ro_changeset(%{}), as: "feedback"),
        src_basic: @src_basic,
        src_groups: @src_groups,
        src_custom: @src_custom,
-       src_data: @src_data
+       src_data: @src_data,
+       src_render_only: @src_render_only
      )}
   end
 
   @impl true
   def handle_event("bump_render_count", _params, socket) do
     {:noreply, update(socket, :render_count, &(&1 + 1))}
+  end
+
+  # Render-only mode: this LiveView owns the changeset and the events, just
+  # like an idiomatic <form phx-change="validate" phx-submit="submit">.
+  @impl true
+  def handle_event("validate", %{"feedback" => params}, socket) do
+    form = params |> ro_changeset() |> Map.put(:action, :validate) |> to_form(as: "feedback")
+    {:noreply, assign(socket, :ro_form, form)}
+  end
+
+  @impl true
+  def handle_event("submit", %{"feedback" => params}, socket) do
+    changeset = ro_changeset(params)
+
+    if changeset.valid? do
+      data = Ecto.Changeset.apply_changes(changeset)
+
+      {:noreply,
+       socket
+       |> update(:results, &Map.put(&1, "render-only-form", data))
+       |> assign(:ro_form, to_form(ro_changeset(%{}), as: "feedback"))
+       |> put_flash(:info, "Form render-only-form submitted successfully")}
+    else
+      form = changeset |> Map.put(:action, :validate) |> to_form(as: "feedback")
+      {:noreply, assign(socket, :ro_form, form)}
+    end
+  end
+
+  defp ro_changeset(params) do
+    {%{}, %{name: :string, feedback: :string}}
+    |> Ecto.Changeset.cast(params, [:name, :feedback])
+    |> Ecto.Changeset.validate_required([:name, :feedback])
+    |> Ecto.Changeset.validate_length(:feedback, min: 10)
   end
 
   # An on_change callback: a cheap cross-field rule the built-in validators
@@ -345,6 +415,25 @@ defmodule DemoWeb.SlotFormLive do
             id="data-mode-form"
             instance={Demo.FormInstances.contact_form()}
           />
+        </div>
+
+        <%!-- 5. Render-only mode --%>
+        <h2 class="mt-12 text-xl font-semibold text-gray-900 mb-1">5. Render Only</h2>
+        <p class="text-sm text-gray-500 mb-6">
+          With <code>render_only</code>, the definition drives the presentation
+          while this LiveView owns the changeset — events land in <code>handle_event/3</code>
+          with no <code>phx-target</code>, exactly like an idiomatic <code>&lt;form phx-change="validate" phx-submit="submit"&gt;</code>.
+          Validation here comes from the parent's own schemaless changeset
+          (feedback requires 10+ characters).
+        </p>
+
+        <.definition title="Template definition + parent LiveView" code={@src_render_only} />
+
+        <div class="rounded-lg bg-white shadow-sm ring-1 ring-gray-900/5 p-6">
+          <DynamicForm.form id="render-only-form" render_only form={@ro_form}>
+            <:field type="text" name="name" label="Name" required />
+            <:field type="comment" name="feedback" label="Feedback" required />
+          </DynamicForm.form>
         </div>
 
         <%!-- Submission results --%>

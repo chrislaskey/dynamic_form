@@ -94,7 +94,7 @@ defmodule DynamicForm do
   # This module defines its own form/1 component, shadowing Phoenix.Component's
   import Phoenix.Component, except: [form: 1]
 
-  alias DynamicForm.Instance
+  alias DynamicForm.{Changeset, Instance, Renderer}
 
   defdelegate submit_button(assigns), to: DynamicForm.RendererLive
 
@@ -177,6 +177,37 @@ defmodule DynamicForm do
   Slot bodies are in-memory only: instances containing them JSON-encode
   without the bodies, and such forms cannot round-trip through the WYSIWYG
   builder.
+
+  ## Render-only mode
+
+  For full control over the form lifecycle, `render_only` renders the markup
+  only — no LiveComponent, no managed state. Events are emitted without a
+  `phx-target`, so they land in the parent LiveView's `handle_event/3`
+  exactly like an idiomatic `<form phx-change="validate" phx-submit="submit">`,
+  and the parent owns the form state, passing its `Phoenix.HTML.Form` in:
+
+      <DynamicForm.form id="signup" render_only form={@form}>
+        <:field type="text" name="name" label="Name" required />
+        <:field type="text" name="email" input_type="email" label="Email" required />
+      </DynamicForm.form>
+
+      def handle_event("validate", %{"signup" => params}, socket) do
+        changeset = Accounts.change_user(%User{}, params) |> Map.put(:action, :validate)
+        {:noreply, assign(socket, form: to_form(changeset, as: "signup"))}
+      end
+
+      def handle_event("submit", %{"signup" => params}, socket) do
+        # entirely yours
+      end
+
+  The definition drives presentation — markup, labels, errors, conditional
+  visibility — while the parent's changeset drives the data. Override the
+  event names with `phx_change` and `phx_submit`.
+
+  Lifecycle attributes (`on_change`, `on_submit`, `on_success`, `params`,
+  `form_name`, `validation_summary`) have no meaning without the managed
+  lifecycle and raise. File upload questions require the stateful component
+  and raise.
   """
   attr(:id, :string,
     required: true,
@@ -230,6 +261,28 @@ defmodule DynamicForm do
   attr(:validation_summary, :string,
     default: nil,
     doc: "Display validation errors at the top of the form: nil, \"simple\", or \"detailed\""
+  )
+
+  attr(:render_only, :boolean,
+    default: false,
+    doc:
+      "Render the form markup only: events go to the parent LiveView's " <>
+        "handle_event/3 and the parent owns the form state. Requires form."
+  )
+
+  attr(:form, :any,
+    default: nil,
+    doc: "Render-only mode: the parent-owned Phoenix.HTML.Form to render against"
+  )
+
+  attr(:phx_change, :string,
+    default: nil,
+    doc: ~s|Render-only mode: change event name (default "validate")|
+  )
+
+  attr(:phx_submit, :string,
+    default: nil,
+    doc: ~s|Render-only mode: submit event name (default "submit")|
   )
 
   slot :field, doc: "Form elements in render order (declarative mode)" do
@@ -286,8 +339,32 @@ defmodule DynamicForm do
     attr(:enable_if, :string)
   end
 
+  def form(%{render_only: true} = assigns) do
+    assigns = assign(assigns, :resolved_instance, resolve_instance(assigns))
+    validate_render_only!(assigns)
+
+    assigns =
+      assigns
+      |> assign(:phx_change, assigns.phx_change || "validate")
+      |> assign(:phx_submit, assigns.phx_submit || "submit")
+
+    ~H"""
+    <Renderer.render
+      instance={@resolved_instance}
+      form={@form}
+      phx_change={@phx_change}
+      phx_submit={@phx_submit}
+      form_id={"#{@id}-form"}
+      submit_text={@submit_text}
+      hide_submit={@hide_submit}
+      gettext={@gettext}
+    />
+    """
+  end
+
   def form(assigns) do
     assigns = assign(assigns, :resolved_instance, resolve_instance(assigns))
+    validate_stateful!(assigns)
 
     ~H"""
     <.live_component
@@ -305,6 +382,67 @@ defmodule DynamicForm do
       validation_summary={@validation_summary}
     />
     """
+  end
+
+  # Render-only mode renders markup against a parent-owned form — attributes
+  # that configure the managed lifecycle have no meaning there and raise.
+  defp validate_render_only!(assigns) do
+    unless match?(%Phoenix.HTML.Form{}, assigns.form) do
+      raise ArgumentError,
+            "DynamicForm.form id=#{inspect(assigns.id)} render_only requires the form " <>
+              "attribute with the parent-owned Phoenix.HTML.Form, got: #{inspect(assigns.form)}"
+    end
+
+    invalid =
+      [
+        on_change: assigns.on_change,
+        on_submit: assigns.on_submit,
+        on_success: assigns.on_success,
+        validation_summary: assigns.validation_summary
+      ]
+      |> Enum.reject(fn {_attr, value} -> is_nil(value) end)
+      |> then(&if assigns.params == %{}, do: &1, else: [{:params, assigns.params} | &1])
+      |> then(
+        &if assigns.form_name == "dynamic_form",
+          do: &1,
+          else: [{:form_name, assigns.form_name} | &1]
+      )
+      |> Enum.map(fn {attr, _value} -> attr end)
+
+    if invalid != [] do
+      raise ArgumentError,
+            "DynamicForm.form id=#{inspect(assigns.id)} render_only renders markup only — " <>
+              "the parent LiveView owns the form lifecycle. " <>
+              "Remove: #{Enum.join(invalid, ", ")}"
+    end
+
+    file_questions =
+      assigns.resolved_instance.elements
+      |> Changeset.get_questions()
+      |> Enum.filter(&(&1.type == "file"))
+
+    if file_questions != [] do
+      raise ArgumentError,
+            "DynamicForm.form id=#{inspect(assigns.id)} render_only does not support " <>
+              "file upload questions (#{Enum.map_join(file_questions, ", ", & &1.name)}) — " <>
+              "uploads require the stateful component"
+    end
+  end
+
+  # The stateful component owns the form and its events — the render-only
+  # attributes conflict with that and raise.
+  defp validate_stateful!(assigns) do
+    invalid =
+      [form: assigns.form, phx_change: assigns.phx_change, phx_submit: assigns.phx_submit]
+      |> Enum.reject(fn {_attr, value} -> is_nil(value) end)
+      |> Enum.map(fn {attr, _value} -> attr end)
+
+    if invalid != [] do
+      raise ArgumentError,
+            "DynamicForm.form id=#{inspect(assigns.id)} received " <>
+              "#{Enum.join(invalid, ", ")} without render_only — the component owns the " <>
+              "form and its events unless render_only is set"
+    end
   end
 
   # The form definition comes from exactly one of three modes: the instance

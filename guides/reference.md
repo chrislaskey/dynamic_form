@@ -21,8 +21,15 @@ Quick lookup tables. For narrative documentation see the
 | `hide_submit` | boolean | `false` | Hide the built-in submit button |
 | `gettext` | atom | `DynamicForm.Gettext` | Gettext backend for translations |
 | `validation_summary` | string | `nil` | Errors at top of form: `nil`, `"simple"`, or `"detailed"` |
+| `render_only` | boolean | `false` | Render markup only: events go to the parent LiveView's `handle_event/3`; requires `form` |
+| `form` | `Phoenix.HTML.Form` | `nil` | Render-only mode: the parent-owned form to render against |
+| `phx_change` | string | `"validate"` | Render-only mode: change event name |
+| `phx_submit` | string | `"submit"` | Render-only mode: submit event name |
 
 Exactly one of `instance`, `json`, or `<:field>` slots must be provided.
+`render_only` excludes the lifecycle attributes (`on_change`, `on_submit`,
+`on_success`, `params`, `form_name`, `validation_summary`) and file upload
+questions — both raise.
 
 `DynamicForm.RendererLive` (used directly via `<.live_component>`) accepts
 `id`, `instance`, and the same optional attributes from `params` down.

@@ -223,3 +223,8 @@ the cycle from the application side (see
 [Usage: Lifecycle callbacks](usage.md#lifecycle-callbacks-on_change-and-on_submit));
 the parent hears about valid submissions and performs the side effect in
 `handle_info/2`, unless `on_success` overrides how success completes.
+
+To opt out of the managed lifecycle entirely, use
+[render-only mode](usage.md#render-only-mode): the definition renders
+against a parent-owned form and the parent handles the
+`phx-change`/`phx-submit` events itself.
