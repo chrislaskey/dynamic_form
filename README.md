@@ -161,6 +161,8 @@ layout tweaks — lives in the overlay; edit there, copy over the demo
 - **[Lifecycle events](guides/lifecycle.md)** — the form lifecycle, the
   `{:dynamic_form, payload}` message, and the `on_change`/`on_submit`/
   `on_success` hooks
+- **[Styling](guides/styling.md)** — the default daisyUI styling, custom
+  components modules, and per-field markup overrides
 - **[Reference](guides/reference.md)** — quick tables for every attribute,
   slot, question type, validator, and expression operator
 - **[Development](guides/development.md)** — the demo app workflow,
@@ -197,8 +199,8 @@ Apps without daisyUI (Phoenix ≤ 1.7, or apps that removed it) have two
 options: vendor daisyUI the way `phx.new` 1.8 does (see the comments in a
 freshly generated `assets/css/app.css`), or point the library at your own
 components with the `components` attribute/config — your module's markup
-then replaces the built-ins entirely (see
-[Usage: Custom components](guides/usage.md#custom-components)).
+then replaces the built-ins entirely. See the
+[Styling guide](guides/styling.md) for every customization level.
 
 ### File uploads (optional)
 

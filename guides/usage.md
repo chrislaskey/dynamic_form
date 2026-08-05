@@ -346,10 +346,12 @@ defines them (`input_radio_group/1`, `input_checkbox_group/1`, `section/1`,
 `label/1`, `error/1`).
 
 See `DynamicForm.Components` for the full contract and the assigns each
-function receives. A module that can't be loaded raises — a typo fails
-loudly rather than silently rendering built-in styling. The Custom
-Components section of the `/slot-forms` demo page shows delegation and
-fallback side by side in one form.
+function receives, and the [Styling guide](styling.md) for the complete
+styling story — including writing partial modules and per-field overrides.
+A module that can't be loaded raises — a typo fails loudly rather than
+silently rendering built-in styling. The Custom Components section of the
+`/slot-forms` demo page shows delegation and fallback side by side in one
+form.
 
 ## Lifecycle callbacks: `on_change` and `on_submit`
 
