@@ -30,7 +30,9 @@ In declarative mode, everything is composed from slots:
 Whichever mode defines the form, the library owns the full lifecycle: an Ecto
 changeset built from the definition (types, required fields, validators),
 SurveyJS conditional expressions (`visible_if`, `required_if`, `enable_if`)
-evaluated live as the user types, direct-to-cloud file uploads, and
+evaluated live as the user types, nested/repeating child forms the user adds
+and removes (SurveyJS `paneldynamic`, validated per entry with child
+changesets), direct-to-cloud file uploads, and
 lifecycle callbacks mirroring the form's events — `on_change` to extend
 validation live, and `on_submit` for expensive submit-only checks. Valid
 submissions message the parent LiveView, where the application performs the

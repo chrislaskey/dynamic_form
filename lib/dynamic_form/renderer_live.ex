@@ -337,6 +337,36 @@ defmodule DynamicForm.RendererLive do
      |> assign(:form, form)}
   end
 
+  # Append a freshly seeded entry to a paneldynamic question's value. `path`
+  # is the dot-separated location of the question in the params tree
+  # ("addresses", or "contacts.0.phones" when nested inside another panel).
+  @impl true
+  def handle_event("add_panel", %{"path" => path}, socket) do
+    segments = String.split(path, ".")
+    question = find_panel_question(socket.assigns.instance.elements, List.last(segments))
+    seed = Changeset.new_panel_entry(question)
+
+    params =
+      update_panel_list(socket.assigns.changeset.params, segments, fn entries ->
+        entries ++ [seed]
+      end)
+
+    {:noreply, rebuild_form(socket, params)}
+  end
+
+  @impl true
+  def handle_event("remove_panel", %{"path" => path, "index" => index}, socket) do
+    segments = String.split(path, ".")
+    index = String.to_integer(index)
+
+    params =
+      update_panel_list(socket.assigns.changeset.params, segments, fn entries ->
+        List.delete_at(entries, index)
+      end)
+
+    {:noreply, rebuild_form(socket, params)}
+  end
+
   @impl true
   def handle_event("submit", params, socket) do
     form_params = Map.get(params, socket.assigns.form_name, %{})
@@ -378,6 +408,71 @@ defmodule DynamicForm.RendererLive do
         default -> Map.put_new(acc, question.name, default)
       end
     end)
+    |> seed_panel_entries(instance)
+  end
+
+  # Paneldynamic questions without initial data start with panelCount seeded
+  # entries (at least minPanelCount), mirroring SurveyJS.
+  defp seed_panel_entries(params, instance) do
+    instance.elements
+    |> Changeset.get_questions()
+    |> Enum.filter(&(&1.type == "paneldynamic"))
+    |> Enum.reduce(params, fn question, acc ->
+      count = max(question.panelCount || 0, question.minPanelCount || 0)
+      entries = List.duplicate(Changeset.new_panel_entry(question), count)
+      Map.put_new(acc, question.name, entries)
+    end)
+  end
+
+  # Walk the params tree along a dot-separated panel path and update the
+  # entry list at its end. Intermediate segments alternate between map keys
+  # (question names) and list indexes (panel entries).
+  defp update_panel_list(params, [name], fun) when is_map(params) do
+    entries = params |> Map.get(name) |> Changeset.panel_entries()
+    Map.put(params, name, fun.(entries))
+  end
+
+  defp update_panel_list(params, [name | rest], fun) when is_map(params) do
+    Map.put(params, name, update_panel_list(Map.get(params, name) || %{}, rest, fun))
+  end
+
+  defp update_panel_list(entries, [index | rest], fun) when is_list(entries) do
+    List.update_at(entries, String.to_integer(index), &update_panel_list(&1, rest, fun))
+  end
+
+  # Find a paneldynamic question by name, searching nested elements and
+  # paneldynamic templates.
+  defp find_panel_question(elements, name) when is_list(elements) do
+    Enum.find_value(elements, fn
+      %Instance.Question{type: "paneldynamic", name: ^name} = question ->
+        question
+
+      %Instance.Question{type: "paneldynamic", templateElements: nested} when is_list(nested) ->
+        find_panel_question(nested, name)
+
+      %Instance.Element{elements: nested} when is_list(nested) ->
+        find_panel_question(nested, name)
+
+      _ ->
+        nil
+    end)
+  end
+
+  defp find_panel_question(_, _), do: nil
+
+  # Revalidate after a panel add/remove, preserving the current action so
+  # error display doesn't change mid-edit.
+  defp rebuild_form(socket, params) do
+    changeset =
+      socket.assigns.instance
+      |> Changeset.create_changeset(params,
+        custom_field_types: socket.assigns[:custom_field_types]
+      )
+      |> Map.put(:action, socket.assigns.changeset.action)
+
+    socket
+    |> assign(:changeset, changeset)
+    |> assign(:form, to_form(changeset, as: socket.assigns.form_name))
   end
 
   defp merge_data(initial_data, changeset_data) do

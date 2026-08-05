@@ -281,4 +281,156 @@ defmodule DynamicForm.RendererTest do
       assert html =~ "disabled"
     end
   end
+
+  describe "paneldynamic questions" do
+    defp addresses_question(overrides) do
+      struct!(
+        %Instance.Question{
+          name: "addresses",
+          type: "paneldynamic",
+          title: "Addresses",
+          templateElements: [
+            %Instance.Question{name: "street", type: "text", title: "Street"},
+            %Instance.Question{name: "city", type: "text", title: "City"}
+          ]
+        },
+        overrides
+      )
+    end
+
+    test "renders one namespaced sub-form per entry" do
+      html =
+        render_instance(
+          instance_with([addresses_question([])]),
+          %{
+            "addresses" => [
+              %{"street" => "110 Main St", "city" => "Portland"},
+              %{"street" => "13 Dearborn", "city" => "Boston"}
+            ]
+          }
+        )
+
+      assert html =~ ~s(name="dynamic_form[addresses][0][street]")
+      assert html =~ ~s(name="dynamic_form[addresses][1][street]")
+      assert html =~ ~s(value="110 Main St")
+      assert html =~ ~s(value="13 Dearborn")
+    end
+
+    test "renders add and remove buttons with the question path" do
+      html =
+        render_instance(
+          instance_with([addresses_question(addPanelText: "Add address")]),
+          %{"addresses" => [%{"street" => "x", "city" => "y"}]}
+        )
+
+      assert html =~ ~s(phx-click="add_panel")
+      assert html =~ ~s(phx-value-path="addresses")
+      assert html =~ "Add address"
+      assert html =~ ~s(phx-click="remove_panel")
+      assert html =~ ~s(phx-value-index="0")
+    end
+
+    test "renders templateTitle with panelIndex substitution" do
+      html =
+        render_instance(
+          instance_with([addresses_question(templateTitle: "Address {panelIndex}")]),
+          %{"addresses" => [%{}, %{}]}
+        )
+
+      assert html =~ "Address 1"
+      assert html =~ "Address 2"
+    end
+
+    test "renders noEntriesText and no remove button when empty" do
+      html =
+        render_instance(
+          instance_with([addresses_question(noEntriesText: "No addresses yet.")]),
+          %{"addresses" => []}
+        )
+
+      assert html =~ "No addresses yet."
+      refute html =~ ~s(phx-click="remove_panel")
+    end
+
+    test "hides add at maxPanelCount and remove at minPanelCount" do
+      html =
+        render_instance(
+          instance_with([addresses_question(minPanelCount: 1, maxPanelCount: 1)]),
+          %{"addresses" => [%{"street" => "x", "city" => "y"}]}
+        )
+
+      refute html =~ ~s(phx-click="add_panel")
+      refute html =~ ~s(phx-click="remove_panel")
+    end
+
+    test "confirmDelete adds a data-confirm attribute" do
+      html =
+        render_instance(
+          instance_with([
+            addresses_question(confirmDelete: true, confirmDeleteText: "Really remove?")
+          ]),
+          %{"addresses" => [%{}, %{}]}
+        )
+
+      assert html =~ ~s(data-confirm="Really remove?")
+    end
+
+    test "always renders a hidden input so removing every panel persists" do
+      html = render_instance(instance_with([addresses_question([])]))
+
+      assert html =~ ~s(name="dynamic_form[addresses][__empty__]")
+    end
+
+    test "template visibleIf with {panel.field} scopes per entry" do
+      question =
+        addresses_question(
+          templateElements: [
+            %Instance.Question{name: "kind", type: "dropdown", choices: ["Home", "Other"]},
+            %Instance.Question{
+              name: "label",
+              type: "text",
+              title: "Custom label",
+              visibleIf: "{panel.kind} = 'Other'"
+            }
+          ]
+        )
+
+      html =
+        render_instance(
+          instance_with([question]),
+          %{"addresses" => [%{"kind" => "Home"}, %{"kind" => "Other"}]}
+        )
+
+      refute html =~ ~s(name="dynamic_form[addresses][0][label]")
+      assert html =~ ~s(name="dynamic_form[addresses][1][label]")
+    end
+
+    test "nested paneldynamic renders with dotted paths" do
+      instance =
+        instance_with([
+          %Instance.Question{
+            name: "contacts",
+            type: "paneldynamic",
+            templateElements: [
+              %Instance.Question{name: "contact_name", type: "text"},
+              %Instance.Question{
+                name: "phones",
+                type: "paneldynamic",
+                templateElements: [
+                  %Instance.Question{name: "number", type: "text"}
+                ]
+              }
+            ]
+          }
+        ])
+
+      html =
+        render_instance(instance, %{
+          "contacts" => [%{"contact_name" => "Ada", "phones" => [%{"number" => "555"}]}]
+        })
+
+      assert html =~ ~s(name="dynamic_form[contacts][0][phones][0][number]")
+      assert html =~ ~s(phx-value-path="contacts.0.phones")
+    end
+  end
 end

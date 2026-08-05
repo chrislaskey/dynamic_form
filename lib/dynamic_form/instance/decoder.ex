@@ -21,7 +21,7 @@ defmodule DynamicForm.Instance.Decoder do
   alias DynamicForm.Instance
 
   # SurveyJS question types that we recognize
-  @question_types ~w(text comment dropdown radiogroup boolean file checkbox rating tagbox)
+  @question_types ~w(text comment dropdown radiogroup boolean file checkbox rating tagbox paneldynamic)
 
   # SurveyJS element/panel types
   @element_types ~w(html panel image)
@@ -101,8 +101,29 @@ defmodule DynamicForm.Instance.Decoder do
       rateMin: Map.get(data, "rateMin"),
       rateMax: Map.get(data, "rateMax"),
       rateStep: Map.get(data, "rateStep"),
+      templateElements: decode_template_elements(data),
+      templateTitle: Map.get(data, "templateTitle"),
+      panelCount: Map.get(data, "panelCount"),
+      minPanelCount: Map.get(data, "minPanelCount"),
+      maxPanelCount: Map.get(data, "maxPanelCount"),
+      allowAddPanel: Map.get(data, "allowAddPanel"),
+      allowRemovePanel: Map.get(data, "allowRemovePanel"),
+      addPanelText: Map.get(data, "addPanelText") || Map.get(data, "panelAddText"),
+      removePanelText: Map.get(data, "removePanelText") || Map.get(data, "panelRemoveText"),
+      noEntriesText: Map.get(data, "noEntriesText"),
+      confirmDelete: Map.get(data, "confirmDelete"),
+      confirmDeleteText: Map.get(data, "confirmDeleteText"),
+      keyName: Map.get(data, "keyName"),
+      keyDuplicationError: Map.get(data, "keyDuplicationError"),
+      defaultPanelValue: Map.get(data, "defaultPanelValue"),
       metadata: Map.get(data, "metadata")
     }
+  end
+
+  # `templateElements` holds a paneldynamic question's repeating template;
+  # `questions` is SurveyJS's legacy alias for the same property.
+  defp decode_template_elements(data) do
+    decode_elements(Map.get(data, "templateElements") || Map.get(data, "questions"))
   end
 
   @doc """

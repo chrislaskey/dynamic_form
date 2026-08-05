@@ -47,7 +47,7 @@ defmodule DynamicForm.FieldTypes do
   collisions and malformed maps raise.
   """
 
-  @builtin_question_types ~w(text comment dropdown radiogroup checkbox boolean rating tagbox file)
+  @builtin_question_types ~w(text comment dropdown radiogroup checkbox boolean rating tagbox file paneldynamic)
   @builtin_element_types ~w(html image panel custom)
 
   @doc "The built-in question type names."

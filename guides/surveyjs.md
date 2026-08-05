@@ -45,6 +45,7 @@ Instead, it targets the most important and useful parts for building dynamic for
 | `boolean` | Single checkbox | |
 | `rating` | Numeric radio row | `rateMin`/`rateMax`/`rateStep` (defaults 1–5) |
 | `file` | Direct-to-cloud upload | Configured via `metadata` (a DynamicForm extension) — see [Usage: File uploads](usage.md#file-uploads) |
+| `paneldynamic` | Repeating child form with add/remove | Value is a list of maps; each entry validates against `templateElements` with its own changeset — see [Usage: Nested forms](usage.md#nested-forms-paneldynamic) |
 
 ### Element types
 
@@ -59,6 +60,17 @@ Instead, it targets the most important and useful parts for building dynamic for
 `name`, `type`, `inputType`, `title`, `description`, `placeholder`,
 `defaultValue`, `choices`, `validators`, `isRequired`, `requiredIf`,
 `readOnly`, `enableIf`, `visibleIf`, and `rateMin`/`rateMax`/`rateStep`.
+
+For `paneldynamic`: `templateElements` (alias `questions`), `templateTitle`
+(with `{panelIndex}`), `panelCount`, `minPanelCount`, `maxPanelCount`,
+`allowAddPanel`, `allowRemovePanel`, `addPanelText` (alias `panelAddText`),
+`removePanelText` (alias `panelRemoveText`), `noEntriesText`,
+`confirmDelete`, `confirmDeleteText`, `keyName`, `keyDuplicationError`, and
+`defaultPanelValue`. Template expressions support the `{panel.field}`
+scope prefix. Not supported: `displayMode`/`renderMode` variants other than
+the default list (`carousel`, `tab`), `templateVisibleIf`,
+`{parentPanel.*}`/`{prevPanel.*}` references, and file uploads inside
+templates.
 
 `choices` accepts plain strings (`["a", "b"]`), value/text objects
 (`[{"value": "v", "text": "Label"}]`), and integers.
@@ -101,8 +113,7 @@ register their own types — see
 
 | Feature | Notes |
 |---|---|
-| Matrix types (`matrix`, `matrixdropdown`, `matrixdynamic`) | |
-| `paneldynamic` | Repeating panels the user adds/removes |
+| Matrix types (`matrix`, `matrixdropdown`, `matrixdynamic`) | `matrixdynamic` is a natural follow-up — it shares `paneldynamic`'s data shape and validation machinery, rendered as a table |
 | `multipletext` | Multiple inputs in one question |
 | `signaturepad`, `imagepicker`, `ranking`, `slider` | Specialized input widgets |
 | `expression` questions, calculated values, triggers | No expression *evaluation* beyond the conditional operators above (`setValueIf`, `runexpression`, quiz scoring, ...) |

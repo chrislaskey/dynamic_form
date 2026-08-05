@@ -25,6 +25,7 @@ defmodule DemoWeb.Router do
     live "/payment-form", PaymentFormLive
     live "/showcase-form", ShowcaseFormLive
     live "/section-form", SectionFormLive
+    live "/nested-forms", NestedFormLive
     live "/surveyjs-test", SurveyjsTestLive
     live "/builder-mockups", BuilderMockupsLive
   end

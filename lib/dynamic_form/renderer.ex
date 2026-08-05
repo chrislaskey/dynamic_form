@@ -44,7 +44,7 @@ defmodule DynamicForm.Renderer do
 
   use Phoenix.Component
 
-  alias DynamicForm.{Components, FieldTypes, Instance}
+  alias DynamicForm.{Changeset, Components, FieldTypes, Instance}
 
   attr(:instance, :any,
     required: true,
@@ -127,7 +127,7 @@ defmodule DynamicForm.Renderer do
       phx-target={@target}
     >
       <%= for element <- visible_elements(@instance.elements, @form) do %>
-        <%= render_element(element, f, disabled: @disabled, gettext: @gettext, uploads: @uploads, parent_id: @parent_id, components: @components, custom_field_types: @field_types) %>
+        <%= render_element(element, f, disabled: @disabled, gettext: @gettext, uploads: @uploads, parent_id: @parent_id, components: @components, custom_field_types: @field_types, target: @target) %>
       <% end %>
 
       <div :if={!@hide_submit} class="mt-6 flex items-center justify-end gap-x-6">
@@ -683,6 +683,100 @@ defmodule DynamicForm.Renderer do
     """
   end
 
+  # Render a paneldynamic question: a repeating group of templateElements the
+  # user can add and remove. Each entry renders as its own namespaced
+  # sub-form (name: form[question][index][field]) backed by a child changeset
+  # built by DynamicForm.Changeset.panel_changesets/3 — the same function the
+  # validation path uses, so rendered errors always match validation.
+  #
+  # The add/remove buttons emit "add_panel"/"remove_panel" events carrying a
+  # dot-separated `path` (e.g. "addresses" or "contacts.0.phones" when
+  # nested). DynamicForm.RendererLive handles these automatically; standalone
+  # Renderer users must handle them in their own LiveView.
+  defp render_question(%Instance.Question{type: "paneldynamic"} = question, form, opts) do
+    disabled = question_disabled?(question, form, opts)
+    components = Keyword.get(opts, :components)
+
+    children =
+      Changeset.panel_changesets(question, form.source.params || %{},
+        custom_field_types: Keyword.get(opts, :custom_field_types)
+      )
+
+    count = length(children)
+
+    assigns = %{
+      question: question,
+      form: form,
+      children: children,
+      disabled: disabled,
+      label: question_label(question),
+      errors: panel_errors(form[String.to_atom(question.name)], components),
+      components: components,
+      opts: if(disabled, do: Keyword.put(opts, :disabled, true), else: opts),
+      path: Enum.join(Keyword.get(opts, :panel_path, []) ++ [question.name], "."),
+      target: Keyword.get(opts, :target),
+      confirm_text: panel_confirm_text(question),
+      show_add?: show_add_panel?(question, count, disabled),
+      show_remove?: show_remove_panel?(question, count, disabled)
+    }
+
+    ~H"""
+    <div class="mb-4">
+      {Components.render(@components, :label, %{
+        for: "#{@form.id}_#{@question.name}",
+        inner_block: [
+          %{__slot__: :inner_block, inner_block: fn _changed, _arg -> @label end}
+        ]
+      })}
+      <%= if @question.description do %>
+        <p class="mt-2 text-sm text-gray-500"><%= @question.description %></p>
+      <% end %>
+      <%!-- Keeps the field present in params when every panel is removed --%>
+      <input type="hidden" name={"#{@form.name}[#{@question.name}][__empty__]"} value="" />
+      <p :if={@children == []} class="mt-2 text-sm italic text-gray-500">
+        {@question.noEntriesText || "No entries yet."}
+      </p>
+      <div
+        :for={{child, index} <- Enum.with_index(@children)}
+        class="mt-3 rounded-lg border border-gray-200 p-4"
+      >
+        <div class="mb-2 flex items-center justify-between">
+          <h4 class="text-sm font-semibold text-gray-900">{panel_title(@question, index)}</h4>
+          <button
+            :if={@show_remove?}
+            type="button"
+            phx-click="remove_panel"
+            phx-value-path={@path}
+            phx-value-index={index}
+            phx-target={@target}
+            data-confirm={@confirm_text}
+            class="btn btn-sm btn-ghost text-red-600"
+          >
+            {@question.removePanelText || "Remove"}
+          </button>
+        </div>
+        {render_panel_entry(@question, @form, child, index, @opts)}
+      </div>
+      <%= for msg <- @errors do %>
+        {Components.render(@components, :error, %{
+          inner_block: [%{__slot__: :inner_block, inner_block: fn _changed, _arg -> msg end}]
+        })}
+      <% end %>
+      <div :if={@show_add?} class="mt-3">
+        <button
+          type="button"
+          phx-click="add_panel"
+          phx-value-path={@path}
+          phx-target={@target}
+          class="btn btn-sm"
+        >
+          {@question.addPanelText || "Add new"}
+        </button>
+      </div>
+    </div>
+    """
+  end
+
   # Registered custom field types dispatch to the components module's
   # input/1 — apps define a matching clause, e.g.
   # def input(%{type: "multiselect"} = assigns). Unregistered types render
@@ -729,6 +823,87 @@ defmodule DynamicForm.Renderer do
       <% end %>
     </div>
     """
+  end
+
+  # Render one paneldynamic entry: a namespaced child form over the template
+  # elements. Visibility inside the template evaluates against panel-local
+  # values merged over the form-level values, so both `{panel.field}` and
+  # form-level references work.
+  defp render_panel_entry(question, parent_form, child, index, opts) do
+    child_form =
+      to_form(%{child | action: parent_form.source.action},
+        as: "#{parent_form.name}[#{question.name}][#{index}]",
+        id: "#{parent_form.id}_#{question.name}_#{index}"
+      )
+
+    context =
+      parent_form
+      |> get_form_params()
+      |> stringify_keys()
+      |> Map.merge(stringify_keys(child.changes))
+
+    child_opts =
+      opts
+      |> Keyword.put(
+        :panel_path,
+        Keyword.get(opts, :panel_path, []) ++ [question.name, to_string(index)]
+      )
+
+    elements = visible_template_elements(question.templateElements || [], context)
+
+    assigns = %{elements: elements, form: child_form, opts: child_opts}
+
+    ~H"""
+    <%= for element <- @elements do %>
+      <%= render_element(element, @form, @opts) %>
+    <% end %>
+    """
+  end
+
+  # Suppress the parent-level :paneldynamic marker error — each entry renders
+  # its own field errors inline. Count/required errors still show.
+  defp panel_errors(field, components) do
+    errors = if Phoenix.Component.used_input?(field), do: field.errors, else: []
+
+    errors
+    |> Enum.reject(fn {_msg, error_opts} -> error_opts[:validation] == :paneldynamic end)
+    |> Enum.map(&Components.translate_error(components, &1))
+  end
+
+  defp panel_confirm_text(%Instance.Question{confirmDelete: true} = question) do
+    question.confirmDeleteText || "Are you sure you want to delete the record?"
+  end
+
+  defp panel_confirm_text(_question), do: nil
+
+  defp show_add_panel?(question, count, disabled) do
+    question.allowAddPanel != false && !disabled &&
+      (is_nil(question.maxPanelCount) || count < question.maxPanelCount)
+  end
+
+  defp show_remove_panel?(question, count, disabled) do
+    question.allowRemovePanel != false && !disabled && count > (question.minPanelCount || 0)
+  end
+
+  defp visible_template_elements(elements, params) do
+    Enum.filter(elements, fn
+      %Instance.Question{} = question ->
+        DynamicForm.Visibility.question_visible?(question, params)
+
+      %Instance.Element{} = element ->
+        DynamicForm.Visibility.element_visible?(element, params)
+    end)
+  end
+
+  defp panel_title(question, index) do
+    case question.templateTitle do
+      nil -> nil
+      title -> String.replace(title, "{panelIndex}", to_string(index + 1))
+    end
+  end
+
+  defp stringify_keys(map) when is_map(map) do
+    Map.new(map, fn {key, value} -> {to_string(key), value} end)
   end
 
   # Helper to decode instance from various formats

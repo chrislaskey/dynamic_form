@@ -112,6 +112,8 @@ defmodule DynamicForm.Instance do
     - `"radiogroup"` - Radio button group
     - `"boolean"` - Checkbox/toggle
     - `"file"` - File upload
+    - `"paneldynamic"` - Repeating child form (`templateElements` holds the
+      template; the value is a list of maps, one per entry)
 
     ## Read-Only Questions
 
@@ -182,6 +184,21 @@ defmodule DynamicForm.Instance do
       :rateMin,
       :rateMax,
       :rateStep,
+      :templateElements,
+      :templateTitle,
+      :panelCount,
+      :minPanelCount,
+      :maxPanelCount,
+      :allowAddPanel,
+      :allowRemovePanel,
+      :addPanelText,
+      :removePanelText,
+      :noEntriesText,
+      :confirmDelete,
+      :confirmDeleteText,
+      :keyName,
+      :keyDuplicationError,
+      :defaultPanelValue,
       :metadata,
       :slot
     ]
@@ -204,6 +221,21 @@ defmodule DynamicForm.Instance do
             rateMin: integer() | nil,
             rateMax: integer() | nil,
             rateStep: integer() | nil,
+            templateElements: [t() | Element.t()] | nil,
+            templateTitle: String.t() | nil,
+            panelCount: integer() | nil,
+            minPanelCount: integer() | nil,
+            maxPanelCount: integer() | nil,
+            allowAddPanel: boolean() | nil,
+            allowRemovePanel: boolean() | nil,
+            addPanelText: String.t() | nil,
+            removePanelText: String.t() | nil,
+            noEntriesText: String.t() | nil,
+            confirmDelete: boolean() | nil,
+            confirmDeleteText: String.t() | nil,
+            keyName: String.t() | nil,
+            keyDuplicationError: String.t() | nil,
+            defaultPanelValue: map() | nil,
             metadata: map() | nil,
             slot: map() | nil
           }
@@ -232,6 +264,21 @@ defmodule DynamicForm.Instance do
         |> maybe_put(:rateMin, question.rateMin)
         |> maybe_put(:rateMax, question.rateMax)
         |> maybe_put(:rateStep, question.rateStep)
+        |> maybe_put(:templateElements, question.templateElements)
+        |> maybe_put(:templateTitle, question.templateTitle)
+        |> maybe_put(:panelCount, question.panelCount)
+        |> maybe_put(:minPanelCount, question.minPanelCount)
+        |> maybe_put(:maxPanelCount, question.maxPanelCount)
+        |> maybe_put(:allowAddPanel, question.allowAddPanel)
+        |> maybe_put(:allowRemovePanel, question.allowRemovePanel)
+        |> maybe_put(:addPanelText, question.addPanelText)
+        |> maybe_put(:removePanelText, question.removePanelText)
+        |> maybe_put(:noEntriesText, question.noEntriesText)
+        |> maybe_put(:confirmDelete, question.confirmDelete)
+        |> maybe_put(:confirmDeleteText, question.confirmDeleteText)
+        |> maybe_put(:keyName, question.keyName)
+        |> maybe_put(:keyDuplicationError, question.keyDuplicationError)
+        |> maybe_put(:defaultPanelValue, question.defaultPanelValue)
         |> maybe_put(:metadata, question.metadata)
 
       Jason.Encode.map(map, opts)
@@ -439,7 +486,7 @@ defmodule DynamicForm.Instance do
   defp strip_element_slots(elements) when is_list(elements) do
     Enum.map(elements, fn
       %Question{} = question ->
-        %{question | slot: nil}
+        %{question | slot: nil, templateElements: strip_element_slots(question.templateElements)}
 
       %Element{} = element ->
         %{element | slot: nil, elements: strip_element_slots(element.elements)}

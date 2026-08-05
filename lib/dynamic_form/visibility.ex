@@ -415,7 +415,17 @@ defmodule DynamicForm.Visibility do
 
   defp to_number(_value), do: nil
 
-  # Helper to get field value from params, handling both string and atom keys
+  # Helper to get field value from params, handling both string and atom keys.
+  # Inside a paneldynamic template, SurveyJS scopes sibling references as
+  # `{panel.field}`; panel entries are validated/rendered against panel-local
+  # params, so the prefix resolves to a plain local lookup.
+  defp get_field_value(params, "panel." <> field_name = full_name) do
+    case Map.get(params, full_name) do
+      nil -> get_field_value(params, field_name)
+      value -> value
+    end
+  end
+
   defp get_field_value(params, field_name) when is_binary(field_name) do
     Map.get(params, field_name) || Map.get(params, String.to_existing_atom(field_name))
   rescue
