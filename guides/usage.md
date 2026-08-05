@@ -248,7 +248,7 @@ Behavior notes:
   removing an entry.
 - With `DynamicForm.form/1` / `DynamicForm.RendererLive`, add/remove work
   automatically. When driving `DynamicForm.Renderer` manually, handle the
-  `"add_panel"`/`"remove_panel"` events (each carries a dot-separated
+  `"add_entry"`/`"remove_entry"` events (each carries a dot-separated
   `path` param, plus `index` for remove) in your own LiveView.
 - Not yet supported inside templates: file upload questions, and SurveyJS
   display modes other than the default list (`carousel`/`tab`).

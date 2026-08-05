@@ -44,7 +44,7 @@ defmodule DynamicForm.Renderer do
 
   use Phoenix.Component
 
-  alias DynamicForm.{Changeset, Components, FieldTypes, Instance}
+  alias DynamicForm.{Components, FieldTypes, Instance, NestedForms}
 
   attr(:instance, :any,
     required: true,
@@ -686,10 +686,10 @@ defmodule DynamicForm.Renderer do
   # Render a paneldynamic question: a repeating group of templateElements the
   # user can add and remove. Each entry renders as its own namespaced
   # sub-form (name: form[question][index][field]) backed by a child changeset
-  # built by DynamicForm.Changeset.panel_changesets/3 — the same function the
+  # built by DynamicForm.NestedForms.entry_changesets/3 — the same function the
   # validation path uses, so rendered errors always match validation.
   #
-  # The add/remove buttons emit "add_panel"/"remove_panel" events carrying a
+  # The add/remove buttons emit "add_entry"/"remove_entry" events carrying a
   # dot-separated `path` (e.g. "addresses" or "contacts.0.phones" when
   # nested). DynamicForm.RendererLive handles these automatically; standalone
   # Renderer users must handle them in their own LiveView.
@@ -698,7 +698,7 @@ defmodule DynamicForm.Renderer do
     components = Keyword.get(opts, :components)
 
     children =
-      Changeset.panel_changesets(question, form.source.params || %{},
+      NestedForms.entry_changesets(question, form.source.params || %{},
         custom_field_types: Keyword.get(opts, :custom_field_types)
       )
 
@@ -710,14 +710,14 @@ defmodule DynamicForm.Renderer do
       children: children,
       disabled: disabled,
       label: question_label(question),
-      errors: panel_errors(form[String.to_atom(question.name)], components),
+      errors: nested_form_errors(form[String.to_atom(question.name)], components),
       components: components,
       opts: if(disabled, do: Keyword.put(opts, :disabled, true), else: opts),
-      path: Enum.join(Keyword.get(opts, :panel_path, []) ++ [question.name], "."),
+      path: Enum.join(Keyword.get(opts, :entry_path, []) ++ [question.name], "."),
       target: Keyword.get(opts, :target),
-      confirm_text: panel_confirm_text(question),
-      show_add?: show_add_panel?(question, count, disabled),
-      show_remove?: show_remove_panel?(question, count, disabled)
+      confirm_text: entry_confirm_text(question),
+      show_add?: show_add_entry?(question, count, disabled),
+      show_remove?: show_remove_entry?(question, count, disabled)
     }
 
     ~H"""
@@ -741,11 +741,11 @@ defmodule DynamicForm.Renderer do
         class="mt-3 rounded-lg border border-gray-200 p-4"
       >
         <div class="mb-2 flex items-center justify-between">
-          <h4 class="text-sm font-semibold text-gray-900">{panel_title(@question, index)}</h4>
+          <h4 class="text-sm font-semibold text-gray-900">{entry_title(@question, index)}</h4>
           <button
             :if={@show_remove?}
             type="button"
-            phx-click="remove_panel"
+            phx-click="remove_entry"
             phx-value-path={@path}
             phx-value-index={index}
             phx-target={@target}
@@ -755,7 +755,7 @@ defmodule DynamicForm.Renderer do
             {@question.removePanelText || "Remove"}
           </button>
         </div>
-        {render_panel_entry(@question, @form, child, index, @opts)}
+        {render_entry(@question, @form, child, index, @opts)}
       </div>
       <%= for msg <- @errors do %>
         {Components.render(@components, :error, %{
@@ -765,7 +765,7 @@ defmodule DynamicForm.Renderer do
       <div :if={@show_add?} class="mt-3">
         <button
           type="button"
-          phx-click="add_panel"
+          phx-click="add_entry"
           phx-value-path={@path}
           phx-target={@target}
           class="btn btn-sm"
@@ -829,7 +829,7 @@ defmodule DynamicForm.Renderer do
   # elements. Visibility inside the template evaluates against panel-local
   # values merged over the form-level values, so both `{panel.field}` and
   # form-level references work.
-  defp render_panel_entry(question, parent_form, child, index, opts) do
+  defp render_entry(question, parent_form, child, index, opts) do
     child_form =
       to_form(%{child | action: parent_form.source.action},
         as: "#{parent_form.name}[#{question.name}][#{index}]",
@@ -845,8 +845,8 @@ defmodule DynamicForm.Renderer do
     child_opts =
       opts
       |> Keyword.put(
-        :panel_path,
-        Keyword.get(opts, :panel_path, []) ++ [question.name, to_string(index)]
+        :entry_path,
+        Keyword.get(opts, :entry_path, []) ++ [question.name, to_string(index)]
       )
 
     elements = visible_template_elements(question.templateElements || [], context)
@@ -862,7 +862,7 @@ defmodule DynamicForm.Renderer do
 
   # Suppress the parent-level :paneldynamic marker error — each entry renders
   # its own field errors inline. Count/required errors still show.
-  defp panel_errors(field, components) do
+  defp nested_form_errors(field, components) do
     errors = if Phoenix.Component.used_input?(field), do: field.errors, else: []
 
     errors
@@ -870,18 +870,18 @@ defmodule DynamicForm.Renderer do
     |> Enum.map(&Components.translate_error(components, &1))
   end
 
-  defp panel_confirm_text(%Instance.Question{confirmDelete: true} = question) do
+  defp entry_confirm_text(%Instance.Question{confirmDelete: true} = question) do
     question.confirmDeleteText || "Are you sure you want to delete the record?"
   end
 
-  defp panel_confirm_text(_question), do: nil
+  defp entry_confirm_text(_question), do: nil
 
-  defp show_add_panel?(question, count, disabled) do
+  defp show_add_entry?(question, count, disabled) do
     question.allowAddPanel != false && !disabled &&
       (is_nil(question.maxPanelCount) || count < question.maxPanelCount)
   end
 
-  defp show_remove_panel?(question, count, disabled) do
+  defp show_remove_entry?(question, count, disabled) do
     question.allowRemovePanel != false && !disabled && count > (question.minPanelCount || 0)
   end
 
@@ -895,7 +895,7 @@ defmodule DynamicForm.Renderer do
     end)
   end
 
-  defp panel_title(question, index) do
+  defp entry_title(question, index) do
     case question.templateTitle do
       nil -> nil
       title -> String.replace(title, "{panelIndex}", to_string(index + 1))

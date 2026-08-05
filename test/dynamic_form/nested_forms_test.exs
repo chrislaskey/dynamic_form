@@ -1,8 +1,9 @@
-defmodule DynamicForm.PaneldynamicTest do
+defmodule DynamicForm.NestedFormsTest do
   use ExUnit.Case, async: true
 
   alias DynamicForm.Changeset
   alias DynamicForm.Instance
+  alias DynamicForm.NestedForms
 
   defp addresses_question(overrides \\ []) do
     struct!(
@@ -101,7 +102,7 @@ defmodule DynamicForm.PaneldynamicTest do
       assert {"is invalid", [validation: :paneldynamic]} = changeset.errors[:addresses]
     end
 
-    test "child errors are reproducible via panel_changesets/3" do
+    test "entry errors are reproducible via entry_changesets/3" do
       params = %{
         "addresses" => [
           %{"street" => "110 Main St", "city" => "Portland"},
@@ -109,7 +110,7 @@ defmodule DynamicForm.PaneldynamicTest do
         ]
       }
 
-      [first, second] = Changeset.panel_changesets(addresses_question(), params)
+      [first, second] = NestedForms.entry_changesets(addresses_question(), params)
 
       assert first.valid?
       refute second.valid?
@@ -132,7 +133,7 @@ defmodule DynamicForm.PaneldynamicTest do
 
       params = %{"addresses" => [%{"street" => "x", "city" => "y", "zip" => "abc"}]}
 
-      [child] = Changeset.panel_changesets(question, params)
+      [child] = NestedForms.entry_changesets(question, params)
 
       assert {"has invalid format", _} = child.errors[:zip]
     end
@@ -195,7 +196,7 @@ defmodule DynamicForm.PaneldynamicTest do
         ]
       }
 
-      [first, second, third] = Changeset.panel_changesets(question, params)
+      [first, second, third] = NestedForms.entry_changesets(question, params)
 
       assert {"City must be unique.", _} = first.errors[:city]
       assert {"City must be unique.", _} = second.errors[:city]
@@ -333,7 +334,7 @@ defmodule DynamicForm.PaneldynamicTest do
     end
   end
 
-  describe "new_panel_entry/1" do
+  describe "new_entry/1" do
     test "seeds template defaults overridden by defaultPanelValue" do
       question =
         addresses_question(
@@ -344,7 +345,7 @@ defmodule DynamicForm.PaneldynamicTest do
           defaultPanelValue: %{"city" => "Boston"}
         )
 
-      assert Changeset.new_panel_entry(question) == %{
+      assert NestedForms.new_entry(question) == %{
                "street" => "Unknown",
                "city" => "Boston"
              }
@@ -433,14 +434,14 @@ defmodule DynamicForm.PaneldynamicTest do
     end
   end
 
-  describe "panel_entries/1" do
+  describe "entries/1" do
     test "passes lists through, normalizes indexed maps, defaults to empty" do
-      assert Changeset.panel_entries([%{"a" => 1}]) == [%{"a" => 1}]
+      assert NestedForms.entries([%{"a" => 1}]) == [%{"a" => 1}]
 
-      assert Changeset.panel_entries(%{"1" => "b", "0" => "a", "__empty__" => ""}) == ["a", "b"]
+      assert NestedForms.entries(%{"1" => "b", "0" => "a", "__empty__" => ""}) == ["a", "b"]
 
-      assert Changeset.panel_entries(nil) == []
-      assert Changeset.panel_entries("") == []
+      assert NestedForms.entries(nil) == []
+      assert NestedForms.entries("") == []
     end
   end
 end
