@@ -266,6 +266,14 @@ defmodule DynamicForm do
         ":dynamic_form, :components config — see DynamicForm.Components"
   )
 
+  attr(:custom_field_types, :map,
+    default: nil,
+    doc:
+      "Custom field types map (type name => Ecto type), merged over the " <>
+        ":dynamic_form, :custom_field_types config; rendering dispatches to the " <>
+        "components module's input/1 — see DynamicForm.FieldTypes"
+  )
+
   attr(:validation_summary, :string,
     default: nil,
     doc: "Display validation errors at the top of the form: nil, \"simple\", or \"detailed\""
@@ -296,9 +304,10 @@ defmodule DynamicForm do
   slot :field, doc: "Form elements in render order (declarative mode)" do
     attr(:type, :string,
       required: true,
-      values: ~w(text comment dropdown radiogroup checkbox boolean rating tagbox file
-                 html image custom),
-      doc: "Question or element type"
+      doc:
+        "Question or element type: text, comment, dropdown, radiogroup, checkbox, " <>
+          "boolean, rating, tagbox, file, html, image, custom, or a registered " <>
+          "custom field type (validated at runtime)"
     )
 
     attr(:name, :string,
@@ -367,6 +376,7 @@ defmodule DynamicForm do
       hide_submit={@hide_submit}
       gettext={@gettext}
       components={@components}
+      custom_field_types={@custom_field_types}
     />
     """
   end
@@ -390,6 +400,7 @@ defmodule DynamicForm do
       gettext={@gettext}
       validation_summary={@validation_summary}
       components={@components}
+      custom_field_types={@custom_field_types}
     />
     """
   end

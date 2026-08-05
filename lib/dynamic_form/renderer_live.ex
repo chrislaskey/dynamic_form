@@ -32,6 +32,9 @@ defmodule DynamicForm.RendererLive do
       Phoenix-generated CoreComponents); functions it exports override the
       built-ins per function — see `DynamicForm.Components` (atom, default:
       `nil`, falling back to the `:dynamic_form, :components` config)
+    * `:custom_field_types` - Custom field types map (type name => Ecto
+      type), merged over the `:dynamic_form, :custom_field_types` config —
+      see `DynamicForm.FieldTypes` (map, default: `nil`)
 
   ## Usage
 
@@ -205,7 +208,12 @@ defmodule DynamicForm.RendererLive do
        |> assign(:initial_params, initial_params)}
     else
       gettext = Map.get(assigns, :gettext, DynamicForm.Gettext)
-      changeset = Changeset.create_changeset(instance, initial_params)
+
+      changeset =
+        Changeset.create_changeset(instance, initial_params,
+          custom_field_types: Map.get(assigns, :custom_field_types)
+        )
+
       form = to_form(changeset, as: form_name)
 
       socket =
@@ -244,7 +252,11 @@ defmodule DynamicForm.RendererLive do
       |> Ecto.Changeset.apply_changes()
       |> Map.put(field_atom, assigns.remaining_files)
 
-    changeset = DynamicForm.Changeset.create_changeset(socket.assigns.instance, current_params)
+    changeset =
+      DynamicForm.Changeset.create_changeset(socket.assigns.instance, current_params,
+        custom_field_types: socket.assigns[:custom_field_types]
+      )
+
     form = to_form(changeset, as: socket.assigns.form_name)
 
     {:ok, assign(socket, changeset: changeset, form: form)}
@@ -262,6 +274,7 @@ defmodule DynamicForm.RendererLive do
     validation_summary = Map.get(assigns, :validation_summary, nil)
     uploads = assigns[:uploads] || %{}
     components = Map.get(assigns, :components)
+    custom_field_types = Map.get(assigns, :custom_field_types)
 
     assigns =
       assigns
@@ -270,6 +283,7 @@ defmodule DynamicForm.RendererLive do
       |> assign(:validation_summary, validation_summary)
       |> assign(:uploads, uploads)
       |> assign(:components, components)
+      |> assign(:custom_field_types, custom_field_types)
 
     ~H"""
     <div>
@@ -294,6 +308,7 @@ defmodule DynamicForm.RendererLive do
         uploads={@uploads}
         parent_id={@id}
         components={@components}
+        custom_field_types={@custom_field_types}
       />
     </div>
     """
@@ -306,7 +321,9 @@ defmodule DynamicForm.RendererLive do
 
     payload =
       socket.assigns.instance
-      |> Changeset.create_changeset(merged_params)
+      |> Changeset.create_changeset(merged_params,
+        custom_field_types: socket.assigns[:custom_field_types]
+      )
       |> build_payload(socket)
       |> apply_callback(socket, :on_change)
 
@@ -328,7 +345,9 @@ defmodule DynamicForm.RendererLive do
 
     payload =
       socket.assigns.instance
-      |> Changeset.create_changeset(merged_params)
+      |> Changeset.create_changeset(merged_params,
+        custom_field_types: socket.assigns[:custom_field_types]
+      )
       |> build_payload(socket)
       |> apply_callback(socket, :on_change)
       |> apply_callback(socket, :on_submit)
@@ -754,7 +773,11 @@ defmodule DynamicForm.RendererLive do
         |> Ecto.Changeset.apply_changes()
         |> Map.put(field_atom, updated_files)
 
-      changeset = DynamicForm.Changeset.create_changeset(socket.assigns.instance, current_params)
+      changeset =
+        DynamicForm.Changeset.create_changeset(socket.assigns.instance, current_params,
+          custom_field_types: socket.assigns[:custom_field_types]
+        )
+
       form = to_form(changeset, as: socket.assigns.form_name)
 
       {:noreply, assign(socket, changeset: changeset, form: form)}

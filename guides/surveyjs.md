@@ -93,9 +93,11 @@ with page titles preserved as headings.
 ## Not Supported
 
 Not exhaustive — the major and common SurveyJS features DynamicForm does not
-implement. Unknown question and element types don't fail the form: they
-render as a visible fallback box identifying the unsupported type, and the
-rest of the form works normally.
+implement. Unknown question and element types don't fail the form: they are
+skipped (nothing renders — obvious in testing, not broken-looking in
+production) and the rest of the form works normally. Applications can also
+register their own types — see
+[Usage: Custom field types](usage.md#custom-field-types).
 
 | Feature | Notes |
 |---|---|

@@ -6,7 +6,7 @@ defmodule DynamicForm.Changeset do
   and form handling using Phoenix's standard patterns.
   """
 
-  alias DynamicForm.Instance
+  alias DynamicForm.{FieldTypes, Instance}
 
   @doc """
   Creates a changeset from a DynamicForm.Instance configuration.
@@ -18,6 +18,10 @@ defmodule DynamicForm.Changeset do
 
     * `instance` - The DynamicForm.Instance struct
     * `params` - The form parameters to validate (defaults to empty map)
+    * `opts` - Options:
+      * `:custom_field_types` - a per-form custom field types map, merged
+        over the `:dynamic_form, :custom_field_types` config (see
+        `DynamicForm.FieldTypes`)
 
   ## Returns
 
@@ -38,16 +42,17 @@ defmodule DynamicForm.Changeset do
       instance = DynamicForm.Instance.decode!(json_or_map)
       changeset = DynamicForm.Changeset.create_changeset(instance, params)
   """
-  def create_changeset(%Instance{} = instance, params \\ %{}) do
+  def create_changeset(%Instance{} = instance, params \\ %{}, opts \\ []) do
+    field_types = FieldTypes.resolve(Keyword.get(opts, :custom_field_types))
     questions = get_questions(instance.elements)
-    types = build_types_map(questions)
+    types = build_types_map(questions, field_types)
     required_fields = get_required_fields(questions, params)
 
     # Decode JSON-encoded file upload fields
     decoded_params =
       params
       |> decode_upload_params(questions)
-      |> normalize_array_params(questions)
+      |> normalize_array_params(questions, field_types)
 
     # Ecto's default empty_values treats the "" a browser submits for every
     # untouched input as empty: required fields error with "can't be blank"
@@ -111,26 +116,32 @@ defmodule DynamicForm.Changeset do
       iex> DynamicForm.Changeset.build_types_map(questions)
       %{email: :string, age: :decimal}
   """
-  def build_types_map(questions) when is_list(questions) do
+  def build_types_map(questions, field_types \\ %{}) when is_list(questions) do
     Enum.reduce(questions, %{}, fn question, acc ->
       # Convert question name to atom for Ecto
       field_atom = String.to_atom(question.name)
-      Map.put(acc, field_atom, map_question_type(question))
+      Map.put(acc, field_atom, map_question_type(question, field_types))
     end)
   end
 
-  # Maps SurveyJS question types to Ecto types
-  defp map_question_type(%Instance.Question{type: "text", inputType: "number"}), do: :decimal
-  defp map_question_type(%Instance.Question{type: "text"}), do: :string
-  defp map_question_type(%Instance.Question{type: "comment"}), do: :string
-  defp map_question_type(%Instance.Question{type: "dropdown"}), do: :string
-  defp map_question_type(%Instance.Question{type: "radiogroup"}), do: :string
-  defp map_question_type(%Instance.Question{type: "boolean"}), do: :boolean
-  defp map_question_type(%Instance.Question{type: "file"}), do: {:array, :map}
-  defp map_question_type(%Instance.Question{type: "checkbox"}), do: {:array, :string}
-  defp map_question_type(%Instance.Question{type: "tagbox"}), do: {:array, :string}
-  defp map_question_type(%Instance.Question{type: "rating"}), do: :integer
-  defp map_question_type(%Instance.Question{type: type}) when is_binary(type), do: :string
+  # Maps SurveyJS question types to Ecto types. Registered custom field
+  # types cast as their declared Ecto type; names can't collide with the
+  # built-ins (FieldTypes raises), so registry order doesn't matter.
+  defp map_question_type(%Instance.Question{type: type}, field_types)
+       when is_map_key(field_types, type),
+       do: Map.fetch!(field_types, type)
+
+  defp map_question_type(%Instance.Question{type: "text", inputType: "number"}, _), do: :decimal
+  defp map_question_type(%Instance.Question{type: "text"}, _), do: :string
+  defp map_question_type(%Instance.Question{type: "comment"}, _), do: :string
+  defp map_question_type(%Instance.Question{type: "dropdown"}, _), do: :string
+  defp map_question_type(%Instance.Question{type: "radiogroup"}, _), do: :string
+  defp map_question_type(%Instance.Question{type: "boolean"}, _), do: :boolean
+  defp map_question_type(%Instance.Question{type: "file"}, _), do: {:array, :map}
+  defp map_question_type(%Instance.Question{type: "checkbox"}, _), do: {:array, :string}
+  defp map_question_type(%Instance.Question{type: "tagbox"}, _), do: {:array, :string}
+  defp map_question_type(%Instance.Question{type: "rating"}, _), do: :integer
+  defp map_question_type(%Instance.Question{type: type}, _) when is_binary(type), do: :string
 
   defp decode_upload_params(params, questions) do
     upload_fields =
@@ -155,11 +166,14 @@ defmodule DynamicForm.Changeset do
   # Checkbox groups submit a hidden empty entry under `name[]` so that clearing
   # every box still submits the field. Strip those empty strings from
   # array-valued params before casting; an all-empty selection becomes nil so
-  # validate_required still applies to empty checkbox groups.
-  defp normalize_array_params(params, questions) do
+  # validate_required still applies to empty checkbox groups. Custom field
+  # types declared as {:array, _} get the same treatment.
+  defp normalize_array_params(params, questions, field_types) do
     array_fields =
       questions
-      |> Enum.filter(&(&1.type in ["checkbox", "tagbox"]))
+      |> Enum.filter(
+        &(&1.type in ["checkbox", "tagbox"] or FieldTypes.array?(field_types, &1.type))
+      )
       |> Enum.map(& &1.name)
 
     Enum.reduce(array_fields, params, &normalize_array_field/2)

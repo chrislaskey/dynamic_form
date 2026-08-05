@@ -14,6 +14,8 @@ defmodule DemoWeb.SlotFormLive do
   - Custom components: `components={DemoWeb.CoreComponents}` renders inputs
     through the app's own Phoenix-generated components, with per-function
     fallback to the built-ins
+  - Custom field types: a `"multiselect"` type registered via
+    `custom_field_types` and rendered by `DemoWeb.FormComponents.input/1`
   """
 
   use DemoWeb, :live_view
@@ -147,6 +149,29 @@ defmodule DemoWeb.SlotFormLive do
   #   config :dynamic_form, components: DemoWeb.CoreComponents
   """
 
+  @src_field_types ~S"""
+  <DynamicForm.form
+    id="custom-type-form"
+    components={DemoWeb.FormComponents}
+    custom_field_types={%{"multiselect" => {:array, :string}}}
+  >
+    <:field type="text" name="name" label="Name" required />
+    <:field type="multiselect" name="days" label="Days" required
+            options={[{"Monday", "mon"}, {"Tuesday", "tue"}, {"Wednesday", "wed"}]} />
+  </DynamicForm.form>
+
+  # The type registration declares what "multiselect" casts as; rendering is
+  # a matching clause in the components module (DemoWeb.FormComponents):
+  #
+  #   def input(%{type: "multiselect", field: field} = assigns) do
+  #     ~H"... checkbox pills submitting a list under name[] ..."
+  #   end
+  #
+  #   def input(assigns), do: DemoWeb.CoreComponents.input(assigns)
+  #
+  # Or register globally: config :dynamic_form, custom_field_types: %{...}
+  """
+
   @impl true
   def mount(_params, _session, socket) do
     {:ok,
@@ -160,7 +185,8 @@ defmodule DemoWeb.SlotFormLive do
        src_custom: @src_custom,
        src_data: @src_data,
        src_render_only: @src_render_only,
-       src_components: @src_components
+       src_components: @src_components,
+       src_field_types: @src_field_types
      )}
   end
 
@@ -477,6 +503,36 @@ defmodule DemoWeb.SlotFormLive do
               options={[{"Starter", "starter"}, {"Team", "team"}, {"Enterprise", "enterprise"}]}
             />
             <:field type="rating" name="fit" label="How good a fit is it?" rate_min={1} rate_max={5} />
+          </DynamicForm.form>
+        </div>
+
+        <%!-- 7. Custom field types --%>
+        <h2 class="mt-12 text-xl font-semibold text-gray-900 mb-1">7. Custom Field Types</h2>
+        <p class="text-sm text-gray-500 mb-6">
+          The <code>multiselect</code>
+          type is app vocabulary, not a library built-in: <code>custom_field_types</code>
+          registers it (declaring it casts as a string array, so <code>required</code>
+          works on an empty selection) and a matching <code>input/1</code>
+          clause in <code>DemoWeb.FormComponents</code>
+          renders the checkbox pills. It works from data-mode JSON the same way.
+        </p>
+
+        <.definition title="Template definition + components module" code={@src_field_types} />
+
+        <div class="rounded-lg bg-white shadow-sm ring-1 ring-gray-900/5 p-6">
+          <DynamicForm.form
+            id="custom-type-form"
+            components={DemoWeb.FormComponents}
+            custom_field_types={%{"multiselect" => {:array, :string}}}
+          >
+            <:field type="text" name="name" label="Name" required />
+            <:field
+              type="multiselect"
+              name="days"
+              label="Days"
+              required
+              options={[{"Monday", "mon"}, {"Tuesday", "tue"}, {"Wednesday", "wed"}]}
+            />
           </DynamicForm.form>
         </div>
 

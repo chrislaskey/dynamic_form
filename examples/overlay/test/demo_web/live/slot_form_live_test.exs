@@ -207,6 +207,33 @@ defmodule DemoWeb.SlotFormLiveTest do
     assert render(view) =~ "Submission Results"
   end
 
+  test "custom field types cast, validate, and render through the app module", %{conn: conn} do
+    {:ok, view, html} = live(conn, "/slot-forms")
+
+    # The multiselect renders through DemoWeb.FormComponents.input/1
+    assert html =~ ~s(name="dynamic_form[days][]")
+
+    # required fires on an empty selection: the registered {:array, :string}
+    # type gets checkbox-group-style normalization
+    html =
+      view
+      |> form("#custom-type-form-form", %{"dynamic_form" => %{"name" => "Chris"}})
+      |> render_submit()
+
+    assert html =~ "can&#39;t be blank"
+
+    # A real selection casts as a list and submits through the normal lifecycle
+    view
+    |> form("#custom-type-form-form", %{
+      "dynamic_form" => %{"name" => "Chris", "days" => ["mon", "wed"]}
+    })
+    |> render_submit()
+
+    html = render(view)
+    assert html =~ "Submission Results"
+    assert html =~ "mon"
+  end
+
   test "on_submit Payload.add_error renders submit-only checks on the form", %{conn: conn} do
     {:ok, view, _html} = live(conn, "/slot-forms")
 

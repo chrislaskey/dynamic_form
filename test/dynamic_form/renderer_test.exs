@@ -157,14 +157,17 @@ defmodule DynamicForm.RendererTest do
       assert html =~ "Agree?"
     end
 
-    test "renders a fallback box for unknown question types" do
+    test "renders nothing for unknown question types" do
       html =
         render_instance(
           instance_with([%Instance.Question{name: "mystery", type: "signaturepad"}])
         )
 
-      assert html =~ "Unknown question type"
-      assert html =~ "signaturepad"
+      # An absent field is obvious in testing without looking broken in
+      # production; registered custom field types dispatch to the components
+      # module instead (see custom_field_types_test.exs)
+      refute html =~ "signaturepad"
+      refute html =~ "mystery"
     end
 
     test "marks required questions with an indicator" do

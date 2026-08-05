@@ -21,6 +21,7 @@ Quick lookup tables. For narrative documentation see the
 | `hide_submit` | boolean | `false` | Hide the built-in submit button |
 | `gettext` | atom | `DynamicForm.Gettext` | Gettext backend for translations |
 | `components` | atom | `nil` | Custom components module; falls back to the `:dynamic_form, :components` config, then the built-ins per function |
+| `custom_field_types` | map | `nil` | Custom field types (`%{"name" => ecto_type}`), merged over the `:dynamic_form, :custom_field_types` config |
 | `validation_summary` | string | `nil` | Errors at top of form: `nil`, `"simple"`, or `"detailed"` |
 | `render_only` | boolean | `false` | Render markup only: events go to the parent LiveView's `handle_event/3`; requires `form` |
 | `form` | `Phoenix.HTML.Form` | `nil` | Render-only mode: the parent-owned form to render against |
@@ -181,6 +182,16 @@ invalid); perform side effects in the parent's `handle_info/2` instead.
 
 Uploaded files are stored in the form data as maps with `filename`,
 `cloud_bucket`, `cloud_path`, `cloud_provider`, and `uploaded_on`.
+
+## Custom field types
+
+Registered as `%{"type_name" => ecto_type}` via the
+`:dynamic_form, :custom_field_types` config and/or the `custom_field_types`
+attribute (per-form entries win). The Ecto type drives casting (`{:array, _}`
+types get checkbox-group-style param normalization); rendering dispatches to
+the components module's `input/1`, matched by a
+`def input(%{type: "type_name"} = assigns)` clause. Names colliding with
+built-in types raise. Unregistered question types render nothing.
 
 ## Components contract
 

@@ -42,7 +42,10 @@ definition against a parent-owned form and sends the events to the parent's
 Rendering is pluggable too: point `components` (per form, or via config) at
 your app's Phoenix-generated `CoreComponents` and inputs, the submit button,
 and error translation render through it, with per-function fallback to the
-built-ins for everything it doesn't define.
+built-ins for everything it doesn't define. Apps can extend the type
+vocabulary the same way — register `custom_field_types` (a map of type name
+to Ecto type) and pattern-match the type in the components module's
+`input/1`.
 
 ## Examples
 

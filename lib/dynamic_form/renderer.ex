@@ -44,8 +44,7 @@ defmodule DynamicForm.Renderer do
 
   use Phoenix.Component
 
-  alias DynamicForm.Components
-  alias DynamicForm.Instance
+  alias DynamicForm.{Components, FieldTypes, Instance}
 
   attr(:instance, :any,
     required: true,
@@ -93,6 +92,13 @@ defmodule DynamicForm.Renderer do
         "functions it exports override the built-ins per function — see DynamicForm.Components"
   )
 
+  attr(:custom_field_types, :map,
+    default: nil,
+    doc:
+      "Custom field types map (type name => Ecto type), merged over the " <>
+        ":dynamic_form, :custom_field_types config — see DynamicForm.FieldTypes"
+  )
+
   def render(assigns) do
     # Decode instance if needed
     instance = decode_instance(assigns.instance)
@@ -100,6 +106,7 @@ defmodule DynamicForm.Renderer do
     uploads = Map.get(assigns, :uploads, %{})
     parent_id = Map.get(assigns, :parent_id)
     components = Components.resolve(Map.get(assigns, :components))
+    field_types = FieldTypes.resolve(Map.get(assigns, :custom_field_types))
 
     assigns =
       assigns
@@ -108,6 +115,7 @@ defmodule DynamicForm.Renderer do
       |> assign(:uploads, uploads)
       |> assign(:parent_id, parent_id)
       |> assign(:components, components)
+      |> assign(:field_types, field_types)
 
     ~H"""
     <.form
@@ -119,7 +127,7 @@ defmodule DynamicForm.Renderer do
       phx-target={@target}
     >
       <%= for element <- visible_elements(@instance.elements, @form) do %>
-        <%= render_element(element, f, disabled: @disabled, gettext: @gettext, uploads: @uploads, parent_id: @parent_id, components: @components) %>
+        <%= render_element(element, f, disabled: @disabled, gettext: @gettext, uploads: @uploads, parent_id: @parent_id, components: @components, custom_field_types: @field_types) %>
       <% end %>
 
       <div :if={!@hide_submit} class="mt-6 flex items-center justify-end gap-x-6">
@@ -279,22 +287,12 @@ defmodule DynamicForm.Renderer do
     """
   end
 
-  # Fallback for unknown element types
-  defp render_panel_or_html(element, _form, _opts) do
-    assigns = %{element: element}
+  # Unknown element types render nothing — obvious in testing, not
+  # broken-looking in production
+  defp render_panel_or_html(_element, _form, _opts) do
+    assigns = %{}
 
-    ~H"""
-    <div class="mb-4 rounded-md bg-yellow-50 p-4">
-      <div class="flex">
-        <div class="ml-3">
-          <h3 class="text-sm font-medium text-yellow-800">Unknown element type</h3>
-          <div class="mt-2 text-sm text-yellow-700">
-            <p>Element "<%= @element.name %>" has unsupported type: <%= @element.type %></p>
-          </div>
-        </div>
-      </div>
-    </div>
-    """
+    ~H""
   end
 
   # The contents of a panel, wrapped in a slot for the section component
@@ -685,20 +683,50 @@ defmodule DynamicForm.Renderer do
     """
   end
 
-  # Fallback for unknown question types
-  defp render_question(question, _form, _opts) do
-    assigns = %{question: question}
+  # Registered custom field types dispatch to the components module's
+  # input/1 — apps define a matching clause, e.g.
+  # def input(%{type: "multiselect"} = assigns). Unregistered types render
+  # nothing: an absent field is obvious in testing without looking broken
+  # in production.
+  defp render_question(question, form, opts) do
+    field_types = Keyword.get(opts, :custom_field_types) || %{}
+
+    if FieldTypes.custom?(field_types, question.type) do
+      render_custom_question(question, form, opts)
+    else
+      assigns = %{}
+
+      ~H""
+    end
+  end
+
+  defp render_custom_question(question, form, opts) do
+    disabled = question_disabled?(question, form, opts)
+    field_atom = String.to_atom(question.name)
+
+    assigns = %{
+      question: question,
+      form: form,
+      field_atom: field_atom,
+      disabled: disabled,
+      choices: normalize_choices(question.choices),
+      label: question_label(question),
+      components: Keyword.get(opts, :components)
+    }
 
     ~H"""
-    <div class="mb-4 rounded-md bg-red-50 p-4">
-      <div class="flex">
-        <div class="ml-3">
-          <h3 class="text-sm font-medium text-red-800">Unknown question type</h3>
-          <div class="mt-2 text-sm text-red-700">
-            <p>Question "<%= @question.name %>" has unsupported type: <%= @question.type %></p>
-          </div>
-        </div>
-      </div>
+    <div class="mb-4">
+      {Components.render(@components, :input, %{
+        field: @form[@field_atom],
+        type: @question.type,
+        label: @label,
+        options: @choices,
+        placeholder: @question.placeholder,
+        disabled: @disabled
+      })}
+      <%= if @question.description do %>
+        <p class="mt-2 text-sm text-gray-500"><%= @question.description %></p>
+      <% end %>
     </div>
     """
   end

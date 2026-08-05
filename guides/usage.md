@@ -353,6 +353,63 @@ silently rendering built-in styling. The Custom Components section of the
 `/slot-forms` demo page shows delegation and fallback side by side in one
 form.
 
+### Custom field types
+
+Applications can extend the built-in question types with their own — app
+vocabulary like a `multiselect` or a `select_with_search` that shouldn't be
+baked into the library. A custom field type is two things: a registry entry
+declaring what the field *casts as*, and an `input/1` clause in the
+[components module](#custom-components) declaring how it *renders*.
+
+Register types globally, or per form with the `custom_field_types`
+attribute (per-form entries merge over — and win against — the config):
+
+```elixir
+config :dynamic_form,
+  custom_field_types: %{
+    "multiselect" => {:array, :string},
+    "select_with_search" => :string
+  }
+```
+
+```heex
+<DynamicForm.form id="signup" components={MyAppWeb.CoreComponents}>
+  <:field type="select_with_search" name="school" label="School" options={@schools} required />
+  <:field type="multiselect" name="days" label="Days" options={@days} />
+</DynamicForm.form>
+```
+
+Rendering dispatches to the components module's `input/1` with the usual
+assigns (`field`, `type`, `label`, `options`, `placeholder`, `disabled`) —
+define a matching clause:
+
+```elixir
+def input(%{type: "select_with_search"} = assigns) do
+  ~H"""
+  <div class="fieldset mb-2" id={"#{@id}-combobox"} phx-hook="Combobox" phx-update="ignore">
+    <span class="label mb-1">{@label}</span>
+    <select name={@name} id={@id} class="w-full select">
+      {Phoenix.HTML.Form.options_for_select(@options, @value)}
+    </select>
+  </div>
+  """
+end
+```
+
+The registered Ecto type drives the changeset: the field casts as declared,
+and `{:array, _}` types get the same hidden-input normalization as the
+built-in checkbox groups, so `required` works. `visible_if`/`required_if`
+and the `validators` attribute apply as with any question; validation
+beyond that is the application's job via `on_change`/`on_submit`.
+
+Custom types work identically from data mode — `{"type": "multiselect",
+"name": "days", "choices": ["mon", "tue"]}` — since the type name is just
+data. Two failure modes to know: a question type that is neither built-in
+nor registered renders **nothing** (obvious in testing, not broken-looking
+in production), while a *registered* type without a matching `input/1`
+clause falls to the module's catch-all and renders as a plain text input —
+a graceful degradation that still round-trips the value.
+
 ## Lifecycle callbacks: `on_change` and `on_submit`
 
 Two optional hooks mirror the form's `phx-change`/`phx-submit` events. Each

@@ -52,14 +52,20 @@ defmodule DynamicForm.Instance.FromSlots do
     fields = Map.get(assigns, :field, [])
     groups = Map.get(assigns, :group, [])
 
-    validate!(fields, groups)
+    custom_types =
+      assigns
+      |> Map.get(:custom_field_types)
+      |> DynamicForm.FieldTypes.resolve()
+      |> Map.keys()
+
+    validate!(fields, groups, custom_types)
 
     group_defs = Map.new(groups, &{&1.name, &1})
 
     converted =
       fields
       |> Enum.with_index()
-      |> Enum.map(fn {entry, index} -> {entry[:group], to_struct(entry, index)} end)
+      |> Enum.map(fn {entry, index} -> {entry[:group], to_struct(entry, index, custom_types)} end)
 
     %Instance{
       id: assigns.id,
@@ -101,7 +107,14 @@ defmodule DynamicForm.Instance.FromSlots do
     }
   end
 
-  defp to_struct(%{type: type} = entry, _index) when type in @question_types do
+  defp to_struct(%{type: type} = entry, index, custom_types) do
+    cond do
+      type in @question_types or type in custom_types -> question_struct(entry, type)
+      type in @element_types -> element_struct(entry, type, index)
+    end
+  end
+
+  defp question_struct(entry, type) do
     %Instance.Question{
       name: entry.name,
       type: type,
@@ -125,7 +138,7 @@ defmodule DynamicForm.Instance.FromSlots do
     }
   end
 
-  defp to_struct(%{type: type} = entry, index) when type in @element_types do
+  defp element_struct(entry, type, index) do
     base = %Instance.Element{
       name: entry[:name] || "element-#{index + 1}",
       type: type,
@@ -234,43 +247,47 @@ defmodule DynamicForm.Instance.FromSlots do
 
   # Validation
 
-  defp validate!(fields, groups) do
+  defp validate!(fields, groups, custom_types) do
     validate_group_defs!(groups)
-    Enum.each(fields, &validate_field!/1)
+    Enum.each(fields, &validate_field!(&1, custom_types))
     validate_unique_names!(fields, groups)
     validate_group_refs!(fields, groups)
   end
 
-  defp validate_field!(entry) do
-    type = fetch_type!(entry)
-    validate_question_name!(type, entry)
+  defp validate_field!(entry, custom_types) do
+    type = fetch_type!(entry, custom_types)
+    validate_question_name!(type, entry, custom_types)
     validate_type_requirements!(type, entry)
   end
 
-  defp fetch_type!(entry) do
-    case entry[:type] do
-      nil ->
+  defp fetch_type!(entry, custom_types) do
+    type = entry[:type]
+
+    cond do
+      type == nil ->
         raise ArgumentError,
               "<:field> requires a type attribute #{describe_entry(entry)}"
 
-      type when type in @question_types or type in @element_types ->
+      type in @question_types or type in @element_types or type in custom_types ->
         type
 
-      type ->
+      true ->
         raise ArgumentError,
               "<:field> has unknown type #{inspect(type)} #{describe_entry(entry)} — " <>
-                "expected one of: #{Enum.join(@question_types ++ @element_types, ", ")}"
+                "expected one of: #{Enum.join(@question_types ++ @element_types, ", ")}, " <>
+                "or a registered custom field type (see DynamicForm.FieldTypes)"
     end
   end
 
-  defp validate_question_name!(type, entry)
-       when type in @question_types do
-    if entry[:name] == nil or entry[:name] == "" do
+  # Question types — built-in or custom — collect input, so they need a name
+  defp validate_question_name!(type, entry, custom_types) do
+    if (type in @question_types or type in custom_types) and
+         (entry[:name] == nil or entry[:name] == "") do
       raise ArgumentError, "<:field type=\"#{type}\"> requires a name attribute"
     end
-  end
 
-  defp validate_question_name!(_type, _entry), do: :ok
+    :ok
+  end
 
   defp validate_type_requirements!(type, entry) when type in @choice_types do
     if empty_options?(entry) do
