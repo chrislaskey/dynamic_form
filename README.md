@@ -30,11 +30,12 @@ In declarative mode, everything is composed from slots:
 Whichever mode defines the form, the library owns the full lifecycle: an Ecto
 changeset built from the definition (types, required fields, validators),
 SurveyJS conditional expressions (`visible_if`, `required_if`, `enable_if`)
-evaluated live as the user types, direct-to-cloud file uploads, and two
+evaluated live as the user types, direct-to-cloud file uploads, and
 lifecycle callbacks mirroring the form's events — `on_change` to extend
 validation live, and `on_submit` for expensive submit-only checks. Valid
 submissions message the parent LiveView, where the application performs the
-side effect.
+side effect (or define `on_success` to replace the message with custom
+completion behavior).
 
 ## Examples
 
@@ -44,7 +45,7 @@ valid submission — the `handle_info/2` handler is where the side effect
 happens:
 
 ```heex
-<DynamicForm.form id="contact-form" on_submit={&Contacts.verify/1} send_messages>
+<DynamicForm.form id="contact-form" on_submit={&Contacts.verify/1}>
   <:field type="text" name="name" label="Name" required />
   <:field type="text" name="email" input_type="email" label="Email Address" required format="email" />
 </DynamicForm.form>
@@ -75,7 +76,7 @@ appears when the subject is `support`, and hidden required fields are
 excluded from validation automatically:
 
 ```heex
-<DynamicForm.form id="support-form" send_messages>
+<DynamicForm.form id="support-form">
   <:field type="text" name="name" label="Name" required min_length={2} />
   <:field type="dropdown" name="subject" label="Subject" required options={[{"Support", "support"}, {"Sales", "sales"}]} />
   <:field type="comment" name="details" label="Support Details" visible_if="{subject} = 'support'" />
@@ -88,7 +89,7 @@ custom range control via a slot body, while the library still owns the label,
 errors, and changeset validation:
 
 ```heex
-<DynamicForm.form id="checkout-form" send_messages>
+<DynamicForm.form id="checkout-form">
   <:field type="boolean" name="ship" label="Ship to a different address?" />
 
   <:group name="address" title="Shipping Address" visible_if="{ship} = true" />
@@ -117,7 +118,7 @@ the instance to the same component:
 ```
 
 ```heex
-<DynamicForm.form id="contact-form" json={@json} send_messages />
+<DynamicForm.form id="contact-form" json={@json} />
 ```
 
 Every example runs live in the demo app — the
@@ -151,7 +152,8 @@ layout tweaks — lives in the overlay; edit there, copy over the demo
 - **[SurveyJS compatibility](guides/surveyjs.md)** — defining forms as data:
   what's supported, what isn't, and DynamicForm's extensions
 - **[Lifecycle events](guides/lifecycle.md)** — the form lifecycle, the
-  `{:dynamic_form, payload}` message, and the `on_change`/`on_submit` hooks
+  `{:dynamic_form, payload}` message, and the `on_change`/`on_submit`/
+  `on_success` hooks
 - **[Reference](guides/reference.md)** — quick tables for every attribute,
   slot, question type, validator, and expression operator
 - **[Development](guides/development.md)** — the demo app workflow,

@@ -22,7 +22,6 @@ defmodule DemoWeb.SlotFormLive do
     id="basic-slot-form"
     title="Contact Form"
     on_submit={&Demo.Submissions.verify/1}
-    send_messages
   >
     <:field type="text" name="name" label="Name" required min_length={2} />
     <:field type="text" name="email" input_type="email" label="Email Address"
@@ -38,7 +37,7 @@ defmodule DemoWeb.SlotFormLive do
   """
 
   @src_groups ~S"""
-  <DynamicForm.form id="group-slot-form" send_messages>
+  <DynamicForm.form id="group-slot-form">
     <:field type="text" name="recipient" label="Recipient" required />
     <:field type="boolean" name="ship" label="Ship to a different address?" />
 
@@ -53,7 +52,7 @@ defmodule DemoWeb.SlotFormLive do
   """
 
   @src_custom ~S"""
-  <DynamicForm.form id="custom-slot-form" on_change={&budget_per_attendee/1} send_messages>
+  <DynamicForm.form id="custom-slot-form" on_change={&budget_per_attendee/1}>
     <%!-- Tier 1: html slot body reading parent assigns --%>
     <:field type="html" name="intro">
       <div class="rounded-md bg-indigo-50 p-4">
@@ -95,7 +94,6 @@ defmodule DemoWeb.SlotFormLive do
   <DynamicForm.form
     id="data-mode-form"
     instance={Demo.FormInstances.contact_form()}
-    send_messages
   />
   """
 
@@ -192,7 +190,6 @@ defmodule DemoWeb.SlotFormLive do
             id="basic-slot-form"
             title="Contact Form"
             on_submit={&Demo.Submissions.verify/1}
-            send_messages
           >
             <:field type="text" name="name" label="Name" required min_length={2} />
             <:field
@@ -235,7 +232,7 @@ defmodule DemoWeb.SlotFormLive do
         <.definition title="Template definition" code={@src_groups} />
 
         <div class="rounded-lg bg-white shadow-sm ring-1 ring-gray-900/5 p-6">
-          <DynamicForm.form id="group-slot-form" send_messages>
+          <DynamicForm.form id="group-slot-form">
             <:field type="text" name="recipient" label="Recipient" required />
             <:field type="boolean" name="ship" label="Ship to a different address?" />
 
@@ -270,7 +267,7 @@ defmodule DemoWeb.SlotFormLive do
         <.definition title="Template definition" code={@src_custom} />
 
         <div class="rounded-lg bg-white shadow-sm ring-1 ring-gray-900/5 p-6">
-          <DynamicForm.form id="custom-slot-form" on_change={&budget_per_attendee/1} send_messages>
+          <DynamicForm.form id="custom-slot-form" on_change={&budget_per_attendee/1}>
             <:field type="html" name="intro">
               <div class="rounded-md bg-indigo-50 p-4">
                 <h3 class="font-semibold text-indigo-900">
@@ -347,7 +344,6 @@ defmodule DemoWeb.SlotFormLive do
           <DynamicForm.form
             id="data-mode-form"
             instance={Demo.FormInstances.contact_form()}
-            send_messages
           />
         </div>
 

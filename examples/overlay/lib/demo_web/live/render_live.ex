@@ -100,7 +100,6 @@ defmodule DemoWeb.RenderLive do
               instance={@create_form}
               on_submit={&Demo.Submissions.verify/1}
               params={%{}}
-              send_messages={true}
               submit_text="Create Contact"
             />
           <% end %>
@@ -117,7 +116,6 @@ defmodule DemoWeb.RenderLive do
               instance={@edit_form}
               on_submit={&Demo.Submissions.verify/1}
               params={sample_edit_data()}
-              send_messages={true}
               submit_text="Update Contact"
             />
           <% end %>
@@ -183,8 +181,8 @@ defmodule DemoWeb.RenderLive do
                 automatically handles the changeset creation and validation.
               </p>
               <p class="mt-1 text-xs text-gray-600">
-                This example uses message passing (<code class="bg-white px-1 rounded">send_messages: true</code>)
-                to receive form submission results via <code class="bg-white px-1 rounded">handle_info/2</code>,
+                Valid submissions arrive as <code class="bg-white px-1 rounded">&lbrace;:dynamic_form, payload&rbrace;</code>
+                messages via <code class="bg-white px-1 rounded">handle_info/2</code>,
                 allowing the parent LiveView to update state and display the submitted data.
               </p>
             </div>

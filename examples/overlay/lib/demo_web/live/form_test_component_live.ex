@@ -2,9 +2,9 @@ defmodule DemoWeb.FormTestComponentLive do
   @moduledoc """
   Test page for the DynamicForm.RendererLive LiveComponent.
 
-  This demonstrates the two usage patterns:
-  - Message passing (send_messages: true)
-  - No messages (self-contained)
+  This demonstrates the two success-handling patterns:
+  - Default: the component messages the parent with {:dynamic_form, payload}
+  - Custom: an on_success callback replaces the default message
   """
 
   use DemoWeb, :live_view
@@ -59,10 +59,10 @@ defmodule DemoWeb.FormTestComponentLive do
               class="rounded-md border-gray-300 shadow-sm focus:border-indigo-600 focus:ring-indigo-600"
             >
               <option value="message" selected={@callback_mode == :message}>
-                Message Passing (send_messages: true)
+                Default Message Passing
               </option>
-              <option value="none" selected={@callback_mode == :none}>
-                No Messages (self-contained)
+              <option value="custom" selected={@callback_mode == :custom}>
+                Custom on_success Callback
               </option>
             </select>
           </.form>
@@ -77,8 +77,8 @@ defmodule DemoWeb.FormTestComponentLive do
         <div class="mb-6 flex justify-end">
           <DynamicForm.submit_button form="contact-form-form" class="shadow-lg">
             {if @callback_mode == :message,
-              do: "💾 Submit with Messages",
-              else: "💾 Submit (No Messages)"}
+              do: "💾 Submit (Default Message)",
+              else: "💾 Submit (Custom on_success)"}
           </DynamicForm.submit_button>
         </div>
         
@@ -90,20 +90,20 @@ defmodule DemoWeb.FormTestComponentLive do
               id="contact-form"
               instance={@form_instance}
               on_submit={&Demo.Submissions.verify/1}
-              send_messages={true}
               hide_submit={true}
-              submit_text="Submit with Messages"
+              submit_text="Submit (Default Message)"
             />
           <% end %>
 
-          <%= if @callback_mode == :none do %>
+          <%= if @callback_mode == :custom do %>
             <.live_component
               module={DynamicForm.RendererLive}
               id="contact-form"
               instance={@form_instance}
               on_submit={&Demo.Submissions.verify/1}
+              on_success={fn payload -> send(self(), {:custom_success, payload.data}) end}
               hide_submit={true}
-              submit_text="Submit (No Messages)"
+              submit_text="Submit (Custom on_success)"
             />
           <% end %>
         </div>
@@ -122,9 +122,9 @@ defmodule DemoWeb.FormTestComponentLive do
           <h3 class="text-lg font-semibold text-gray-900 mb-4">About Usage Patterns</h3>
           <div class="space-y-4 text-sm text-gray-700">
             <div>
-              <h4 class="font-semibold">Message Passing</h4>
+              <h4 class="font-semibold">Default Message Passing</h4>
               <p class="mt-1">
-                Sends a message shaped like
+                By default the component sends a message shaped like
                 <code class="bg-white px-1 rounded">
                   &lbrace;:dynamic_form, %DynamicForm.Payload&lbrace;&rbrace;&rbrace;
                 </code>
@@ -136,11 +136,14 @@ defmodule DemoWeb.FormTestComponentLive do
               </p>
             </div>
             <div>
-              <h4 class="font-semibold">No Messages</h4>
+              <h4 class="font-semibold">Custom on_success Callback</h4>
               <p class="mt-1">
-                The component handles everything internally. Useful for simple forms that don't
-                need custom behavior after submission. The form will still validate and submit,
-                but the parent LiveView won't be notified of the results.
+                Defining <code class="bg-white px-1 rounded">on_success</code>
+                replaces the default message: the function is called with the payload on
+                every valid submission instead. Use it to send a differently-shaped message
+                (this page sends
+                <code class="bg-white px-1 rounded">&lbrace;:custom_success, data&rbrace;</code>),
+                broadcast over PubSub, or make the form fully self-contained.
               </p>
             </div>
             <div>
@@ -159,7 +162,8 @@ defmodule DemoWeb.FormTestComponentLive do
     """
   end
 
-  # Valid submissions arrive here; the side effect (create) runs in the parent
+  # Default mode: valid submissions arrive as {:dynamic_form, payload} and
+  # the side effect (create) runs in the parent
   @impl true
   def handle_info({:dynamic_form, %DynamicForm.Payload{data: data}}, socket) do
     {:ok, result} = Demo.Submissions.create(data)
@@ -170,21 +174,32 @@ defmodule DemoWeb.FormTestComponentLive do
      |> assign(:last_result, result)}
   end
 
+  # Custom mode: the on_success callback sent this instead of the default
+  @impl true
+  def handle_info({:custom_success, data}, socket) do
+    {:ok, result} = Demo.Submissions.create(data)
+
+    {:noreply,
+     socket
+     |> put_flash(:info, "✓ Custom on_success: #{result.message}")
+     |> assign(:last_result, result)}
+  end
+
   # Mode switcher
   @impl true
   def handle_event("change_mode", %{"mode" => mode}, socket) do
-    {:noreply, assign(socket, :callback_mode, String.to_atom(mode))}
+    {:noreply, assign(socket, :callback_mode, String.to_existing_atom(mode))}
   end
 
   defp describe_mode(:message) do
     """
-    send_messages={true}
+    (no attributes — the default)
     """
   end
 
-  defp describe_mode(:none) do
+  defp describe_mode(:custom) do
     """
-    (no message attributes)
+    on_success={fn payload -> send(self(), {:custom_success, payload.data}) end}
     """
   end
 end

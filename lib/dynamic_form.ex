@@ -73,13 +73,13 @@ defmodule DynamicForm do
   `<:field>` slots (declarative mode) — exactly one of the three:
 
       <%!-- Data mode: Instance struct or map --%>
-      <DynamicForm.form id="contact-form" instance={@form_instance} send_messages />
+      <DynamicForm.form id="contact-form" instance={@form_instance} />
 
       <%!-- Data mode: SurveyJS-compatible JSON string --%>
-      <DynamicForm.form id="contact-form" json={@json} send_messages />
+      <DynamicForm.form id="contact-form" json={@json} />
 
       <%!-- Declarative mode --%>
-      <DynamicForm.form id="contact-form" title="Contact Form" send_messages>
+      <DynamicForm.form id="contact-form" title="Contact Form">
         <:field type="text" input_type="email" name="email" label="Email Address" required />
         <:field type="dropdown" name="subject" label="Subject"
                 options={[{"Support", "support"}, {"Sales", "sales"}]} />
@@ -108,11 +108,11 @@ defmodule DynamicForm do
 
   ## Lifecycle callbacks
 
-  Two optional hooks mirror the form's `phx-change`/`phx-submit` events. Each
-  is a 1-arity function receiving a `DynamicForm.Payload` and returning it,
-  transformed or untouched. They extend **validation** — reject a submission
-  with `DynamicForm.Payload.add_error/4` — while side effects belong in the
-  parent's `handle_info/2`:
+  Two optional validation hooks mirror the form's `phx-change`/`phx-submit`
+  events. Each is a 1-arity function receiving a `DynamicForm.Payload` and
+  returning it, transformed or untouched. Reject a submission with
+  `DynamicForm.Payload.add_error/4`; side effects belong in the parent's
+  `handle_info/2`:
 
     * `on_change` — runs after the built-in validations on every change (and
       during the submit validation pass). Keep it cheap — it runs per
@@ -120,15 +120,16 @@ defmodule DynamicForm do
     * `on_submit` — runs on **every** submit, valid or not, so it can batch
       expensive checks with the built-in errors into one complete error list.
 
-      <DynamicForm.form id="contact-form" on_submit={&Contacts.verify/1} send_messages>
+      <DynamicForm.form id="contact-form" on_submit={&Contacts.verify/1}>
         <:field type="text" name="email" label="Email" required format="email" />
       </DynamicForm.form>
 
-  When `send_messages` is set, a **valid** submission delivers
-  `{:dynamic_form, payload}` to the parent LiveView; invalid submissions
-  render their errors inline and never message the parent. See
-  `DynamicForm.RendererLive` and `DynamicForm.Payload` for the full
-  contracts.
+  A **valid** submission delivers `{:dynamic_form, payload}` to the parent
+  LiveView by default; invalid submissions render their errors inline and
+  never message the parent. Define `on_success` — a 1-arity function
+  receiving the payload — to replace the default message with custom
+  behavior. See `DynamicForm.RendererLive` and `DynamicForm.Payload` for
+  the full contracts.
 
   ## Declarative mode
 
@@ -136,7 +137,7 @@ defmodule DynamicForm do
   (see `DynamicForm.Instance.FromSlots`). Question types collect input;
   `html`, `image`, and `custom` render static or custom content:
 
-      <DynamicForm.form id="signup" send_messages>
+      <DynamicForm.form id="signup">
         <:field type="html" name="intro" html="<h2>Sign up</h2>" />
         <:field type="text" name="email" label="Email" format="email" required />
         <:field type="rating" name="score" label="Score" rate_min={1} rate_max={10} />
@@ -216,11 +217,11 @@ defmodule DynamicForm do
   attr(:form_name, :string, default: "dynamic_form", doc: "Form namespace for params")
   attr(:submit_text, :string, default: "Submit", doc: "Submit button text")
 
-  attr(:send_messages, :boolean,
-    default: false,
+  attr(:on_success, :any,
+    default: nil,
     doc:
-      "Send {:dynamic_form, %DynamicForm.Payload{}} messages to the parent " <>
-        "LiveView on valid submissions"
+      "1-arity function (DynamicForm.Payload), run on every valid submission " <>
+        "instead of sending the default {:dynamic_form, payload} message"
   )
 
   attr(:hide_submit, :boolean, default: false, doc: "Hide the submit button")
@@ -295,10 +296,10 @@ defmodule DynamicForm do
       instance={@resolved_instance}
       on_change={@on_change}
       on_submit={@on_submit}
+      on_success={@on_success}
       params={@params}
       form_name={@form_name}
       submit_text={@submit_text}
-      send_messages={@send_messages}
       hide_submit={@hide_submit}
       gettext={@gettext}
       validation_summary={@validation_summary}

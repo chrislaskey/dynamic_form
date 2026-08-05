@@ -78,7 +78,6 @@ defmodule DemoWeb.SectionFormLive do
             instance={if !@use_json, do: @form_instance}
             json={if @use_json, do: @json_string}
             hide_submit
-            send_messages
             submit_text="Save Profile"
             validation_summary="detailed"
           />
@@ -226,7 +225,6 @@ defmodule DemoWeb.SectionFormLive do
                 module=&lbrace;DynamicForm.RendererLive&rbrace;
                 id="section-form"
                 instance=&lbrace;@json_string&rbrace;  &lt;!-- JSON string --&gt;
-                send_messages=&lbrace;true&rbrace;
               /&gt;
 
               &lt;!-- Or use a map --&gt;
@@ -234,7 +232,6 @@ defmodule DemoWeb.SectionFormLive do
                 module=&lbrace;DynamicForm.RendererLive&rbrace;
                 id="section-form"
                 instance=&lbrace;@instance_map&rbrace;  &lt;!-- Map from Jason.decode! --&gt;
-                send_messages=&lbrace;true&rbrace;
               /&gt;
 
               &lt;!-- Or the original struct format --&gt;
@@ -242,7 +239,6 @@ defmodule DemoWeb.SectionFormLive do
                 module=&lbrace;DynamicForm.RendererLive&rbrace;
                 id="section-form"
                 instance=&lbrace;@form_instance&rbrace;  &lt;!-- Instance struct --&gt;
-                send_messages=&lbrace;true&rbrace;
               /&gt;
             </code></pre>
             </div>
@@ -285,7 +281,6 @@ defmodule DemoWeb.SectionFormLive do
                 id="section-form"
                 instance=&lbrace;@form_instance&rbrace;
                 hide_submit=&lbrace;true&rbrace;
-                send_messages=&lbrace;true&rbrace;
               /&gt;
             </code></pre>
             </div>

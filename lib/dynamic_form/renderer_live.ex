@@ -19,25 +19,27 @@ defmodule DynamicForm.RendererLive do
       pass (default: `nil`; see "Lifecycle callbacks" below)
     * `:on_submit` - 1-arity function `(payload) -> payload` run on every
       submit — valid or not (default: `nil`; see "Lifecycle callbacks" below)
+    * `:on_success` - 1-arity function `(payload)` run on every valid
+      submission *instead of* the default `{:dynamic_form, payload}` message
+      to the parent LiveView (default: `nil`; see "Messages" below)
     * `:params` - Initial form params for edit mode (map, default: `%{}`)
     * `:form_name` - Form namespace for params (string, default: `"dynamic_form"`)
     * `:submit_text` - Submit button text (string, default: `"Submit"`, not required when `hide_submit` is `true`)
-    * `:send_messages` - Whether to send messages to parent LiveView (boolean, default: `false`)
     * `:hide_submit` - Whether to hide the submit button (boolean, default: `false`)
     * `:gettext` - Gettext backend module for translations (atom, default: `DynamicForm.Gettext`)
     * `:validation_summary` - Display validation errors at top of form (string, `nil`, `"simple"`, or `"detailed"`, default: `nil`)
 
   ## Usage
 
-  ### Basic Usage with Message Passing
+  ### Basic Usage
 
-  Component sends messages to parent LiveView on form submission:
+  The component sends the parent LiveView a message on every valid
+  submission — the parent performs the side effect:
 
       <.live_component
         module={DynamicForm.RendererLive}
         id="contact-form"
         instance={@form_instance}
-        send_messages={true}
       />
 
       def handle_info({:dynamic_form, %DynamicForm.Payload{data: data}}, socket) do
@@ -45,14 +47,16 @@ defmodule DynamicForm.RendererLive do
         {:noreply, put_flash(socket, :info, "Created contact \#{contact.id}")}
       end
 
-  ### No Messages (Self-Contained)
+  ### Custom success handling
 
-  Component handles everything internally:
+  Define `on_success` to replace the default message with your own behavior
+  (a differently-shaped message, a PubSub broadcast, or nothing at all):
 
       <.live_component
         module={DynamicForm.RendererLive}
         id="contact-form"
         instance={@form_instance}
+        on_success={fn payload -> send(self(), {:contact_saved, payload.data}) end}
       />
 
   ### Edit Mode
@@ -65,7 +69,6 @@ defmodule DynamicForm.RendererLive do
         instance={@form_instance}
         params={%{"name" => "John", "email" => "john@example.com"}}
         form_name="user_profile"
-        send_messages={true}
       />
 
   ### Disabled Fields
@@ -92,7 +95,6 @@ defmodule DynamicForm.RendererLive do
         id="my-form"
         instance={@form_instance}
         hide_submit={true}
-        send_messages={true}
       />
 
   Note: The form ID is automatically generated as `"\#{id}-form"`, so if your component
@@ -121,7 +123,6 @@ defmodule DynamicForm.RendererLive do
         id="contact-form"
         instance={@form_instance}
         on_submit={&MyApp.Contacts.verify/1}
-        send_messages={true}
       />
 
       def verify(payload) do
@@ -136,8 +137,8 @@ defmodule DynamicForm.RendererLive do
 
   ## Messages
 
-  When `send_messages` is `true`, the component sends the parent LiveView a
-  message on every **valid** submission:
+  By default, the component sends the parent LiveView a message on every
+  **valid** submission:
 
       {:dynamic_form, %DynamicForm.Payload{}}
 
@@ -145,6 +146,12 @@ defmodule DynamicForm.RendererLive do
   on the form. The payload delivered is the one returned by the callbacks
   (or built by the component when none are configured), so anything stashed
   in `:extra` is available in `handle_info/2`.
+
+  Defining `on_success` **replaces** the default message: the function is
+  called with the payload on every valid submission and no
+  `{:dynamic_form, payload}` message is sent. Its return value is ignored.
+  Use it to send a custom message, broadcast over PubSub, or make the form
+  fully self-contained.
   """
 
   use Phoenix.LiveComponent
@@ -322,7 +329,7 @@ defmodule DynamicForm.RendererLive do
     if Payload.valid?(payload) do
       {:noreply,
        socket
-       |> notify_parent(payload)
+       |> handle_success(payload)
        |> assign(:submitting, false)}
     else
       {:noreply, handle_invalid_submit(socket, payload.changeset)}
@@ -425,11 +432,21 @@ defmodule DynamicForm.RendererLive do
     |> assign(:submitting, false)
   end
 
-  # Send the payload of a valid submission to the parent LiveView when
-  # send_messages is set
-  defp notify_parent(socket, payload) do
-    if socket.assigns[:send_messages] do
-      send(self(), {:dynamic_form, payload})
+  # Complete a valid submission: send the payload to the parent LiveView by
+  # default, or hand it to a custom on_success callback when one is given —
+  # the callback replaces the message entirely.
+  defp handle_success(socket, payload) do
+    case socket.assigns[:on_success] do
+      nil ->
+        send(self(), {:dynamic_form, payload})
+
+      fun when is_function(fun, 1) ->
+        fun.(payload)
+
+      other ->
+        raise ArgumentError,
+              "on_success must be a 1-arity function receiving a DynamicForm.Payload, " <>
+                "got: #{inspect(other)}"
     end
 
     socket

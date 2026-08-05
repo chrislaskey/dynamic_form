@@ -24,7 +24,7 @@ Pass SurveyJS JSON directly into the form component:
 ```
 
 ```heex
-<DynamicForm.form id="contact-form" json={@json} send_messages />
+<DynamicForm.form id="contact-form" json={@json} />
 ```
 
 ## Supported

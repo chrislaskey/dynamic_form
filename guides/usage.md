@@ -17,7 +17,7 @@ Define fields with `<:field>` slots inside `DynamicForm.form/1`, in render
 order:
 
 ```heex
-<DynamicForm.form id="contact-form" title="Contact Form" send_messages>
+<DynamicForm.form id="contact-form" title="Contact Form">
   <:field type="text" name="name" label="Name" required />
   <:field type="text" name="email" input_type="email" label="Email Address"
           required format="email" />
@@ -147,7 +147,7 @@ Definitions can be SurveyJS-compatible JSON, maps, or `Instance` structs.
 A JSON string passes straight in via the `json` attribute:
 
 ```heex
-<DynamicForm.form id="contact-form" json={@json} send_messages />
+<DynamicForm.form id="contact-form" json={@json} />
 ```
 
 Or decode at the edge (e.g. in `mount/3`) to work with the definition
@@ -176,7 +176,7 @@ instance = DynamicForm.Instance.decode!(~S({
 ```
 
 ```heex
-<DynamicForm.form id="contact-form" instance={@form_instance} send_messages />
+<DynamicForm.form id="contact-form" instance={@form_instance} />
 ```
 
 Instances encode back to JSON with `Jason.encode!/1`, so definitions can be
@@ -201,7 +201,6 @@ The unified entry point. Requires exactly one of the `instance` attribute
   form_name="profile"
   submit_text="Save Profile"
   validation_summary="detailed"
-  send_messages
 />
 ```
 
@@ -221,7 +220,6 @@ are merged back into every submission so those values survive validation:
   id="user-profile"
   instance={@form_instance}
   params={%{"id" => @user.id, "name" => @user.name, "email" => @user.email}}
-  send_messages
 />
 ```
 
@@ -230,7 +228,7 @@ preserved through submission the same way.
 
 ### Messages
 
-With `send_messages`, the component sends the parent LiveView a
+By default, the component sends the parent LiveView a
 `{:dynamic_form, %DynamicForm.Payload{}}` message on every **valid**
 submission — this is where the application performs the side effect (insert
 a record, send an email, navigate). Invalid submissions render their errors
@@ -247,9 +245,21 @@ The payload carries the form's `id` (for matching when a page renders
 several forms), the final `changeset`, the applied `data`, and an `extra`
 map that `on_submit` can write derived values into.
 
-Without `send_messages` the component is self-contained: it validates and
-submits, and the parent is not notified. See the
-[Lifecycle events guide](lifecycle.md) for the full lifecycle and payload.
+To take over success handling, define `on_success` — a 1-arity function
+receiving the payload. It **replaces** the default message: send a custom
+message, broadcast over PubSub, or do nothing to make the form fully
+self-contained:
+
+```heex
+<DynamicForm.form
+  id="contact-form"
+  instance={@form_instance}
+  on_success={fn payload -> Phoenix.PubSub.broadcast(MyApp.PubSub, "contacts", payload.data) end}
+/>
+```
+
+See the [Lifecycle events guide](lifecycle.md) for the full lifecycle and
+payload.
 
 ### External submit buttons
 
@@ -345,7 +355,7 @@ complete error list. Uniqueness-style checks that a context would normally
 catch at insert time belong here, so their errors render on the form:
 
 ```heex
-<DynamicForm.form id="contact-form" on_submit={&Contacts.verify/1} send_messages>
+<DynamicForm.form id="contact-form" on_submit={&Contacts.verify/1}>
   <:field type="text" name="email" label="Email" required format="email" />
 </DynamicForm.form>
 ```

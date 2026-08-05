@@ -14,10 +14,10 @@ Quick lookup tables. For narrative documentation see the
 | `description` | string | `nil` | Instance description (declarative mode) |
 | `on_change` | function | `nil` | 1-arity `(payload) -> payload`, after built-in validations on every change and during the submit validation pass |
 | `on_submit` | function | `nil` | 1-arity `(payload) -> payload`, on every submit — valid or not |
+| `on_success` | function | `nil` | 1-arity `(payload)`, on every valid submission — replaces the default `{:dynamic_form, payload}` message |
 | `params` | map | `%{}` | Initial form params for edit mode |
 | `form_name` | string | `"dynamic_form"` | Form namespace for params |
 | `submit_text` | string | `"Submit"` | Submit button text |
-| `send_messages` | boolean | `false` | Send `{:dynamic_form, payload}` messages to the parent LiveView on valid submissions |
 | `hide_submit` | boolean | `false` | Hide the built-in submit button |
 | `gettext` | atom | `DynamicForm.Gettext` | Gettext backend for translations |
 | `validation_summary` | string | `nil` | Errors at top of form: `nil`, `"simple"`, or `"detailed"` |
@@ -122,9 +122,9 @@ Field references use braces: `{field_name}`. Literals: `'strings'`, numbers,
 
 ## Messages
 
-Sent to the parent LiveView when `send_messages` is set, on **valid**
-submissions only — invalid submissions render their errors inline and never
-message the parent:
+Sent to the parent LiveView by default, on **valid** submissions only —
+invalid submissions render their errors inline and never message the parent.
+Defining `on_success` replaces the message with the callback:
 
 ```elixir
 {:dynamic_form, %DynamicForm.Payload{}}
@@ -142,17 +142,21 @@ message the parent:
 ## Lifecycle callback contracts
 
 ```elixir
-on_change: (DynamicForm.Payload.t()) -> DynamicForm.Payload.t()
-on_submit: (DynamicForm.Payload.t()) -> DynamicForm.Payload.t()
+on_change:  (DynamicForm.Payload.t()) -> DynamicForm.Payload.t()
+on_submit:  (DynamicForm.Payload.t()) -> DynamicForm.Payload.t()
+on_success: (DynamicForm.Payload.t()) -> any()
 ```
 
 `on_change` runs after built-in validations, on every change and during the
 submit validation pass. `on_submit` runs on every submit — valid or not —
 so it can batch expensive checks with the built-in errors into one complete
-error list. Both are validation hooks: reject a submission with
-`DynamicForm.Payload.add_error/4` (validity lives on the changeset, so
-adding an error marks the submission invalid); perform side effects in the
-parent's `handle_info/2` instead.
+error list. Both are validation hooks that run *alongside* the built-in
+behavior: reject a submission with `DynamicForm.Payload.add_error/4`
+(validity lives on the changeset, so adding an error marks the submission
+invalid); perform side effects in the parent's `handle_info/2` instead.
+
+`on_success` runs on every valid submission and *replaces* the default
+`{:dynamic_form, payload}` message; its return value is ignored.
 
 ## Upload metadata keys
 

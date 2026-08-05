@@ -102,7 +102,6 @@ defmodule DemoWeb.SurveyjsTestLive do
               module={DynamicForm.RendererLive}
               id="surveyjs-test-form"
               instance={@test_form}
-              send_messages={true}
               submit_text="Submit Contact Form"
               validation_summary="detailed"
             />
@@ -111,7 +110,6 @@ defmodule DemoWeb.SurveyjsTestLive do
               module={DynamicForm.RendererLive}
               id="surveyjs-payment-form"
               instance={@payment_form}
-              send_messages={true}
               submit_text="Process Payment"
               validation_summary="detailed"
             />
