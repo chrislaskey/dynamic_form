@@ -23,6 +23,9 @@ In declarative mode, everything is composed from slots:
   html/image content blocks.
 - **`<:group>`** — collects fields into a titled panel, with its own
   conditional visibility.
+- **`<:nested>`** — declares a repeating child form (a contact's list of
+  addresses); fields join it with `nested="name"` and the value becomes a
+  list of maps, validated per entry.
 - **Slot bodies** — custom markup at three tiers: content blocks, custom
   controls that receive the form field (the library keeps the label, errors,
   and validation), and fully custom elements that receive the form.
@@ -169,6 +172,9 @@ layout tweaks — lives in the overlay; edit there, copy over the demo
 - **[Usage](guides/usage.md)** — every feature in depth: both definition
   modes, question types, validation, conditional logic, groups, custom
   markup, rendering options, edit mode, submission, and file uploads
+- **[Nested forms](guides/nested-forms.md)** — repeating child forms
+  (SurveyJS `paneldynamic` / `<:nested>` slots): per-entry validation, the
+  scope model, seeding, and events
 - **[SurveyJS compatibility](guides/surveyjs.md)** — defining forms as data:
   what's supported, what isn't, and DynamicForm's extensions
 - **[Lifecycle events](guides/lifecycle.md)** — the form lifecycle, the

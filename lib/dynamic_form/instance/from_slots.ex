@@ -1,7 +1,7 @@
 defmodule DynamicForm.Instance.FromSlots do
   @moduledoc """
-  Converts `<:field>` and `<:group>` slot entries from `DynamicForm.form/1`
-  into a `DynamicForm.Instance` struct.
+  Converts `<:field>`, `<:group>`, and `<:nested>` slot entries from
+  `DynamicForm.form/1` into a `DynamicForm.Instance` struct.
 
   This is the slot-mode counterpart to `DynamicForm.Instance.Decoder`: the
   decoder normalizes untrusted external data (JSON, string-keyed maps), while
@@ -24,16 +24,33 @@ defmodule DynamicForm.Instance.FromSlots do
     * A field with `group="name"` is collected into a `panel` element declared
       by a `<:group name="name">` entry. The panel is emitted at the position
       of its first member field.
+    * A field with `nested="name"` is collected into the `templateElements`
+      of a `paneldynamic` question declared by a `<:nested name="name">`
+      entry. `nested` declares the field's *data scope* (its value lives
+      inside each entry of the nested form's list value); `group` declares
+      visual grouping *within* that scope — the two combine, and a group
+      inside a nested form declares the same `nested` scope on its own
+      declaration. See the Nested Forms guide.
     * An entry with a slot body keeps the raw slot entry in the struct's
       `:slot` field so `DynamicForm.Renderer` can `render_slot/2` it. Bodies
       are in-memory only — they are dropped when the instance is JSON-encoded.
 
+  ## Naming and scoping
+
+  Field and `<:nested>` names are data keys, unique *per scope* (the form
+  level is one scope; each nested form's template is another) — so a
+  top-level `name` and an `addresses[].name` coexist, mirroring the
+  application's schema. `<:group>` and `<:nested>` *declaration* names are
+  reference targets for the flat `group=`/`nested=` attrs, so declarations
+  are globally unique.
+
   ## Validation
 
   `convert!/1` raises `ArgumentError` with a descriptive message for invalid
-  definitions: missing names, duplicate names, unknown types, choice questions
-  without options, `custom` fields without a body, or fields referencing
-  undeclared groups.
+  definitions: missing names, duplicate names within a scope, unknown types,
+  choice questions without options, `custom` fields without a body,
+  references to undeclared groups or nested forms, group/member nested-scope
+  mismatches, nested forms with no members, and cyclic nested references.
   """
 
   alias DynamicForm.Instance
@@ -45,12 +62,14 @@ defmodule DynamicForm.Instance.FromSlots do
   @doc """
   Validates slot entries and builds a `%DynamicForm.Instance{}`.
 
-  Expects the assigns of `DynamicForm.form/1`: `:id` plus the `:field` and
-  `:group` slot lists (and optional `:title` and `:description`).
+  Expects the assigns of `DynamicForm.form/1`: `:id` plus the `:field`,
+  `:group`, and `:nested` slot lists (and optional `:title` and
+  `:description`).
   """
   def convert!(assigns) do
     fields = Map.get(assigns, :field, [])
     groups = Map.get(assigns, :group, [])
+    nesteds = Map.get(assigns, :nested, [])
 
     custom_types =
       assigns
@@ -58,43 +77,78 @@ defmodule DynamicForm.Instance.FromSlots do
       |> DynamicForm.FieldTypes.resolve()
       |> Map.keys()
 
-    validate!(fields, groups, custom_types)
+    validate!(fields, groups, nesteds, custom_types)
 
-    group_defs = Map.new(groups, &{&1.name, &1})
-
-    converted =
-      fields
-      |> Enum.with_index()
-      |> Enum.map(fn {entry, index} -> {entry[:group], to_struct(entry, index, custom_types)} end)
+    slots = %{fields: Enum.with_index(fields), groups: groups, nesteds: nesteds}
+    {elements, _anchor} = build_scope(nil, slots, custom_types)
 
     %Instance{
       id: assigns.id,
       title: assigns[:title],
       description: assigns[:description],
-      elements: position_groups(converted, group_defs)
+      elements: elements
     }
   end
 
-  # Emit ungrouped elements in order; emit each group's panel (containing all
-  # of its members) at the position of the group's first member.
-  defp position_groups(converted, group_defs) do
-    {elements, _seen} =
-      Enum.reduce(converted, {[], MapSet.new()}, fn
-        {nil, element}, {acc, seen} ->
-          {[element | acc], seen}
+  # Build the elements of one data scope (nil = the form level; otherwise a
+  # <:nested> name). Each element carries an anchor — its first member
+  # field's position in the flat <:field> list — and siblings sort by anchor,
+  # so ungrouped fields keep their template order and containers render at
+  # the position of their first member. Returns {elements, scope_anchor}.
+  defp build_scope(scope, slots, custom_types) do
+    field_items =
+      for {entry, index} <- slots.fields, entry[:nested] == scope, entry[:group] == nil do
+        {index, to_struct(entry, index, custom_types)}
+      end
 
-        {group_name, _element}, {acc, seen} ->
-          if MapSet.member?(seen, group_name) do
-            {acc, seen}
-          else
-            members = for {^group_name, element} <- converted, do: element
-            panel = build_panel(Map.fetch!(group_defs, group_name), members)
-            {[panel | acc], MapSet.put(seen, group_name)}
-          end
-      end)
+    nested_items =
+      for entry <- slots.nesteds, entry[:nested] == scope, entry[:group] == nil do
+        build_nested(entry, slots, custom_types)
+      end
 
-    Enum.reverse(elements)
+    group_items =
+      for entry <- slots.groups, entry[:nested] == scope do
+        build_group(entry, slots, custom_types)
+      end
+      |> Enum.reject(&is_nil/1)
+
+    sorted = Enum.sort_by(field_items ++ nested_items ++ group_items, &elem(&1, 0))
+
+    {Enum.map(sorted, &elem(&1, 1)), scope_anchor(sorted)}
   end
+
+  # A nested declaration becomes a paneldynamic question; its scope's
+  # elements become the template. Anchored at its first member field.
+  defp build_nested(entry, slots, custom_types) do
+    {template, anchor} = build_scope(entry.name, slots, custom_types)
+    {anchor, nested_question(entry, template)}
+  end
+
+  # A group's members are the fields (and nested declarations) referencing
+  # it; scope agreement is already validated, so membership needs no scope
+  # filter. Memberless groups emit nothing.
+  defp build_group(entry, slots, custom_types) do
+    field_members =
+      for {field, index} <- slots.fields, field[:group] == entry.name do
+        {index, to_struct(field, index, custom_types)}
+      end
+
+    nested_members =
+      for nested <- slots.nesteds, nested[:group] == entry.name do
+        build_nested(nested, slots, custom_types)
+      end
+
+    case Enum.sort_by(field_members ++ nested_members, &elem(&1, 0)) do
+      [] ->
+        nil
+
+      [{anchor, _} | _] = members ->
+        {anchor, build_panel(entry, Enum.map(members, &elem(&1, 1)))}
+    end
+  end
+
+  defp scope_anchor([]), do: nil
+  defp scope_anchor([{anchor, _} | _]), do: anchor
 
   defp build_panel(group_def, members) do
     %Instance.Element{
@@ -104,6 +158,32 @@ defmodule DynamicForm.Instance.FromSlots do
       visibleIf: group_def[:visible_if],
       enableIf: group_def[:enable_if],
       elements: members
+    }
+  end
+
+  defp nested_question(entry, template) do
+    %Instance.Question{
+      name: entry.name,
+      type: "paneldynamic",
+      title: entry[:title],
+      description: entry[:description],
+      templateElements: template,
+      templateTitle: entry[:entry_title],
+      panelCount: entry[:entries],
+      minPanelCount: entry[:min_entries],
+      maxPanelCount: entry[:max_entries],
+      addPanelText: entry[:add_text],
+      removePanelText: entry[:remove_text],
+      noEntriesText: entry[:no_entries_text],
+      confirmDelete: entry[:confirm_delete],
+      confirmDeleteText: entry[:confirm_text],
+      keyName: entry[:key],
+      keyDuplicationError: entry[:key_error],
+      defaultValue: entry[:default],
+      defaultPanelValue: entry[:default_entry],
+      isRequired: entry[:required],
+      visibleIf: entry[:visible_if],
+      enableIf: entry[:enable_if]
     }
   end
 
@@ -247,11 +327,15 @@ defmodule DynamicForm.Instance.FromSlots do
 
   # Validation
 
-  defp validate!(fields, groups, custom_types) do
+  defp validate!(fields, groups, nesteds, custom_types) do
     validate_group_defs!(groups)
+    validate_nested_defs!(nesteds)
     Enum.each(fields, &validate_field!(&1, custom_types))
-    validate_unique_names!(fields, groups)
-    validate_group_refs!(fields, groups)
+    validate_refs!(fields, groups, nesteds)
+    validate_scope_agreement!(fields, groups, nesteds)
+    validate_cycles!(nesteds)
+    validate_unique_names!(fields, groups, nesteds)
+    validate_nested_members!(fields, nesteds)
   end
 
   defp validate_field!(entry, custom_types) do
@@ -328,6 +412,16 @@ defmodule DynamicForm.Instance.FromSlots do
     end
   end
 
+  defp validate_type_requirements!("file", entry) do
+    if entry[:nested] do
+      raise ArgumentError,
+            "<:field type=\"file\" name=\"#{entry[:name]}\"> cannot be nested — " <>
+              "file uploads inside nested forms are not supported"
+    end
+
+    :ok
+  end
+
   defp validate_type_requirements!(_type, _entry), do: :ok
 
   defp empty_options?(entry) do
@@ -345,40 +439,163 @@ defmodule DynamicForm.Instance.FromSlots do
         raise ArgumentError, "<:group> requires a name attribute"
       end
     end)
+
+    validate_unique_declarations!(groups, "<:group>")
   end
 
-  defp validate_unique_names!(fields, groups) do
-    names =
-      Enum.map(fields, fn entry -> entry[:name] end) ++
-        Enum.map(groups, fn group -> group[:name] end)
+  defp validate_nested_defs!(nesteds) do
+    Enum.each(nesteds, fn nested ->
+      if nested[:name] == nil or nested[:name] == "" do
+        raise ArgumentError, "<:nested> requires a name attribute"
+      end
+    end)
 
-    duplicates =
-      names
-      |> Enum.reject(&is_nil/1)
-      |> Enum.frequencies()
-      |> Enum.filter(fn {_name, count} -> count > 1 end)
-      |> Enum.map(fn {name, _count} -> name end)
+    validate_unique_declarations!(nesteds, "<:nested>")
+  end
+
+  # Group and nested declarations are reference targets for the flat
+  # group=/nested= attrs, so their names are globally unique (field names,
+  # by contrast, are unique per scope).
+  defp validate_unique_declarations!(declarations, kind) do
+    duplicates = duplicated(Enum.map(declarations, & &1[:name]))
 
     if duplicates != [] do
       raise ArgumentError,
-            "duplicate names across <:field> and <:group> entries: " <>
-              Enum.join(Enum.sort(duplicates), ", ")
+            "duplicate #{kind} declarations: #{Enum.join(duplicates, ", ")} — " <>
+              "#{kind} names are reference targets and must be unique across the form"
     end
   end
 
-  defp validate_group_refs!(fields, groups) do
-    declared = MapSet.new(groups, & &1.name)
-    Enum.each(fields, &validate_group_ref!(&1, declared))
+  defp validate_refs!(fields, groups, nesteds) do
+    group_names = MapSet.new(groups, & &1.name)
+    nested_names = MapSet.new(nesteds, & &1.name)
+
+    Enum.each(fields, fn entry ->
+      validate_ref!(entry, "<:field", :group, group_names)
+      validate_ref!(entry, "<:field", :nested, nested_names)
+    end)
+
+    Enum.each(groups, &validate_ref!(&1, "<:group", :nested, nested_names))
+
+    Enum.each(nesteds, fn entry ->
+      validate_ref!(entry, "<:nested", :group, group_names)
+      validate_ref!(entry, "<:nested", :nested, nested_names)
+    end)
   end
 
-  defp validate_group_ref!(entry, declared) do
-    group_name = entry[:group]
+  defp validate_ref!(entry, kind, attr, declared) do
+    ref = entry[attr]
 
-    if group_name && not MapSet.member?(declared, group_name) do
+    if ref && not MapSet.member?(declared, ref) do
       raise ArgumentError,
-            "<:field name=\"#{entry[:name]}\"> references group #{inspect(group_name)} " <>
-              "but no <:group name=\"#{group_name}\"> is declared"
+            "#{kind} name=\"#{entry[:name]}\"> references #{attr} #{inspect(ref)} " <>
+              "but no <:#{attr} name=\"#{ref}\"> is declared"
     end
+  end
+
+  # Double-entry bookkeeping for placement: a group declares its nested
+  # scope, and every member must declare the identical scope — an omission
+  # or mismatch is an error instead of a silent data-shape change.
+  defp validate_scope_agreement!(fields, groups, nesteds) do
+    group_defs = Map.new(groups, &{&1.name, &1})
+
+    for entry <- fields ++ nesteds, group_name = entry[:group] do
+      group_scope = Map.fetch!(group_defs, group_name)[:nested]
+      member_scope = entry[:nested]
+
+      if member_scope != group_scope do
+        raise ArgumentError,
+              "\"#{entry[:name]}\" is in group \"#{group_name}\" " <>
+                "(#{describe_scope(group_scope)}) but declares #{describe_scope(member_scope)} — " <>
+                "a group's members must declare the group's nested scope"
+      end
+    end
+
+    :ok
+  end
+
+  defp describe_scope(nil), do: "no nested scope"
+  defp describe_scope(scope), do: "nested scope \"#{scope}\""
+
+  # Nested declarations reference their parent scope by name; the reference
+  # graph must be acyclic (and a nested form cannot contain itself).
+  defp validate_cycles!(nesteds) do
+    parents = Map.new(nesteds, &{&1.name, &1[:nested]})
+
+    Enum.each(nesteds, fn nested ->
+      walk_parents!(nested.name, parents[nested.name], parents, [nested.name])
+    end)
+  end
+
+  defp walk_parents!(_start, nil, _parents, _path), do: :ok
+
+  defp walk_parents!(start, start, _parents, path) do
+    raise ArgumentError,
+          "cyclic <:nested> references: #{Enum.join(Enum.reverse([start | path]), " -> ")}"
+  end
+
+  defp walk_parents!(start, current, parents, path) do
+    walk_parents!(start, parents[current], parents, [current | path])
+  end
+
+  # Field and <:nested> names are data keys, unique per scope. A group's
+  # name must also not collide with the data keys in its own scope — the
+  # group renders as a named element alongside them.
+  defp validate_unique_names!(fields, groups, nesteds) do
+    entries =
+      Enum.map(fields, &{&1[:nested], &1[:name]}) ++ Enum.map(nesteds, &{&1[:nested], &1.name})
+
+    entries
+    |> Enum.reject(fn {_scope, name} -> is_nil(name) end)
+    |> Enum.group_by(fn {scope, _name} -> scope end, fn {_scope, name} -> name end)
+    |> Enum.each(fn {scope, names} ->
+      case duplicated(names) do
+        [] ->
+          :ok
+
+        duplicates ->
+          raise ArgumentError,
+                "duplicate names in #{describe_scope_location(scope)}: " <>
+                  Enum.join(duplicates, ", ") <>
+                  " — names must be unique within their scope"
+      end
+    end)
+
+    scope_names = entries |> Enum.reject(fn {_s, name} -> is_nil(name) end) |> MapSet.new()
+
+    for group <- groups, MapSet.member?(scope_names, {group[:nested], group.name}) do
+      raise ArgumentError,
+            "<:group name=\"#{group.name}\"> collides with a field or nested form of the " <>
+              "same name in #{describe_scope_location(group[:nested])}"
+    end
+
+    :ok
+  end
+
+  defp describe_scope_location(nil), do: "the top-level form"
+  defp describe_scope_location(scope), do: "nested form \"#{scope}\""
+
+  # A nested form with no members would render (and validate) an empty
+  # template — always a definition mistake.
+  defp validate_nested_members!(fields, nesteds) do
+    member_scopes =
+      MapSet.new(Enum.map(fields, & &1[:nested]) ++ Enum.map(nesteds, & &1[:nested]))
+
+    Enum.each(nesteds, fn nested ->
+      unless MapSet.member?(member_scopes, nested.name) do
+        raise ArgumentError,
+              "<:nested name=\"#{nested.name}\"> has no members — add fields with " <>
+                "nested=\"#{nested.name}\""
+      end
+    end)
+  end
+
+  defp duplicated(names) do
+    names
+    |> Enum.frequencies()
+    |> Enum.filter(fn {_name, count} -> count > 1 end)
+    |> Enum.map(fn {name, _count} -> name end)
+    |> Enum.sort()
   end
 
   defp describe_entry(entry) do

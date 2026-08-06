@@ -41,6 +41,7 @@ defmodule DynamicForm.MixProject do
         "README.md",
         "LICENSE.md",
         "guides/usage.md",
+        "guides/nested-forms.md",
         "guides/surveyjs.md",
         "guides/lifecycle.md",
         "guides/styling.md",

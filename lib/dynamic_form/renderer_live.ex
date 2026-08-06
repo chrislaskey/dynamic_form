@@ -344,7 +344,7 @@ defmodule DynamicForm.RendererLive do
   @impl true
   def handle_event("add_nested_entry", %{"path" => path}, socket) do
     segments = String.split(path, ".")
-    question = find_nested_question(socket.assigns.instance.elements, List.last(segments))
+    question = NestedForms.find_question(socket.assigns.instance.elements, segments)
     seed = NestedForms.new_entry(question)
 
     params =
@@ -440,26 +440,6 @@ defmodule DynamicForm.RendererLive do
   defp update_entry_list(entries, [index | rest], fun) when is_list(entries) do
     List.update_at(entries, String.to_integer(index), &update_entry_list(&1, rest, fun))
   end
-
-  # Find a paneldynamic question by name, searching nested elements and
-  # paneldynamic templates.
-  defp find_nested_question(elements, name) when is_list(elements) do
-    Enum.find_value(elements, fn
-      %Instance.Question{type: "paneldynamic", name: ^name} = question ->
-        question
-
-      %Instance.Question{type: "paneldynamic", templateElements: nested} when is_list(nested) ->
-        find_nested_question(nested, name)
-
-      %Instance.Element{elements: nested} when is_list(nested) ->
-        find_nested_question(nested, name)
-
-      _ ->
-        nil
-    end)
-  end
-
-  defp find_nested_question(_, _), do: nil
 
   # Revalidate after an entry add/remove, preserving the current action so
   # error display doesn't change mid-edit.

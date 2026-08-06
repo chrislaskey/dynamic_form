@@ -152,6 +152,18 @@ defmodule DynamicForm do
       <:field group="address" type="text" name="street" label="Street" />
       <:field group="address" type="text" name="city" label="City" />
 
+  ### Nested forms (repeating entries)
+
+  A `<:nested>` entry declares a repeating child form; fields join it with
+  `nested="name"` and the submitted value becomes a list of maps, each entry
+  validated with its own changeset. `nested` declares a field's data scope
+  and `group` its visual grouping — they combine. See the Nested Forms guide:
+
+      <:nested name="addresses" title="Addresses" min_entries={1}
+               add_text="Add another address" />
+      <:field nested="addresses" type="text" name="street" label="Street" required />
+      <:field nested="addresses" type="text" name="city" label="City" required />
+
   ### Custom markup (slot bodies)
 
   A `<:field>` body customizes rendering. Three tiers:
@@ -337,6 +349,13 @@ defmodule DynamicForm do
     attr(:enable_if, :string, doc: "SurveyJS expression; disabled when false")
     attr(:read_only, :boolean)
     attr(:group, :string, doc: "Collect this field into the <:group> panel with this name")
+
+    attr(:nested, :string,
+      doc:
+        "Data scope: collect this field into the <:nested> form with this name. " <>
+          "Combines with group — see the Nested Forms guide"
+    )
+
     attr(:rate_min, :integer, doc: ~s|type="rating" only|)
     attr(:rate_max, :integer, doc: ~s|type="rating" only|)
     attr(:rate_step, :integer, doc: ~s|type="rating" only|)
@@ -360,6 +379,48 @@ defmodule DynamicForm do
     attr(:title, :string)
     attr(:visible_if, :string)
     attr(:enable_if, :string)
+
+    attr(:nested, :string,
+      doc:
+        "Data scope this group lives in. A group inside a nested form declares it here, " <>
+          "and every member field must declare the identical nested scope"
+    )
+  end
+
+  slot :nested,
+    doc:
+      "Nested (repeating) form declarations referenced by <:field nested=\"...\"> entries — " <>
+        "the declarative counterpart to the SurveyJS paneldynamic question" do
+    attr(:name, :string, required: true, doc: "Data key: the value is a list of entry maps")
+    attr(:title, :string)
+    attr(:description, :string, doc: "Help text shown below the title")
+
+    attr(:entry_title, :string,
+      doc: ~s|Per-entry heading; "{panelIndex}" interpolates the 1-based entry number|
+    )
+
+    attr(:entries, :integer,
+      doc: "Entries seeded on a fresh form (default 0, raised to min_entries)"
+    )
+
+    attr(:min_entries, :integer, doc: "Entries cannot be removed below this; validated on submit")
+    attr(:max_entries, :integer, doc: "The add button hides at this count; validated on submit")
+    attr(:add_text, :string, doc: ~s|Add button label (default "Add new")|)
+    attr(:remove_text, :string, doc: ~s|Remove button label (default "Remove")|)
+    attr(:no_entries_text, :string, doc: "Shown when the form has zero entries")
+    attr(:confirm_delete, :boolean, doc: "Ask for confirmation before removing an entry")
+    attr(:confirm_text, :string, doc: "Confirmation dialog text")
+    attr(:key, :string, doc: "Member field whose value must be unique across entries")
+    attr(:key_error, :string, doc: "Error message for key duplicates")
+    attr(:default, :list, doc: "Initial value: a list of entry maps (edit-mode style seeding)")
+    attr(:default_entry, :map, doc: "Values seeded into each newly added entry")
+    attr(:required, :boolean, doc: "At least one entry is required")
+    attr(:visible_if, :string)
+    attr(:enable_if, :string)
+
+    attr(:nested, :string, doc: "Place this nested form inside another <:nested> form's template")
+
+    attr(:group, :string, doc: "Place this nested form inside a <:group> panel")
   end
 
   def form(%{render_only: true} = assigns) do
@@ -501,7 +562,7 @@ defmodule DynamicForm do
     [
       instance: not is_nil(assigns.instance),
       json: not is_nil(assigns.json),
-      slots: assigns.field != [] or assigns.group != []
+      slots: assigns.field != [] or assigns.group != [] or assigns[:nested] not in [nil, []]
     ]
     |> Enum.filter(fn {_mode, present?} -> present? end)
     |> Enum.map(fn {mode, _present?} -> mode end)

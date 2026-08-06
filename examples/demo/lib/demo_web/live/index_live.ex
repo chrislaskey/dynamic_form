@@ -21,7 +21,7 @@ defmodule DemoWeb.IndexLive do
     {"/section-form", "Sections (Panels)",
      "Panel elements grouping questions, with conditional section visibility"},
     {"/nested-forms", "Nested Forms (paneldynamic)",
-     "Repeating child forms the user adds/removes — a contact with multiple addresses, validated per entry"},
+     "Repeating child forms the user adds/removes — defined as SurveyJS JSON and as <:nested> slots, validated per entry"},
     {"/surveyjs-test", "SurveyJS JSON Decoding",
      "Instances decoded from SurveyJS-compatible JSON files at runtime"},
     {"/builder-mockups", "WYSIWYG Builder Mockups",

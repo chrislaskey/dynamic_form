@@ -307,7 +307,7 @@ defmodule DynamicForm.Instance.FromSlotsTest do
         convert([field(type: "text", name: "email"), field(type: "comment", name: "email")])
       end
 
-      assert_raise ArgumentError, ~r/duplicate names.*address/s, fn ->
+      assert_raise ArgumentError, ~r/group name="address".*collides/s, fn ->
         convert(
           [
             field(type: "text", name: "address"),
@@ -357,6 +357,295 @@ defmodule DynamicForm.Instance.FromSlotsTest do
     test "raises on invalid validators entries" do
       assert_raise ArgumentError, ~r/invalid entry in :validators/, fn ->
         convert([field(type: "text", name: "x", validators: ["email"])])
+      end
+    end
+  end
+
+  describe "nested form conversion" do
+    defp nested(attrs) do
+      Map.merge(%{__slot__: :nested, inner_block: nil}, Map.new(attrs))
+    end
+
+    defp convert_nested(fields, groups, nesteds, assigns \\ %{}) do
+      assigns
+      |> Map.merge(%{id: "test-form", field: fields, group: groups, nested: nesteds})
+      |> FromSlots.convert!()
+    end
+
+    test "collects nested= fields into a paneldynamic question's template" do
+      instance =
+        convert_nested(
+          [
+            field(type: "text", name: "name"),
+            field(type: "text", name: "street", nested: "addresses"),
+            field(type: "text", name: "city", nested: "addresses")
+          ],
+          [],
+          [nested(name: "addresses", title: "Addresses")]
+        )
+
+      assert [%Instance.Question{name: "name"}, %Instance.Question{} = question] =
+               instance.elements
+
+      assert question.type == "paneldynamic"
+      assert question.name == "addresses"
+      assert question.title == "Addresses"
+      assert Enum.map(question.templateElements, & &1.name) == ["street", "city"]
+    end
+
+    test "maps <:nested> attrs to SurveyJS-style question fields" do
+      instance =
+        convert_nested(
+          [field(type: "text", name: "street", nested: "addresses")],
+          [],
+          [
+            nested(
+              name: "addresses",
+              title: "Addresses",
+              description: "All addresses on file",
+              entry_title: "Address {panelIndex}",
+              entries: 1,
+              min_entries: 1,
+              max_entries: 4,
+              add_text: "Add address",
+              remove_text: "Drop",
+              no_entries_text: "None yet",
+              confirm_delete: true,
+              confirm_text: "Sure?",
+              key: "street",
+              key_error: "Must be unique",
+              default: [%{"street" => "110 Main St"}],
+              default_entry: %{"street" => "TBD"},
+              required: true,
+              visible_if: "{has_address} = true"
+            )
+          ]
+        )
+
+      assert [%Instance.Question{} = question] = instance.elements
+      assert question.description == "All addresses on file"
+      assert question.templateTitle == "Address {panelIndex}"
+      assert question.panelCount == 1
+      assert question.minPanelCount == 1
+      assert question.maxPanelCount == 4
+      assert question.addPanelText == "Add address"
+      assert question.removePanelText == "Drop"
+      assert question.noEntriesText == "None yet"
+      assert question.confirmDelete == true
+      assert question.confirmDeleteText == "Sure?"
+      assert question.keyName == "street"
+      assert question.keyDuplicationError == "Must be unique"
+      assert question.defaultValue == [%{"street" => "110 Main St"}]
+      assert question.defaultPanelValue == %{"street" => "TBD"}
+      assert question.isRequired == true
+      assert question.visibleIf == "{has_address} = true"
+    end
+
+    test "renders the nested question at the position of its first member field" do
+      instance =
+        convert_nested(
+          [
+            field(type: "text", name: "before"),
+            field(type: "text", name: "street", nested: "addresses"),
+            field(type: "text", name: "after"),
+            field(type: "text", name: "city", nested: "addresses")
+          ],
+          [],
+          [nested(name: "addresses")]
+        )
+
+      assert Enum.map(instance.elements, & &1.name) == ["before", "addresses", "after"]
+    end
+
+    test "group inside a nested form becomes a panel in the template" do
+      instance =
+        convert_nested(
+          [
+            field(type: "text", name: "kind", nested: "addresses"),
+            field(type: "text", name: "street", nested: "addresses", group: "geo"),
+            field(type: "text", name: "city", nested: "addresses", group: "geo")
+          ],
+          [group(name: "geo", title: "Location", nested: "addresses")],
+          [nested(name: "addresses")]
+        )
+
+      assert [%Instance.Question{templateElements: [kind, panel]}] = instance.elements
+      assert kind.name == "kind"
+      assert %Instance.Element{type: "panel", name: "geo", title: "Location"} = panel
+      assert Enum.map(panel.elements, & &1.name) == ["street", "city"]
+    end
+
+    test "nested form inside a group renders within the panel" do
+      instance =
+        convert_nested(
+          [
+            field(type: "text", name: "company", group: "employment"),
+            field(type: "text", name: "role", nested: "positions")
+          ],
+          [group(name: "employment", title: "Employment")],
+          [nested(name: "positions", group: "employment")]
+        )
+
+      assert [%Instance.Element{type: "panel", elements: [company, positions]}] =
+               instance.elements
+
+      assert company.name == "company"
+      assert %Instance.Question{type: "paneldynamic", name: "positions"} = positions
+      assert Enum.map(positions.templateElements, & &1.name) == ["role"]
+    end
+
+    test "nested forms nest recursively" do
+      instance =
+        convert_nested(
+          [
+            field(type: "text", name: "contact_name", nested: "contacts"),
+            field(type: "text", name: "number", nested: "phones")
+          ],
+          [],
+          [nested(name: "contacts"), nested(name: "phones", nested: "contacts")]
+        )
+
+      assert [%Instance.Question{name: "contacts", templateElements: [contact_name, phones]}] =
+               instance.elements
+
+      assert contact_name.name == "contact_name"
+      assert %Instance.Question{type: "paneldynamic", name: "phones"} = phones
+      assert Enum.map(phones.templateElements, & &1.name) == ["number"]
+    end
+
+    test "field names are unique per scope, so schema-mirroring names coexist" do
+      instance =
+        convert_nested(
+          [
+            field(type: "text", name: "name"),
+            field(type: "text", name: "name", nested: "addresses")
+          ],
+          [],
+          [nested(name: "addresses")]
+        )
+
+      assert [top, %Instance.Question{templateElements: [inner]}] = instance.elements
+      assert top.name == "name"
+      assert inner.name == "name"
+    end
+
+    test "slot bodies on template fields are preserved" do
+      body = fn _, _ -> "custom" end
+
+      instance =
+        convert_nested(
+          [field(type: "text", name: "street", nested: "addresses", inner_block: body)],
+          [],
+          [nested(name: "addresses")]
+        )
+
+      assert [%Instance.Question{templateElements: [street]}] = instance.elements
+      assert street.slot[:inner_block] == body
+    end
+  end
+
+  describe "nested form validation errors" do
+    test "raises when a field references an undeclared nested form" do
+      assert_raise ArgumentError, ~r/references nested "addresses"/, fn ->
+        convert([field(type: "text", name: "street", nested: "addresses")])
+      end
+    end
+
+    test "raises when a <:nested> has no name" do
+      assert_raise ArgumentError, ~r/<:nested> requires a name/, fn ->
+        convert_nested([field(type: "text", name: "x")], [], [nested(title: "Oops")])
+      end
+    end
+
+    test "raises when a <:nested> has no members" do
+      assert_raise ArgumentError, ~r/has no members/, fn ->
+        convert_nested([field(type: "text", name: "x")], [], [nested(name: "addresses")])
+      end
+    end
+
+    test "raises on duplicate <:nested> declarations" do
+      assert_raise ArgumentError, ~r/duplicate <:nested> declarations: notes/, fn ->
+        convert_nested(
+          [
+            field(type: "text", name: "a", nested: "notes"),
+            field(type: "text", name: "b", nested: "vendors")
+          ],
+          [],
+          [
+            nested(name: "notes"),
+            nested(name: "notes", nested: "vendors"),
+            nested(name: "vendors")
+          ]
+        )
+      end
+    end
+
+    test "raises on duplicate names within one scope" do
+      assert_raise ArgumentError, ~r/duplicate names in nested form "addresses": street/, fn ->
+        convert_nested(
+          [
+            field(type: "text", name: "street", nested: "addresses"),
+            field(type: "comment", name: "street", nested: "addresses")
+          ],
+          [],
+          [nested(name: "addresses")]
+        )
+      end
+    end
+
+    test "raises when group scope and member scope disagree" do
+      # Group is in the nested scope; member forgot the nested attr
+      assert_raise ArgumentError, ~r/"zip" is in group "geo".*declares no nested scope/s, fn ->
+        convert_nested(
+          [
+            field(type: "text", name: "street", nested: "addresses", group: "geo"),
+            field(type: "text", name: "zip", group: "geo")
+          ],
+          [group(name: "geo", nested: "addresses")],
+          [nested(name: "addresses")]
+        )
+      end
+
+      # Group is top-level; member declares a nested scope
+      assert_raise ArgumentError, ~r/"street" is in group "geo".*no nested scope.*but/s, fn ->
+        convert_nested(
+          [field(type: "text", name: "street", nested: "addresses", group: "geo")],
+          [group(name: "geo")],
+          [nested(name: "addresses")]
+        )
+      end
+    end
+
+    test "raises on cyclic nested references" do
+      assert_raise ArgumentError, ~r/cyclic <:nested> references/, fn ->
+        convert_nested(
+          [
+            field(type: "text", name: "a", nested: "outer"),
+            field(type: "text", name: "b", nested: "inner")
+          ],
+          [],
+          [nested(name: "outer", nested: "inner"), nested(name: "inner", nested: "outer")]
+        )
+      end
+    end
+
+    test "raises on a self-referencing nested form" do
+      assert_raise ArgumentError, ~r/cyclic <:nested> references/, fn ->
+        convert_nested(
+          [field(type: "text", name: "a", nested: "loop")],
+          [],
+          [nested(name: "loop", nested: "loop")]
+        )
+      end
+    end
+
+    test "raises on file uploads inside nested forms" do
+      assert_raise ArgumentError, ~r/file uploads inside nested forms/, fn ->
+        convert_nested(
+          [field(type: "file", name: "doc", nested: "addresses")],
+          [],
+          [nested(name: "addresses")]
+        )
       end
     end
   end

@@ -54,6 +54,7 @@ questions — both raise.
 | `enable_if` | string | all | Conditional enablement expression (→ `enableIf`) |
 | `read_only` | boolean | questions | Display value without allowing edits (→ `readOnly`) |
 | `group` | string | all | Collect this field into the `<:group>` panel with this name |
+| `nested` | string | all except `file` | Data scope: collect this field into the `<:nested>` form with this name — see the [Nested Forms guide](nested-forms.md) |
 | `rate_min` / `rate_max` / `rate_step` | integer | `rating` | Rating scale (defaults 1–5, step 1) |
 | `min_length` / `max_length` | integer | text | Builds a `text` validator |
 | `min` / `max` | number | numeric | Builds a `numeric` validator |
@@ -77,6 +78,31 @@ Slot bodies: any question type accepts a body receiving its
 | `title` | string | Panel title |
 | `visible_if` | string | Conditional visibility expression |
 | `enable_if` | string | Conditional enablement (disables all contained questions when false) |
+| `nested` | string | Data scope this group lives in; every member field must declare the identical scope |
+
+## `<:nested>` attributes
+
+Declares a repeating child form (→ a SurveyJS `paneldynamic` question);
+fields join it with `<:field nested="...">`. See the
+[Nested Forms guide](nested-forms.md).
+
+| Attribute | Type | Description |
+|---|---|---|
+| `name` | string | Required. Data key — the value is a list of entry maps |
+| `title` / `description` | string | Heading and help text |
+| `entry_title` | string | Per-entry heading; `{panelIndex}` interpolates the 1-based number (→ `templateTitle`) |
+| `entries` | integer | Entries seeded on a fresh form (→ `panelCount`) |
+| `min_entries` / `max_entries` | integer | Count limits: buttons hide, and submit validates (→ `minPanelCount`/`maxPanelCount`) |
+| `add_text` / `remove_text` | string | Button labels (→ `addPanelText`/`removePanelText`) |
+| `no_entries_text` | string | Shown at zero entries (→ `noEntriesText`) |
+| `confirm_delete` / `confirm_text` | boolean / string | Confirmation before removing (→ `confirmDelete`/`confirmDeleteText`) |
+| `key` / `key_error` | string | Member field unique across entries + error message (→ `keyName`/`keyDuplicationError`) |
+| `default` | list | Initial value: list of entry maps (→ `defaultValue`) |
+| `default_entry` | map | Values seeded into each newly added entry (→ `defaultPanelValue`) |
+| `required` | boolean | At least one entry required (→ `isRequired`) |
+| `visible_if` / `enable_if` | string | Conditional expressions |
+| `nested` | string | Place this nested form inside another `<:nested>` form |
+| `group` | string | Place this nested form inside a `<:group>` panel |
 
 ## Question types
 
@@ -91,6 +117,7 @@ Slot bodies: any question type accepts a body receiving its
 | `boolean` | Single checkbox | |
 | `rating` | Numeric radio row | `rate_min`/`rate_max`/`rate_step`; casts to integer |
 | `file` | Direct upload | Presigner + uploader required — see [Usage: File uploads](usage.md#file-uploads) |
+| `paneldynamic` | Repeating child form | Casts to a list of maps, validated per entry; `<:nested>` in declarative mode — see [Nested Forms](nested-forms.md) |
 
 ## Element types
 

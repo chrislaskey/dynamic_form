@@ -186,74 +186,30 @@ See the [SurveyJS compatibility guide](surveyjs.md) for exactly which
 SurveyJS features are supported, which are not (unsupported types render as
 a visible fallback box), and DynamicForm's extensions to the format.
 
-### Nested forms (paneldynamic)
+### Nested forms
 
-The SurveyJS `paneldynamic` question type defines a repeating child form —
-a list of sub-records the user can add and remove, like a contact with
-multiple addresses. `templateElements` holds the child questions; the
-template is instantiated once per entry:
-
-```json
-{
-  "type": "paneldynamic",
-  "name": "addresses",
-  "title": "Addresses",
-  "templateTitle": "Address {panelIndex}",
-  "templateElements": [
-    {"type": "text", "name": "street", "title": "Street", "isRequired": true},
-    {"type": "text", "name": "city", "title": "City", "isRequired": true}
-  ],
-  "panelCount": 1,
-  "minPanelCount": 1,
-  "maxPanelCount": 4,
-  "addPanelText": "Add another address",
-  "removePanelText": "Remove address"
-}
-```
-
-The question's value — in `data` for edit mode and in the submitted
-`payload.data` — is a list of maps keyed by the template questions' names,
-matching SurveyJS's data shape:
+A nested form is a repeating child form — a list of sub-records the user
+adds and removes, like a contact with multiple addresses. The submitted
+value is a nested list of maps, and every entry is validated with its own
+changeset:
 
 ```elixir
 %{name: "Ada", addresses: [%{street: "110 Main St", city: "Portland"}, ...]}
 ```
 
-Every entry is validated with its own dynamic Ecto changeset built from the
-template: `isRequired`, `validators`, and conditional expressions all apply
-per entry, and errors render inline inside the entry that caused them.
-Expressions inside the template can reference sibling answers in the same
-entry as `{panel.field}` (or plain `{field}`), and form-level answers by
-their names. Nesting is recursive — a template can itself contain a
-paneldynamic question.
+Nested forms work in both modes — the SurveyJS `paneldynamic` question type
+in data mode, and `<:nested>` slot declarations in declarative mode:
 
-Supported properties: `templateElements` (alias `questions`),
-`templateTitle` (with `{panelIndex}`), `panelCount`, `minPanelCount`,
-`maxPanelCount`, `allowAddPanel`, `allowRemovePanel`, `addPanelText` (alias
-`panelAddText`), `removePanelText` (alias `panelRemoveText`),
-`noEntriesText`, `confirmDelete`, `confirmDeleteText`, `keyName`,
-`keyDuplicationError`, and `defaultPanelValue`.
+```heex
+<:nested name="addresses" title="Addresses" min_entries={1} add_text="Add another address" />
+<:field nested="addresses" type="text" name="street" label="Street" required />
+<:field nested="addresses" type="text" name="city" label="City" required />
+```
 
-Behavior notes:
-
-- Forms start with `panelCount` entries (at least `minPanelCount`); each is
-  seeded from the template questions' `defaultValue`s merged with
-  `defaultPanelValue`.
-- The add button hides at `maxPanelCount`; remove buttons hide at
-  `minPanelCount`. `minPanelCount`/`maxPanelCount` also validate on submit.
-- `keyName` enforces that entries have unique values for one template
-  question (e.g. no two addresses of the same type), erroring with
-  `keyDuplicationError`.
-- `confirmDelete` shows a browser confirmation (`confirmDeleteText`) before
-  removing an entry.
-- With `DynamicForm.form/1` / `DynamicForm.RendererLive`, add/remove work
-  automatically. When driving `DynamicForm.Renderer` manually, handle the
-  `"add_nested_entry"`/`"remove_nested_entry"` events (each carries a dot-separated
-  `path` param, plus `index` for remove) in your own LiveView.
-- Not yet supported inside templates: file upload questions, and SurveyJS
-  display modes other than the default list (`carousel`/`tab`).
-- `paneldynamic` is data-mode only for now — there is no `<:field>` slot
-  syntax for it.
+See the [Nested Forms guide](nested-forms.md) for the full feature: the
+scope model (`nested` + `group` combine), per-scope naming, entry
+seeding, per-entry validation and key uniqueness, custom controls per
+entry, and standalone-renderer events.
 
 ## Rendering
 

@@ -45,7 +45,7 @@ Instead, it targets the most important and useful parts for building dynamic for
 | `boolean` | Single checkbox | |
 | `rating` | Numeric radio row | `rateMin`/`rateMax`/`rateStep` (defaults 1–5) |
 | `file` | Direct-to-cloud upload | Configured via `metadata` (a DynamicForm extension) — see [Usage: File uploads](usage.md#file-uploads) |
-| `paneldynamic` | Repeating child form with add/remove | Value is a list of maps; each entry validates against `templateElements` with its own changeset — see [Usage: Nested forms](usage.md#nested-forms-paneldynamic) |
+| `paneldynamic` | Repeating child form with add/remove | Value is a list of maps; each entry validates against `templateElements` with its own changeset — see the [Nested Forms guide](nested-forms.md) |
 
 ### Element types
 

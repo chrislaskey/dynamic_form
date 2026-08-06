@@ -59,6 +59,37 @@ defmodule DynamicForm.SlotRenderingTest do
     end
   end
 
+  describe "slot bodies inside nested form templates" do
+    test "renders the same body once per entry with per-entry fields" do
+      entry =
+        slot_entry(%{type: "text", name: "street"}, fn _, field ->
+          "CUSTOM name=#{field.name} value=#{field.value}"
+        end)
+
+      html =
+        render_instance(
+          instance_with([
+            %Instance.Question{
+              name: "addresses",
+              type: "paneldynamic",
+              templateElements: [
+                %Instance.Question{name: "street", type: "text", title: "Street", slot: entry}
+              ]
+            }
+          ]),
+          %{
+            "addresses" => [
+              %{"street" => "110 Main St"},
+              %{"street" => "13 Dearborn"}
+            ]
+          }
+        )
+
+      assert html =~ "CUSTOM name=dynamic_form[addresses][0][street] value=110 Main St"
+      assert html =~ "CUSTOM name=dynamic_form[addresses][1][street] value=13 Dearborn"
+    end
+  end
+
   describe "questions with slot bodies (tier 2)" do
     test "renders label and passes the form field to the body" do
       entry =

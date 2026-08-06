@@ -142,6 +142,44 @@ defmodule DynamicForm.NestedForms do
   end
 
   @doc """
+  Resolves the paneldynamic question at a dot-separated entry path.
+
+  Path segments alternate question names and entry indexes (`"addresses"`,
+  or `"contacts.0.phones"` when nested). Each name resolves within its own
+  scope — the top-level elements for the first segment, then each matched
+  question's `templateElements` — so questions in different scopes may
+  share a name. Returns `nil` when the path doesn't resolve.
+  """
+  def find_question(elements, path) when is_binary(path) do
+    find_question(elements, String.split(path, "."))
+  end
+
+  def find_question(elements, [name]), do: find_in_scope(elements, name)
+
+  def find_question(elements, [name, _index | rest]) do
+    case find_in_scope(elements, name) do
+      %Instance.Question{templateElements: template} when is_list(template) ->
+        find_question(template, rest)
+
+      _ ->
+        nil
+    end
+  end
+
+  # Search one scope for a paneldynamic question by name, descending into
+  # static panel elements (visual containers share their parent's scope) but
+  # never into templates (a different scope).
+  defp find_in_scope(elements, name) when is_list(elements) do
+    Enum.find_value(elements, fn
+      %Instance.Question{type: "paneldynamic", name: ^name} = question -> question
+      %Instance.Element{elements: nested} when is_list(nested) -> find_in_scope(nested, name)
+      _ -> nil
+    end)
+  end
+
+  defp find_in_scope(_elements, _name), do: nil
+
+  @doc """
   Validates every paneldynamic question on an already-cast parent changeset:
   entry changesets (validity propagates to the parent), `isRequired`,
   `minPanelCount`/`maxPanelCount`, and replaces the raw cast value with each

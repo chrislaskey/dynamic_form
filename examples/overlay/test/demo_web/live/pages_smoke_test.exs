@@ -12,6 +12,7 @@ defmodule DemoWeb.PagesSmokeTest do
     "/payment-form",
     "/showcase-form",
     "/section-form",
+    "/nested-forms",
     "/surveyjs-test",
     "/builder-mockups"
   ]

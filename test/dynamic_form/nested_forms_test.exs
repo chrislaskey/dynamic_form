@@ -434,6 +434,158 @@ defmodule DynamicForm.NestedFormsTest do
     end
   end
 
+  describe "find_question/2" do
+    defp duplicate_names_instance do
+      notes_template = [%Instance.Question{name: "note", type: "text"}]
+
+      %Instance{
+        id: "dup-names",
+        elements: [
+          %Instance.Element{
+            name: "section",
+            type: "panel",
+            elements: [
+              %Instance.Question{
+                name: "contacts",
+                type: "paneldynamic",
+                templateElements: [
+                  %Instance.Question{name: "contact_name", type: "text"},
+                  %Instance.Question{
+                    name: "notes",
+                    type: "paneldynamic",
+                    templateElements: notes_template
+                  }
+                ]
+              }
+            ]
+          },
+          %Instance.Question{
+            name: "vendors",
+            type: "paneldynamic",
+            templateElements: [
+              %Instance.Question{
+                name: "notes",
+                type: "paneldynamic",
+                templateTitle: "Vendor note",
+                templateElements: notes_template
+              }
+            ]
+          }
+        ]
+      }
+    end
+
+    test "resolves paths scope by scope, distinguishing same-named questions" do
+      instance = duplicate_names_instance()
+
+      contacts_notes = NestedForms.find_question(instance.elements, "contacts.0.notes")
+      vendors_notes = NestedForms.find_question(instance.elements, "vendors.2.notes")
+
+      assert contacts_notes.templateTitle == nil
+      assert vendors_notes.templateTitle == "Vendor note"
+    end
+
+    test "descends into static panels but never into templates" do
+      instance = duplicate_names_instance()
+
+      # "contacts" is inside a panel element — same scope, found
+      assert %Instance.Question{name: "contacts"} =
+               NestedForms.find_question(instance.elements, "contacts")
+
+      # "notes" only exists inside templates — not in the top-level scope
+      assert NestedForms.find_question(instance.elements, "notes") == nil
+    end
+
+    test "returns nil for unresolvable paths" do
+      instance = duplicate_names_instance()
+
+      assert NestedForms.find_question(instance.elements, "missing") == nil
+      assert NestedForms.find_question(instance.elements, "contacts.0.missing") == nil
+      assert NestedForms.find_question(instance.elements, "contacts.0.notes.1.missing") == nil
+    end
+  end
+
+  describe "per-scope names (shadowing)" do
+    test "a template field may share a top-level field's name" do
+      instance = %Instance{
+        id: "shadow",
+        elements: [
+          %Instance.Question{name: "name", type: "text", isRequired: true},
+          %Instance.Question{
+            name: "addresses",
+            type: "paneldynamic",
+            templateElements: [
+              %Instance.Question{name: "name", type: "text", isRequired: true},
+              %Instance.Question{name: "street", type: "text"}
+            ]
+          }
+        ]
+      }
+
+      params = %{
+        "name" => "Ada",
+        "addresses" => [%{"name" => "Home", "street" => "110 Main St"}]
+      }
+
+      changeset = Changeset.create_changeset(instance, params)
+
+      assert changeset.valid?
+
+      data = Ecto.Changeset.apply_changes(changeset)
+      assert data.name == "Ada"
+      assert [%{name: "Home", street: "110 Main St"}] = data.addresses
+
+      # The entry's blank shadowing field fails its own required check even
+      # though the top-level field is filled
+      invalid =
+        Changeset.create_changeset(instance, %{
+          "name" => "Ada",
+          "addresses" => [%{"name" => ""}]
+        })
+
+      refute invalid.valid?
+    end
+
+    test "plain references inside a template resolve innermost-first" do
+      instance = %Instance{
+        id: "shadow-expr",
+        elements: [
+          %Instance.Question{name: "kind", type: "text"},
+          %Instance.Question{
+            name: "addresses",
+            type: "paneldynamic",
+            templateElements: [
+              %Instance.Question{name: "kind", type: "text"},
+              %Instance.Question{
+                name: "label",
+                type: "text",
+                isRequired: true,
+                visibleIf: "{kind} = 'Other'"
+              }
+            ]
+          }
+        ]
+      }
+
+      # Top-level kind is 'Other' but the entry's own kind shadows it
+      shadowed =
+        Changeset.create_changeset(instance, %{
+          "kind" => "Other",
+          "addresses" => [%{"kind" => "Home", "label" => ""}]
+        })
+
+      assert shadowed.valid?
+
+      local =
+        Changeset.create_changeset(instance, %{
+          "kind" => "Home",
+          "addresses" => [%{"kind" => "Other", "label" => ""}]
+        })
+
+      refute local.valid?
+    end
+  end
+
   describe "entries/1" do
     test "passes lists through, normalizes indexed maps, defaults to empty" do
       assert NestedForms.entries([%{"a" => 1}]) == [%{"a" => 1}]
