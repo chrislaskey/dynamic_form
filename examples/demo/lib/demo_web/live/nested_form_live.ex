@@ -240,10 +240,10 @@ defmodule DemoWeb.NestedFormLive do
             <li>Submit with a blank street — the error renders inline inside that entry</li>
             <li>Enter a non-numeric ZIP — per-entry regex validators apply</li>
             <li>
-              Switch to declarative mode — the same feature defined with
-              <code>&lt;:nested&gt;</code> HEEx slots, including a custom range control
-              (<code>:let</code> slot body rendered once per entry) and a
-              <code>&lt;:group&gt;</code> panel inside the nested form
+              Switch to declarative mode — the same feature defined with <code>&lt;:nested&gt;</code>
+              HEEx slots, including a custom range control
+              (<code>:let</code> slot body rendered once per entry) and a <code>&lt;:group&gt;</code>
+              panel inside the nested form
             </li>
           </ul>
         </div>

@@ -17,17 +17,11 @@ defmodule DemoWeb.Router do
   scope "/", DemoWeb do
     pipe_through :browser
 
-    live "/", IndexLive
+    live "/", ReadmeLive
     live "/slot-forms", SlotFormLive
-    live "/form-test", FormTestLive
-    live "/form-test-component", FormTestComponentLive
-    live "/render", RenderLive
-    live "/payment-form", PaymentFormLive
+    live "/data-forms", DataFormLive
     live "/showcase-form", ShowcaseFormLive
-    live "/section-form", SectionFormLive
     live "/nested-forms", NestedFormLive
-    live "/surveyjs-test", SurveyjsTestLive
-    live "/builder-mockups", BuilderMockupsLive
   end
 
   # Other scopes may use custom stacks.

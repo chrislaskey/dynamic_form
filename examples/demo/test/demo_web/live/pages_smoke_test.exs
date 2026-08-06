@@ -6,15 +6,9 @@ defmodule DemoWeb.PagesSmokeTest do
   @pages [
     "/",
     "/slot-forms",
-    "/form-test",
-    "/form-test-component",
-    "/render",
-    "/payment-form",
+    "/data-forms",
     "/showcase-form",
-    "/section-form",
-    "/nested-forms",
-    "/surveyjs-test",
-    "/builder-mockups"
+    "/nested-forms"
   ]
 
   for path <- @pages do

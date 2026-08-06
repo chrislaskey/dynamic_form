@@ -36,7 +36,7 @@ echo "==> Adding dynamic_form as a path dependency"
 perl -0777 -pi -e 's/(defp deps do\s*\n\s*\[\n)/$1      {:dynamic_form, path: "..\/.."},\n/' demo/mix.exs
 
 echo "==> Replacing the default route with the demo LiveViews"
-perl -pi -e 's{get "/", PageController, :home}{live "/", IndexLive\n    live "/slot-forms", SlotFormLive\n    live "/form-test", FormTestLive\n    live "/form-test-component", FormTestComponentLive\n    live "/render", RenderLive\n    live "/payment-form", PaymentFormLive\n    live "/showcase-form", ShowcaseFormLive\n    live "/section-form", SectionFormLive\n    live "/nested-forms", NestedFormLive\n    live "/surveyjs-test", SurveyjsTestLive\n    live "/builder-mockups", BuilderMockupsLive}' demo/lib/demo_web/router.ex
+perl -pi -e 's{get "/", PageController, :home}{live "/", ReadmeLive\n    live "/slot-forms", SlotFormLive\n    live "/data-forms", DataFormLive\n    live "/showcase-form", ShowcaseFormLive\n    live "/nested-forms", NestedFormLive}' demo/lib/demo_web/router.ex
 
 # The generated home page test asserts the default Phoenix marketing copy,
 # but the route above replaced that page with the demo index

@@ -34,9 +34,9 @@ defmodule DemoWeb.Layouts do
         </.link>
         <nav class="flex items-center gap-4 font-semibold leading-6 text-zinc-900">
           <.link navigate="/slot-forms" class="hover:text-zinc-700">Slot Forms</.link>
-          <.link navigate="/form-test-component" class="hover:text-zinc-700">Component</.link>
-          <.link navigate="/form-test" class="hover:text-zinc-700">Renderer</.link>
+          <.link navigate="/data-forms" class="hover:text-zinc-700">Data Forms</.link>
           <.link navigate="/showcase-form" class="hover:text-zinc-700">Showcase</.link>
+          <.link navigate="/nested-forms" class="hover:text-zinc-700">Nested Forms</.link>
         </nav>
       </div>
     </header>

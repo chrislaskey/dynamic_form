@@ -136,10 +136,10 @@ the instance to the same component:
 <DynamicForm.form id="contact-form" json={@json} />
 ```
 
-Every example runs live in the demo app — the
-[Slot Forms page](examples/overlay/lib/demo_web/live/slot_form_live.ex) shows
-each definition alongside its rendered form. Every feature is explained in
-depth in the [Usage guide](guides/usage.md).
+Every example above runs live on the demo app's landing page
+([readme_live.ex](examples/overlay/lib/demo_web/live/readme_live.ex)), which
+shows each definition alongside its rendered form. Every feature is explained
+in depth in the [Usage guide](guides/usage.md).
 
 **Data**
 
