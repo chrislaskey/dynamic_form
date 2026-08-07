@@ -1,7 +1,7 @@
 # DynamicForm
 
-> Composable dynamic forms for Phoenix LiveView with built-in validation. 
-> Defined declaratively in HEEx or as (SurveyJS-compatible) data.
+> Dynamic forms for Phoenix LiveView with built-in validation -
+> defined declaratively in HEEx or as (SurveyJS-compatible) data
 
 <p align="center">
   <img title="v1.0.0 Screenshot" src="https://raw.githubusercontent.com/chrislaskey/dynamic_form/refs/heads/main/examples/screenshot-v1.0.0.png" width="800">
