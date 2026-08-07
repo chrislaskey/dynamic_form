@@ -4,7 +4,7 @@
 > in HEEx or as (SurveyJS-compatible) data.
 
 <p align="center">
-  <img title="v1.0.0 Screenshot" src="https://raw.githubusercontent.com/chrislaskey/dynamic_form/refs/heads/main/examples/screenshot-v1.0.0.gif" width="800">
+  <img title="v1.0.0 Screenshot" src="https://raw.githubusercontent.com/chrislaskey/dynamic_form/refs/heads/main/examples/screenshot-v1.0.0.png" width="800">
 </p>
 
 ## Architecture
@@ -61,7 +61,7 @@ end
 ```
 
 <p align="center">
-  <img title="v1.0.0 Screenshot" src="https://raw.githubusercontent.com/chrislaskey/dynamic_form/refs/heads/main/examples/screenshot-example-01-v1.0.0.gif" width="800">
+  <img title="v1.0.0 Screenshot" src="https://raw.githubusercontent.com/chrislaskey/dynamic_form/refs/heads/main/examples/screenshot-example-01-v1.0.0.png" width="800">
 </p>
 
 **Prefilling form data**
@@ -76,7 +76,7 @@ Use the `data` attribute to prefill the form with existing data:
 ```
 
 <p align="center">
-  <img title="v1.0.0 Screenshot" src="https://raw.githubusercontent.com/chrislaskey/dynamic_form/refs/heads/main/examples/screenshot-example-02-v1.0.0.gif" width="800">
+  <img title="v1.0.0 Screenshot" src="https://raw.githubusercontent.com/chrislaskey/dynamic_form/refs/heads/main/examples/screenshot-example-02-v1.0.0.png" width="800">
 </p>
 
 **Lifecycle hooks**
@@ -106,7 +106,7 @@ end
 ```
 
 <p align="center">
-  <img title="v1.0.0 Screenshot" src="https://raw.githubusercontent.com/chrislaskey/dynamic_form/refs/heads/main/examples/screenshot-example-03-v1.0.0.gif" width="800">
+  <img title="v1.0.0 Screenshot" src="https://raw.githubusercontent.com/chrislaskey/dynamic_form/refs/heads/main/examples/screenshot-example-03-v1.0.0.png" width="800">
 </p>
 
 **Validation and visibility**
@@ -127,7 +127,7 @@ are excluded from validation automatically:
 ```
 
 <p align="center">
-  <img title="v1.0.0 Screenshot" src="https://raw.githubusercontent.com/chrislaskey/dynamic_form/refs/heads/main/examples/screenshot-example-04-v1.0.0.gif" width="800">
+  <img title="v1.0.0 Screenshot" src="https://raw.githubusercontent.com/chrislaskey/dynamic_form/refs/heads/main/examples/screenshot-example-04-v1.0.0.png" width="800">
 </p>
 
 **Styling and custom fields**
@@ -165,7 +165,7 @@ inputs and styling.
 ```
 
 <p align="center">
-  <img title="v1.0.0 Screenshot" src="https://raw.githubusercontent.com/chrislaskey/dynamic_form/refs/heads/main/examples/screenshot-example-05-v1.0.0.gif" width="800">
+  <img title="v1.0.0 Screenshot" src="https://raw.githubusercontent.com/chrislaskey/dynamic_form/refs/heads/main/examples/screenshot-example-05-v1.0.0.png" width="800">
 </p>
 
 **Grouping fields**
@@ -194,7 +194,7 @@ errors, and changeset validation:
 ```
 
 <p align="center">
-  <img title="v1.0.0 Screenshot" src="https://raw.githubusercontent.com/chrislaskey/dynamic_form/refs/heads/main/examples/screenshot-example-06-v1.0.0.gif" width="800">
+  <img title="v1.0.0 Screenshot" src="https://raw.githubusercontent.com/chrislaskey/dynamic_form/refs/heads/main/examples/screenshot-example-06-v1.0.0.png" width="800">
 </p>
 
 **Nested forms**
@@ -227,7 +227,7 @@ min/max entry counts, and per-entry validation.
 ```
 
 <p align="center">
-  <img title="v1.0.0 Screenshot" src="https://raw.githubusercontent.com/chrislaskey/dynamic_form/refs/heads/main/examples/screenshot-example-07-v1.0.0.gif" width="800">
+  <img title="v1.0.0 Screenshot" src="https://raw.githubusercontent.com/chrislaskey/dynamic_form/refs/heads/main/examples/screenshot-example-07-v1.0.0.png" width="800">
 </p>
 
 **Define forms in data**
@@ -252,7 +252,7 @@ the instance to the same component:
 ```
 
 <p align="center">
-  <img title="v1.0.0 Screenshot" src="https://raw.githubusercontent.com/chrislaskey/dynamic_form/refs/heads/main/examples/screenshot-example-08-v1.0.0.gif" width="800">
+  <img title="v1.0.0 Screenshot" src="https://raw.githubusercontent.com/chrislaskey/dynamic_form/refs/heads/main/examples/screenshot-example-08-v1.0.0.png" width="800">
 </p>
 
 **Render only**
@@ -286,7 +286,7 @@ end
 ```
 
 <p align="center">
-  <img title="v1.0.0 Screenshot" src="https://raw.githubusercontent.com/chrislaskey/dynamic_form/refs/heads/main/examples/screenshot-example-09-v1.0.0.gif" width="800">
+  <img title="v1.0.0 Screenshot" src="https://raw.githubusercontent.com/chrislaskey/dynamic_form/refs/heads/main/examples/screenshot-example-09-v1.0.0.png" width="800">
 </p>
 
 **See more**
