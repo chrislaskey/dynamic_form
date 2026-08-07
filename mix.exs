@@ -1,7 +1,8 @@
 defmodule DynamicForm.MixProject do
   use Mix.Project
 
-  @version "0.17.5"
+  @version "0.17.6"
+  @source_url "https://github.com/chrislaskey/dynamic_form"
 
   def project do
     [
@@ -10,7 +11,11 @@ defmodule DynamicForm.MixProject do
       elixir: "~> 1.14",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
-      docs: docs()
+      name: "DynamicForm",
+      description: description(),
+      package: package(),
+      docs: docs(),
+      source_url: @source_url
     ]
   end
 
@@ -30,6 +35,19 @@ defmodule DynamicForm.MixProject do
       {:jason, ">= 0.0.0"},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:ex_doc, "~> 0.34", only: :dev, runtime: false}
+    ]
+  end
+
+  defp description do
+    "Dynamic forms for Phoenix LiveView with built-in validation - " <>
+      "defined declaratively in HEEx or as (SurveyJS-compatible) data"
+  end
+
+  defp package do
+    [
+      licenses: ["MIT"],
+      links: %{"GitHub" => @source_url},
+      files: ~w(lib guides mix.exs README.md LICENSE.md)
     ]
   end
 

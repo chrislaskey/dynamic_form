@@ -42,3 +42,5 @@ npm-debug.log
 
 # macOS
 .DS_Store
+
+*.tar
