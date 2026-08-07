@@ -289,13 +289,6 @@ end
   <img title="v1.0.0 Screenshot" src="https://raw.githubusercontent.com/chrislaskey/dynamic_form/refs/heads/main/examples/screenshot-example-09-v1.0.0.png" width="800">
 </p>
 
-**See more**
-
-Every example above runs live on the demo app's landing page
-([readme_live.ex](examples/overlay/lib/demo_web/live/readme_live.ex)), which
-shows each definition alongside its rendered form. Every feature is explained
-in depth in the [Usage guide](guides/usage.md).
-
 ## Demo app
 
 The `/examples` directory contains a full Phoenix demo app exercising every
