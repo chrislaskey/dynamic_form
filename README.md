@@ -5,10 +5,10 @@
 
 ## Architecture
 
-DynamicForm renders complete, validated forms from a single definition. A
-definition can be written two ways, and both converge on the same
-`DynamicForm.Instance` struct — so validation, conditional logic, and
-submission behave identically:
+DynamicForm renders complete, validated forms from a single definition. It follows common best practices
+in Elixir and Phoenix, leveraging Ecto schemas to validate and cast form data.
+
+A dynamic form definition can be written two ways:
 
 - **Data** — [SurveyJS-compatible JSON](https://surveyjs.io/form-library/documentation)
   (or maps/structs), for forms that are stored in a database, generated at
@@ -30,39 +30,56 @@ In declarative mode, everything is composed from slots:
   controls that receive the form field (the library keeps the label, errors,
   and validation), and fully custom elements that receive the form.
 
-Whichever mode defines the form, the library owns the full lifecycle: an Ecto
-changeset built from the definition (types, required fields, validators),
-SurveyJS conditional expressions (`visible_if`, `required_if`, `enable_if`)
-evaluated live as the user types, nested/repeating child forms the user adds
-and removes (SurveyJS `paneldynamic`, validated per entry with child
-changesets), direct-to-cloud file uploads, and
-lifecycle callbacks mirroring the form's events — `on_change` to extend
-validation live, and `on_submit` for expensive submit-only checks. Valid
-submissions message the parent LiveView, where the application performs the
-side effect (or define `on_success` to replace the message with custom
-completion behavior). For full control, `render_only` renders the
-definition against a parent-owned form and sends the events to the parent's
-`handle_event/3`, like an idiomatic `<form phx-change phx-submit>`.
-
-Rendering is pluggable too: point `components` (per form, or via config) at
-your app's Phoenix-generated `CoreComponents` and inputs, the submit button,
-and error translation render through it, with per-function fallback to the
-built-ins for everything it doesn't define. Apps can extend the type
-vocabulary the same way — register `custom_field_types` (a map of type name
-to Ecto type) and pattern-match the type in the components module's
-`input/1`.
-
 ## Examples
 
-A form is a component call with fields in render order. The library runs the
-whole validation lifecycle itself and messages the parent LiveView on every
-valid submission — the `handle_info/2` handler is where the side effect
-happens:
+**A simple form**
+
+Forms are defined using the `<DynamicForm.form />` component. It can either be defined
+in data or using component slots. The `<:field />` slots are rendered in order they are defined.
+
+The library runs the whole validation lifecycle itself and messages the parent
+LiveView on every valid submission — the `handle_info/2` handler is where the
+side effect happens. The `payload` is a struct containing information about the
+form, including the `data` key which is map of the submitted data.
 
 ```heex
-<DynamicForm.form id="contact-form" on_submit={&Contacts.verify/1}>
+<DynamicForm.form id="example-form">
   <:field type="text" name="name" label="Name" required />
-  <:field type="text" name="email" input_type="email" label="Email Address" required format="email" />
+  <:field type="text" name="email" label="Email" input_type="email" format="email" required />
+</DynamicForm.form>
+```
+
+```elixir
+def handle_info({:dynamic_form, payload}, socket) do
+  {:ok, contact} = Contacts.create_contact(payload.data)
+  {:noreply, put_flash(socket, :info, "Created contact #{contact.id}")}
+end
+```
+
+**Prefilling form data**
+
+Use the `data` attribute to prefill the form with existing data:
+
+```heex
+<DynamicForm.form id="example-form" data={%{email: "hello@world.com"}}>
+  <:field type="text" name="name" label="Name" required />
+  <:field type="text" name="email" label="Email" input_type="email" format="email" required />
+</DynamicForm.form>
+```
+
+**Lifecycle hooks**
+
+The `on_submit` attribute mirrors `phx-submit`: it runs on every submit — valid
+or not — so expensive checks (like the uniqueness lookup below) batch with the
+built-in errors into one complete list, rendered inline on the form.
+
+See the [Lifecycle](guides/lifecycle.md) guide for more information on
+`on_submit`, `on_change`, and `on_success` lifecycle hooks.
+
+```heex
+<DynamicForm.form id="example-form" on_submit={&Contacts.verify/1}>
+  <:field type="text" name="name" label="Name" required />
+  <:field type="text" name="email" label="Email" input_type="email" format="email" required />
 </DynamicForm.form>
 ```
 
@@ -74,57 +91,123 @@ def verify(payload) do
     payload
   end
 end
-
-def handle_info({:dynamic_form, %DynamicForm.Payload{data: data}}, socket) do
-  {:ok, contact} = Contacts.create_contact(data)
-  {:noreply, put_flash(socket, :info, "Created contact #{contact.id}")}
-end
 ```
 
-`on_submit` mirrors `phx-submit`: it runs on every submit — valid or not —
-so expensive checks (like the uniqueness lookup above) batch with the
-built-in errors into one complete list, rendered inline on the form. An
-`on_change` callback extends validation live as the user types the same way.
+**Validation and visibility**
 
-Layer in validation attrs and conditional visibility — the details field only
-appears when the subject is `support`, and hidden required fields are
-excluded from validation automatically:
+Layer in additional validation attrs and conditional visibility — the details
+field only appears when the subject is `support`, and hidden required fields
+are excluded from validation automatically:
 
 ```heex
-<DynamicForm.form id="support-form">
-  <:field type="text" name="name" label="Name" required min_length={2} />
+<DynamicForm.form id="example-form" on_submit={&Contacts.verify/1}>
+  <:field type="text" name="name" label="Name" min_length={2} required />
+  <:field type="text" name="email" label="Email" input_type="email" format="email" required />
+
   <:field type="dropdown" name="subject" label="Subject" required options={[{"Support", "support"}, {"Sales", "sales"}]} />
   <:field type="comment" name="details" label="Support Details" visible_if="{subject} = 'support'" />
   <:field type="rating" name="satisfaction" label="Satisfaction" rate_min={1} rate_max={5} />
 </DynamicForm.form>
 ```
 
+**Styling and custom fields**
+
+The library uses a version of the CoreComponents module that's generated by new
+Phoenix projects.
+
+It can be configured to use your project's custom components. Either its
+version of CoreComponents or a custom module. It can be configured globally in
+the `config/config.ex` file or per-form using the `components` attribute.
+
+When using a custom component module, the library is smart enough to fall back
+to using the built-in version that ships with the library if a component is not
+defined in the custom module.
+
+Using a custom module is the preferred way to add custom fields as well as
+change the styling of the forms. There is also the ability to define custom
+syntax using the slot body.
+
+See the [Styling](guides/styling.md) guide for detailed information on custom
+inputs and styling.
+
+```heex
+<DynamicForm.form id="example-form" on_submit={&Contacts.verify/1} components={MyAppWeb.CoreComponents}>
+  <:field type="text" name="name" label="Name" min_length={2} required />
+  <:field type="text" name="email" label="Email" input_type="email" format="email" required />
+
+  <:field type="dropdown" name="subject" label="Subject" required options={[{"Support", "support"}, {"Sales", "sales"}]} />
+  <:field type="comment" name="details" label="Support Details" visible_if="{subject} = 'support'" />
+
+  <:field :let={field} type="rating" name="rating" label="Rating">
+    <input type="range" min="1" max="5" step="1" name={field.name} id={field.id} value={field.value || 0} />
+  </:field>
+</DynamicForm.form>
+```
+
+**Grouping fields**
+
 Group fields into panels, and take over rendering where you need to — here a
 custom range control via a slot body, while the library still owns the label,
 errors, and changeset validation:
 
 ```heex
-<DynamicForm.form id="checkout-form">
-  <:field type="boolean" name="ship" label="Ship to a different address?" />
+<DynamicForm.form id="example-form" on_submit={&Contacts.verify/1} components={MyAppWeb.CoreComponents}>
+  <:field type="text" name="name" label="Name" min_length={2} required />
+  <:field type="text" name="email" label="Email" input_type="email" format="email" required />
 
+  <:field type="dropdown" name="subject" label="Subject" required options={[{"Support", "support"}, {"Sales", "sales"}]} />
+  <:field type="comment" name="details" label="Support Details" visible_if="{subject} = 'support'" />
+
+  <:field :let={field} type="rating" name="rating" label="Rating">
+    <input type="range" min="1" max="5" step="1" name={field.name} id={field.id} value={field.value || 0} />
+  </:field>
+
+  <:field type="boolean" name="ship" label="Ship to a different address?" />
   <:group name="address" title="Shipping Address" visible_if="{ship} = true" />
   <:field group="address" type="text" name="street" label="Street" required />
   <:field group="address" type="text" name="city" label="City" required />
-
-  <:field :let={field} type="text" name="budget" input_type="number" label="Budget">
-    <input type="range" min="0" max="1000" step="50" name={field.name} id={field.id} value={field.value || 0} />
-  </:field>
 </DynamicForm.form>
 ```
 
+**Nested forms**
+
+Use nested forms to allow users to add multiple records in the same form
+
+The user can add and remove entries. Each entry is validated with its own child
+changeset, and the submitted value arrives as a list of maps
+(`%{name: "...", addresses: [%{street: "...", city: "..."}, ...]}`):
+
+See the [Nested forms](guides/nested-forms.md) guide for entry seeding,
+min/max entry counts, and per-entry validation.
+
+```heex
+<DynamicForm.form id="example-form" on_submit={&Contacts.verify/1} components={MyAppWeb.CoreComponents}>
+  <:field type="text" name="name" label="Name" min_length={2} required />
+  <:field type="text" name="email" label="Email" input_type="email" format="email" required />
+
+  <:field type="dropdown" name="subject" label="Subject" required options={[{"Support", "support"}, {"Sales", "sales"}]} />
+  <:field type="comment" name="details" label="Support Details" visible_if="{subject} = 'support'" />
+
+  <:field :let={field} type="rating" name="rating" label="Rating">
+    <input type="range" min="1" max="5" step="1" name={field.name} id={field.id} value={field.value || 0} />
+  </:field>
+
+  <:nested name="addresses" title="Addresses" entries={1} add_text="Add address" />
+  <:field nested="addresses" type="text" name="street" label="Street" required />
+  <:field nested="addresses" type="text" name="city" label="City" required />
+</DynamicForm.form>
+```
+
+**Define forms in data**
+
 Or define the same form as data. SurveyJS-compatible JSON passes straight in
-via the `json` attribute (`<DynamicForm.form id="contact-form" json={@json} />`),
+via the `json` attribute (`<DynamicForm.form id="example-form" json={@json} />`),
 or decode it at the edge — from JSON, a map, or built as structs — and pass
 the instance to the same component:
 
 ```json
 {
-  "title": "Contact Form",
+  "title": "Example Form",
   "elements": [
     {"type": "text", "name": "name", "inputType": "text"},
     {"type": "text", "name": "email", "inputType": "email"}
@@ -133,21 +216,45 @@ the instance to the same component:
 ```
 
 ```heex
-<DynamicForm.form id="contact-form" json={@json} />
+<DynamicForm.form id="example-form" json={@json} />
 ```
+
+**Render only**
+
+The library handles events and validations by default. These can be turned off
+if you prefer to just use the library as a renderer and to instead handle the
+actions yourself using the standard `handle_event` handlers in the LiveView.
+
+Use the `form`, `phx_change`, `phx_submit` and `render_only` attributes to manage
+the lifecycle in the LiveView:
+
+```heex
+<DynamicForm.form id="example-form" form={@form} phx_change="validate" phx_submit="save" render_only>
+  <:field type="text" name="name" label="Name" required />
+  <:field type="text" name="email" label="Email" input_type="email" format="email" required />
+</DynamicForm.form>
+```
+
+```elixir
+def mount(_params, _session, socket) do
+  {:ok, assign(socket, :form, to_form(Contacts.changeset(%{}), as: "contact"))}
+end
+
+def handle_event("validate", %{"contact" => _params}, socket) do
+  {:noreply, socket}
+end
+
+def handle_event("save", %{"contact" => _params}, socket) do
+  {:noreply, socket}
+end
+```
+
+**See more**
 
 Every example above runs live on the demo app's landing page
 ([readme_live.ex](examples/overlay/lib/demo_web/live/readme_live.ex)), which
 shows each definition alongside its rendered form. Every feature is explained
 in depth in the [Usage guide](guides/usage.md).
-
-**Data**
-
-Use the `data` attribute to prefill the form with existing data:
-
-```heex
-<DynamicForm.form id="contact-form" data={%{email: "hello@world.com"}} />
-```
 
 ## Demo app
 

@@ -3,21 +3,42 @@ defmodule DemoWeb.ReadmeLive do
   The README's Examples section, live: each example shows its narrative,
   the exact code being rendered, and the rendered form itself. The code
   matches the README structurally — only the app-specific names differ
-  (`Demo.Submissions` for `MyApp.Contacts`, and unique form ids so the
-  examples can share one page).
+  (`Demo.Submissions` for `MyApp.Contacts`, `DemoWeb.CoreComponents` for
+  `MyAppWeb.CoreComponents`, and unique form ids so the examples can share
+  one page).
   """
 
   use DemoWeb, :live_view
 
-  @example_contact ~S"""
-  <DynamicForm.form id="readme-contact" on_submit={&Demo.Submissions.verify/1}>
+  @example_basic ~S"""
+  <DynamicForm.form id="readme-basic">
     <:field type="text" name="name" label="Name" required />
-    <:field type="text" name="email" input_type="email" label="Email Address" required format="email" />
+    <:field type="text" name="email" label="Email" input_type="email" format="email" required />
   </DynamicForm.form>
   """
 
-  @example_contact_handlers ~S"""
-  # In Demo.Submissions — the on_submit callback runs on every submit:
+  @example_basic_handler ~S"""
+  def handle_info({:dynamic_form, payload}, socket) do
+    {:ok, contact} = Demo.Submissions.create(payload.data)
+    {:noreply, put_flash(socket, :info, "Created contact")}
+  end
+  """
+
+  @example_data ~S"""
+  <DynamicForm.form id="readme-data" data={%{email: "hello@world.com"}}>
+    <:field type="text" name="name" label="Name" required />
+    <:field type="text" name="email" label="Email" input_type="email" format="email" required />
+  </DynamicForm.form>
+  """
+
+  @example_lifecycle ~S"""
+  <DynamicForm.form id="readme-lifecycle" on_submit={&Demo.Submissions.verify/1}>
+    <:field type="text" name="name" label="Name" required />
+    <:field type="text" name="email" label="Email" input_type="email" format="email" required />
+  </DynamicForm.form>
+  """
+
+  @example_lifecycle_verify ~S"""
   def verify(payload) do
     if email_taken?(payload.data[:email]) do
       DynamicForm.Payload.add_error(payload, :email, "has already been taken")
@@ -25,17 +46,13 @@ defmodule DemoWeb.ReadmeLive do
       payload
     end
   end
-
-  # In the parent LiveView — only valid submissions arrive here:
-  def handle_info({:dynamic_form, %DynamicForm.Payload{data: data}}, socket) do
-    {:ok, contact} = Demo.Submissions.create(data)
-    {:noreply, put_flash(socket, :info, "Created contact")}
-  end
   """
 
   @example_support ~S"""
-  <DynamicForm.form id="readme-support">
-    <:field type="text" name="name" label="Name" required min_length={2} />
+  <DynamicForm.form id="readme-support" on_submit={&Demo.Submissions.verify/1}>
+    <:field type="text" name="name" label="Name" min_length={2} required />
+    <:field type="text" name="email" label="Email" input_type="email" format="email" required />
+
     <:field type="dropdown" name="subject" label="Subject" required
             options={[{"Support", "support"}, {"Sales", "sales"}]} />
     <:field type="comment" name="details" label="Support Details" visible_if="{subject} = 'support'" />
@@ -43,23 +60,63 @@ defmodule DemoWeb.ReadmeLive do
   </DynamicForm.form>
   """
 
-  @example_checkout ~S"""
-  <DynamicForm.form id="readme-checkout">
-    <:field type="boolean" name="ship" label="Ship to a different address?" />
+  @example_styling ~S"""
+  <DynamicForm.form id="readme-styling" on_submit={&Demo.Submissions.verify/1} components={DemoWeb.CoreComponents}>
+    <:field type="text" name="name" label="Name" min_length={2} required />
+    <:field type="text" name="email" label="Email" input_type="email" format="email" required />
 
+    <:field type="dropdown" name="subject" label="Subject" required
+            options={[{"Support", "support"}, {"Sales", "sales"}]} />
+    <:field type="comment" name="details" label="Support Details" visible_if="{subject} = 'support'" />
+
+    <:field :let={field} type="rating" name="rating" label="Rating">
+      <input type="range" min="1" max="5" step="1" name={field.name} id={field.id} value={field.value || 0} />
+    </:field>
+  </DynamicForm.form>
+  """
+
+  @example_grouping ~S"""
+  <DynamicForm.form id="readme-grouping" on_submit={&Demo.Submissions.verify/1} components={DemoWeb.CoreComponents}>
+    <:field type="text" name="name" label="Name" min_length={2} required />
+    <:field type="text" name="email" label="Email" input_type="email" format="email" required />
+
+    <:field type="dropdown" name="subject" label="Subject" required
+            options={[{"Support", "support"}, {"Sales", "sales"}]} />
+    <:field type="comment" name="details" label="Support Details" visible_if="{subject} = 'support'" />
+
+    <:field :let={field} type="rating" name="rating" label="Rating">
+      <input type="range" min="1" max="5" step="1" name={field.name} id={field.id} value={field.value || 0} />
+    </:field>
+
+    <:field type="boolean" name="ship" label="Ship to a different address?" />
     <:group name="address" title="Shipping Address" visible_if="{ship} = true" />
     <:field group="address" type="text" name="street" label="Street" required />
     <:field group="address" type="text" name="city" label="City" required />
+  </DynamicForm.form>
+  """
 
-    <:field :let={field} type="text" name="budget" input_type="number" label="Budget">
-      <input type="range" min="0" max="1000" step="50" name={field.name} id={field.id} value={field.value || 0} />
+  @example_nested ~S"""
+  <DynamicForm.form id="readme-nested" on_submit={&Demo.Submissions.verify/1} components={DemoWeb.CoreComponents}>
+    <:field type="text" name="name" label="Name" min_length={2} required />
+    <:field type="text" name="email" label="Email" input_type="email" format="email" required />
+
+    <:field type="dropdown" name="subject" label="Subject" required
+            options={[{"Support", "support"}, {"Sales", "sales"}]} />
+    <:field type="comment" name="details" label="Support Details" visible_if="{subject} = 'support'" />
+
+    <:field :let={field} type="rating" name="rating" label="Rating">
+      <input type="range" min="1" max="5" step="1" name={field.name} id={field.id} value={field.value || 0} />
     </:field>
+
+    <:nested name="addresses" title="Addresses" entries={1} add_text="Add address" />
+    <:field nested="addresses" type="text" name="street" label="Street" required />
+    <:field nested="addresses" type="text" name="city" label="City" required />
   </DynamicForm.form>
   """
 
   @example_json_definition ~S"""
   {
-    "title": "Contact Form",
+    "title": "Example Form",
     "elements": [
       {"type": "text", "name": "name", "inputType": "text"},
       {"type": "text", "name": "email", "inputType": "email"}
@@ -71,8 +128,27 @@ defmodule DemoWeb.ReadmeLive do
   <DynamicForm.form id="readme-json" json={@json} />
   """
 
-  @example_data ~S"""
-  <DynamicForm.form id="readme-data" json={@json} data={%{email: "hello@world.com"}} />
+  @example_render_only ~S"""
+  <DynamicForm.form id="readme-render-only" form={@form} phx_change="validate" phx_submit="save" render_only>
+    <:field type="text" name="name" label="Name" required />
+    <:field type="text" name="email" label="Email" input_type="email" format="email" required />
+  </DynamicForm.form>
+  """
+
+  @example_render_only_handlers ~S"""
+  def mount(_params, _session, socket) do
+    {:ok, assign(socket, :form, to_form(changeset(%{}), as: "contact"))}
+  end
+
+  def handle_event("validate", %{"contact" => params}, socket) do
+    form = params |> changeset() |> Map.put(:action, :validate) |> to_form(as: "contact")
+    {:noreply, assign(socket, :form, form)}
+  end
+
+  def handle_event("save", %{"contact" => params}, socket) do
+    # the form lifecycle is entirely yours: insert, navigate, broadcast, ...
+    {:noreply, put_flash(socket, :info, "Contact saved")}
+  end
   """
 
   @pages [
@@ -92,13 +168,20 @@ defmodule DemoWeb.ReadmeLive do
      assign(socket,
        json: String.trim(@example_json_definition),
        pages: @pages,
-       example_contact: @example_contact,
-       example_contact_handlers: @example_contact_handlers,
+       form: to_form(changeset(%{}), as: "contact"),
+       example_basic: @example_basic,
+       example_basic_handler: @example_basic_handler,
+       example_data: @example_data,
+       example_lifecycle: @example_lifecycle,
+       example_lifecycle_verify: @example_lifecycle_verify,
        example_support: @example_support,
-       example_checkout: @example_checkout,
+       example_styling: @example_styling,
+       example_grouping: @example_grouping,
+       example_nested: @example_nested,
        example_json_definition: @example_json_definition,
        example_json: @example_json,
-       example_data: @example_data
+       example_render_only: @example_render_only,
+       example_render_only_handlers: @example_render_only_handlers
      )}
   end
 
@@ -108,6 +191,35 @@ defmodule DemoWeb.ReadmeLive do
   def handle_info({:dynamic_form, %DynamicForm.Payload{} = payload}, socket) do
     {:ok, _result} = Demo.Submissions.create(payload.data)
     {:noreply, put_flash(socket, :info, "Form #{payload.id} submitted successfully")}
+  end
+
+  # Render-only mode: this LiveView owns the changeset and the events, just
+  # like an idiomatic <form phx-change="validate" phx-submit="save">.
+  @impl true
+  def handle_event("validate", %{"contact" => params}, socket) do
+    form = params |> changeset() |> Map.put(:action, :validate) |> to_form(as: "contact")
+    {:noreply, assign(socket, :form, form)}
+  end
+
+  @impl true
+  def handle_event("save", %{"contact" => params}, socket) do
+    changeset = changeset(params)
+
+    if changeset.valid? do
+      {:noreply,
+       socket
+       |> assign(:form, to_form(changeset(%{}), as: "contact"))
+       |> put_flash(:info, "Contact saved")}
+    else
+      form = changeset |> Map.put(:action, :validate) |> to_form(as: "contact")
+      {:noreply, assign(socket, :form, form)}
+    end
+  end
+
+  defp changeset(params) do
+    {%{}, %{name: :string, email: :string}}
+    |> Ecto.Changeset.cast(params, [:name, :email])
+    |> Ecto.Changeset.validate_required([:name, :email])
   end
 
   @impl true
@@ -127,49 +239,109 @@ defmodule DemoWeb.ReadmeLive do
           </a>'s Examples section, running live.
         </p>
 
-        <.example code={@example_contact}>
+        <.example code={@example_basic}>
           <:text>
-            A form is a component call with fields in render order. The library
-            runs the whole validation lifecycle itself and messages the parent
+            Forms are defined using the
+            <code class="bg-gray-100 px-1 rounded">&lt;DynamicForm.form /&gt;</code>
+            component. It can either be defined in data or using component
+            slots. The <code class="bg-gray-100 px-1 rounded">&lt;:field /&gt;</code>
+            slots are rendered in the order they are defined. The library runs
+            the whole validation lifecycle itself and messages the parent
             LiveView on every valid submission — the
             <code class="bg-gray-100 px-1 rounded">handle_info/2</code>
-            handler is where the side effect happens:
+            handler is where the side effect happens. The
+            <code class="bg-gray-100 px-1 rounded">payload</code>
+            is a struct containing information about the form, including the
+            <code class="bg-gray-100 px-1 rounded">data</code>
+            key which is a map of the submitted data.
           </:text>
-          <DynamicForm.form id="readme-contact" on_submit={&Demo.Submissions.verify/1}>
+          <DynamicForm.form id="readme-basic">
             <:field type="text" name="name" label="Name" required />
             <:field
               type="text"
               name="email"
+              label="Email"
               input_type="email"
-              label="Email Address"
-              required
               format="email"
+              required
             />
           </DynamicForm.form>
         </.example>
 
-        <section class="mt-6 space-y-4">
-          <p class="text-gray-600">
-            <code class="bg-gray-100 px-1 rounded">on_submit</code>
-            mirrors <code class="bg-gray-100 px-1 rounded">phx-submit</code>: it
-            runs on every submit — valid or not — so expensive checks (like a
-            uniqueness lookup) batch with the built-in errors into one complete
-            list, rendered inline on the form. Try the email
-            <code class="bg-gray-100 px-1 rounded">taken@example.com</code>
-            above to see it. An <code class="bg-gray-100 px-1 rounded">on_change</code>
-            callback extends validation live as the user types the same way.
-          </p>
-          <.code_block code={@example_contact_handlers} />
-        </section>
+        <.code_block code={@example_basic_handler} class="mt-4" />
 
-        <.example code={@example_support}>
+        <.example title="Prefilling form data" code={@example_data}>
           <:text>
-            Layer in validation attrs and conditional visibility — the details
-            field only appears when the subject is <code class="bg-gray-100 px-1 rounded">support</code>, and hidden
+            Use the <code class="bg-gray-100 px-1 rounded">data</code>
+            attribute to prefill the form with existing data:
+          </:text>
+          <DynamicForm.form id="readme-data" data={%{email: "hello@world.com"}}>
+            <:field type="text" name="name" label="Name" required />
+            <:field
+              type="text"
+              name="email"
+              label="Email"
+              input_type="email"
+              format="email"
+              required
+            />
+          </DynamicForm.form>
+        </.example>
+
+        <.example title="Lifecycle hooks" code={@example_lifecycle}>
+          <:text>
+            The <code class="bg-gray-100 px-1 rounded">on_submit</code>
+            attribute mirrors <code class="bg-gray-100 px-1 rounded">phx-submit</code>:
+            it runs on every submit — valid or not — so expensive checks (like
+            the uniqueness lookup below) batch with the built-in errors into
+            one complete list, rendered inline on the form. Try the email
+            <code class="bg-gray-100 px-1 rounded">taken@example.com</code>
+            to see it:
+          </:text>
+          <DynamicForm.form id="readme-lifecycle" on_submit={&Demo.Submissions.verify/1}>
+            <:field type="text" name="name" label="Name" required />
+            <:field
+              type="text"
+              name="email"
+              label="Email"
+              input_type="email"
+              format="email"
+              required
+            />
+          </DynamicForm.form>
+        </.example>
+
+        <.code_block code={@example_lifecycle_verify} class="mt-4" />
+
+        <p class="mt-4 text-gray-600">
+          See the
+          <a
+            href="https://github.com/chrislaskey/dynamic_form/blob/main/guides/lifecycle.md"
+            class="font-semibold text-indigo-600 hover:text-indigo-500"
+          >
+            Lifecycle guide
+          </a>
+          for more information on <code class="bg-gray-100 px-1 rounded">on_submit</code>, <code class="bg-gray-100 px-1 rounded">on_change</code>, and
+          <code class="bg-gray-100 px-1 rounded">on_success</code>
+          lifecycle hooks.
+        </p>
+
+        <.example title="Validation and visibility" code={@example_support}>
+          <:text>
+            Layer in additional validation attrs and conditional visibility —
+            the details field only appears when the subject is <code class="bg-gray-100 px-1 rounded">support</code>, and hidden
             required fields are excluded from validation automatically:
           </:text>
-          <DynamicForm.form id="readme-support">
-            <:field type="text" name="name" label="Name" required min_length={2} />
+          <DynamicForm.form id="readme-support" on_submit={&Demo.Submissions.verify/1}>
+            <:field type="text" name="name" label="Name" min_length={2} required />
+            <:field
+              type="text"
+              name="email"
+              label="Email"
+              input_type="email"
+              format="email"
+              required
+            />
             <:field
               type="dropdown"
               name="subject"
@@ -187,35 +359,187 @@ defmodule DemoWeb.ReadmeLive do
           </DynamicForm.form>
         </.example>
 
-        <.example code={@example_checkout}>
+        <section class="mt-10 space-y-4">
+          <h2 class="text-xl font-semibold text-gray-900">Styling and custom fields</h2>
+          <p class="text-gray-600">
+            The library uses a version of the CoreComponents module that's
+            generated by new Phoenix projects. It can be configured to use your
+            project's custom components — either its version of CoreComponents
+            or a custom module — globally in config or per-form using the
+            <code class="bg-gray-100 px-1 rounded">components</code>
+            attribute. When using a custom component module, the library falls
+            back to the built-in version for any component the custom module
+            doesn't define. A custom module is the preferred way to add custom
+            fields as well as change the styling of the forms; there is also
+            the ability to define custom markup using the slot body. See the
+            <a
+              href="https://github.com/chrislaskey/dynamic_form/blob/main/guides/styling.md"
+              class="font-semibold text-indigo-600 hover:text-indigo-500"
+            >
+              Styling guide
+            </a>
+            for detailed information on custom inputs and styling.
+          </p>
+          <.code_block code={@example_styling} />
+          <div class="rounded-lg bg-white shadow-sm ring-1 ring-gray-900/5 p-6">
+            <DynamicForm.form
+              id="readme-styling"
+              on_submit={&Demo.Submissions.verify/1}
+              components={DemoWeb.CoreComponents}
+            >
+              <:field type="text" name="name" label="Name" min_length={2} required />
+              <:field
+                type="text"
+                name="email"
+                label="Email"
+                input_type="email"
+                format="email"
+                required
+              />
+              <:field
+                type="dropdown"
+                name="subject"
+                label="Subject"
+                required
+                options={[{"Support", "support"}, {"Sales", "sales"}]}
+              />
+              <:field
+                type="comment"
+                name="details"
+                label="Support Details"
+                visible_if="{subject} = 'support'"
+              />
+              <:field :let={field} type="rating" name="rating" label="Rating">
+                <input
+                  type="range"
+                  min="1"
+                  max="5"
+                  step="1"
+                  name={field.name}
+                  id={field.id}
+                  value={field.value || 0}
+                  class="mt-2 w-full accent-indigo-600"
+                />
+              </:field>
+            </DynamicForm.form>
+          </div>
+        </section>
+
+        <.example title="Grouping fields" code={@example_grouping}>
           <:text>
             Group fields into panels, and take over rendering where you need to
             — here a custom range control via a slot body, while the library
             still owns the label, errors, and changeset validation:
           </:text>
-          <DynamicForm.form id="readme-checkout">
-            <:field type="boolean" name="ship" label="Ship to a different address?" />
-
-            <:group name="address" title="Shipping Address" visible_if="{ship} = true" />
-            <:field group="address" type="text" name="street" label="Street" required />
-            <:field group="address" type="text" name="city" label="City" required />
-
-            <:field :let={field} type="text" name="budget" input_type="number" label="Budget">
+          <DynamicForm.form
+            id="readme-grouping"
+            on_submit={&Demo.Submissions.verify/1}
+            components={DemoWeb.CoreComponents}
+          >
+            <:field type="text" name="name" label="Name" min_length={2} required />
+            <:field
+              type="text"
+              name="email"
+              label="Email"
+              input_type="email"
+              format="email"
+              required
+            />
+            <:field
+              type="dropdown"
+              name="subject"
+              label="Subject"
+              required
+              options={[{"Support", "support"}, {"Sales", "sales"}]}
+            />
+            <:field
+              type="comment"
+              name="details"
+              label="Support Details"
+              visible_if="{subject} = 'support'"
+            />
+            <:field :let={field} type="rating" name="rating" label="Rating">
               <input
                 type="range"
-                min="0"
-                max="1000"
-                step="50"
+                min="1"
+                max="5"
+                step="1"
                 name={field.name}
                 id={field.id}
                 value={field.value || 0}
                 class="mt-2 w-full accent-indigo-600"
               />
             </:field>
+
+            <:field type="boolean" name="ship" label="Ship to a different address?" />
+            <:group name="address" title="Shipping Address" visible_if="{ship} = true" />
+            <:field group="address" type="text" name="street" label="Street" required />
+            <:field group="address" type="text" name="city" label="City" required />
+          </DynamicForm.form>
+        </.example>
+
+        <.example title="Nested forms" code={@example_nested}>
+          <:text>
+            Use nested forms to allow users to add multiple records in the same
+            form. The user can add and remove entries. Each entry is validated
+            with its own child changeset, and the submitted value arrives as a
+            list of maps. See the
+            <a
+              href="https://github.com/chrislaskey/dynamic_form/blob/main/guides/nested-forms.md"
+              class="font-semibold text-indigo-600 hover:text-indigo-500"
+            >
+              Nested forms guide
+            </a>
+            for entry seeding, min/max entry counts, and per-entry validation:
+          </:text>
+          <DynamicForm.form
+            id="readme-nested"
+            on_submit={&Demo.Submissions.verify/1}
+            components={DemoWeb.CoreComponents}
+          >
+            <:field type="text" name="name" label="Name" min_length={2} required />
+            <:field
+              type="text"
+              name="email"
+              label="Email"
+              input_type="email"
+              format="email"
+              required
+            />
+            <:field
+              type="dropdown"
+              name="subject"
+              label="Subject"
+              required
+              options={[{"Support", "support"}, {"Sales", "sales"}]}
+            />
+            <:field
+              type="comment"
+              name="details"
+              label="Support Details"
+              visible_if="{subject} = 'support'"
+            />
+            <:field :let={field} type="rating" name="rating" label="Rating">
+              <input
+                type="range"
+                min="1"
+                max="5"
+                step="1"
+                name={field.name}
+                id={field.id}
+                value={field.value || 0}
+                class="mt-2 w-full accent-indigo-600"
+              />
+            </:field>
+
+            <:nested name="addresses" title="Addresses" entries={1} add_text="Add address" />
+            <:field nested="addresses" type="text" name="street" label="Street" required />
+            <:field nested="addresses" type="text" name="city" label="City" required />
           </DynamicForm.form>
         </.example>
 
         <section class="mt-10 space-y-4">
+          <h2 class="text-xl font-semibold text-gray-900">Define forms in data</h2>
           <p class="text-gray-600">
             Or define the same form as data. SurveyJS-compatible JSON passes
             straight in via the <code class="bg-gray-100 px-1 rounded">json</code>
@@ -229,13 +553,37 @@ defmodule DemoWeb.ReadmeLive do
           </div>
         </section>
 
-        <.example code={@example_data}>
+        <.example title="Render only" code={@example_render_only}>
           <:text>
-            Use the <code class="bg-gray-100 px-1 rounded">data</code>
-            attribute to prefill the form with existing data:
+            The library handles events and validations by default. These can be
+            turned off if you prefer to just use the library as a renderer and
+            to instead handle the actions yourself using the standard
+            <code class="bg-gray-100 px-1 rounded">handle_event</code>
+            handlers in the LiveView. Use the <code class="bg-gray-100 px-1 rounded">form</code>, <code class="bg-gray-100 px-1 rounded">phx_change</code>,
+            <code class="bg-gray-100 px-1 rounded">phx_submit</code>
+            and <code class="bg-gray-100 px-1 rounded">render_only</code>
+            attributes to manage the lifecycle in the LiveView:
           </:text>
-          <DynamicForm.form id="readme-data" json={@json} data={%{email: "hello@world.com"}} />
+          <DynamicForm.form
+            id="readme-render-only"
+            form={@form}
+            phx_change="validate"
+            phx_submit="save"
+            render_only
+          >
+            <:field type="text" name="name" label="Name" required />
+            <:field
+              type="text"
+              name="email"
+              label="Email"
+              input_type="email"
+              format="email"
+              required
+            />
+          </DynamicForm.form>
         </.example>
+
+        <.code_block code={@example_render_only_handlers} class="mt-4" />
 
         <section class="mt-16 border-t border-zinc-100 pt-8">
           <h2 class="text-xl font-semibold text-gray-900">In-depth demo pages</h2>
@@ -261,12 +609,14 @@ defmodule DemoWeb.ReadmeLive do
   end
 
   attr :code, :string, required: true
+  attr :title, :string, default: nil
   slot :text, required: true
   slot :inner_block, required: true
 
   defp example(assigns) do
     ~H"""
     <section class="mt-10 space-y-4">
+      <h2 :if={@title} class="text-xl font-semibold text-gray-900">{@title}</h2>
       <p class="text-gray-600">{render_slot(@text)}</p>
       <.code_block code={@code} />
       <div class="rounded-lg bg-white shadow-sm ring-1 ring-gray-900/5 p-6">
@@ -277,10 +627,14 @@ defmodule DemoWeb.ReadmeLive do
   end
 
   attr :code, :string, required: true
+  attr :class, :string, default: nil
 
   defp code_block(assigns) do
     ~H"""
-    <pre class="p-4 rounded-lg bg-gray-50 border border-gray-200 text-sm text-zinc-700 overflow-x-auto"><code>{String.trim(@code)}</code></pre>
+    <pre class={[
+      "p-4 rounded-lg bg-gray-50 border border-gray-200 text-sm text-zinc-700 overflow-x-auto",
+      @class
+    ]}><code>{String.trim(@code)}</code></pre>
     """
   end
 end
