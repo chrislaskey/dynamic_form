@@ -3,6 +3,10 @@
 > Dynamic, changeset-backed forms for Phoenix LiveView — defined declaratively
 > in HEEx or as (SurveyJS-compatible) data.
 
+<p align="center">
+  <img title="v1.0.0 Screenshot" src="https://raw.githubusercontent.com/chrislaskey/dynamic_form/refs/heads/main/examples/screenshot-v1.0.0.gif" width="800">
+</p>
+
 ## Architecture
 
 DynamicForm renders complete, validated forms from a single definition. It follows common best practices
@@ -56,6 +60,10 @@ def handle_info({:dynamic_form, payload}, socket) do
 end
 ```
 
+<p align="center">
+  <img title="v1.0.0 Screenshot" src="https://raw.githubusercontent.com/chrislaskey/dynamic_form/refs/heads/main/examples/screenshot-example-01-v1.0.0.gif" width="800">
+</p>
+
 **Prefilling form data**
 
 Use the `data` attribute to prefill the form with existing data:
@@ -66,6 +74,10 @@ Use the `data` attribute to prefill the form with existing data:
   <:field type="text" name="email" label="Email" input_type="email" format="email" required />
 </DynamicForm.form>
 ```
+
+<p align="center">
+  <img title="v1.0.0 Screenshot" src="https://raw.githubusercontent.com/chrislaskey/dynamic_form/refs/heads/main/examples/screenshot-example-02-v1.0.0.gif" width="800">
+</p>
 
 **Lifecycle hooks**
 
@@ -93,6 +105,10 @@ def verify(payload) do
 end
 ```
 
+<p align="center">
+  <img title="v1.0.0 Screenshot" src="https://raw.githubusercontent.com/chrislaskey/dynamic_form/refs/heads/main/examples/screenshot-example-03-v1.0.0.gif" width="800">
+</p>
+
 **Validation and visibility**
 
 Layer in additional validation attrs and conditional visibility — the details
@@ -109,6 +125,10 @@ are excluded from validation automatically:
   <:field type="rating" name="satisfaction" label="Satisfaction" rate_min={1} rate_max={5} />
 </DynamicForm.form>
 ```
+
+<p align="center">
+  <img title="v1.0.0 Screenshot" src="https://raw.githubusercontent.com/chrislaskey/dynamic_form/refs/heads/main/examples/screenshot-example-04-v1.0.0.gif" width="800">
+</p>
 
 **Styling and custom fields**
 
@@ -144,6 +164,10 @@ inputs and styling.
 </DynamicForm.form>
 ```
 
+<p align="center">
+  <img title="v1.0.0 Screenshot" src="https://raw.githubusercontent.com/chrislaskey/dynamic_form/refs/heads/main/examples/screenshot-example-05-v1.0.0.gif" width="800">
+</p>
+
 **Grouping fields**
 
 Group fields into panels, and take over rendering where you need to — here a
@@ -168,6 +192,10 @@ errors, and changeset validation:
   <:field group="address" type="text" name="city" label="City" required />
 </DynamicForm.form>
 ```
+
+<p align="center">
+  <img title="v1.0.0 Screenshot" src="https://raw.githubusercontent.com/chrislaskey/dynamic_form/refs/heads/main/examples/screenshot-example-06-v1.0.0.gif" width="800">
+</p>
 
 **Nested forms**
 
@@ -198,6 +226,10 @@ min/max entry counts, and per-entry validation.
 </DynamicForm.form>
 ```
 
+<p align="center">
+  <img title="v1.0.0 Screenshot" src="https://raw.githubusercontent.com/chrislaskey/dynamic_form/refs/heads/main/examples/screenshot-example-07-v1.0.0.gif" width="800">
+</p>
+
 **Define forms in data**
 
 Or define the same form as data. SurveyJS-compatible JSON passes straight in
@@ -218,6 +250,10 @@ the instance to the same component:
 ```heex
 <DynamicForm.form id="example-form" json={@json} />
 ```
+
+<p align="center">
+  <img title="v1.0.0 Screenshot" src="https://raw.githubusercontent.com/chrislaskey/dynamic_form/refs/heads/main/examples/screenshot-example-08-v1.0.0.gif" width="800">
+</p>
 
 **Render only**
 
@@ -248,6 +284,10 @@ def handle_event("save", %{"contact" => _params}, socket) do
   {:noreply, socket}
 end
 ```
+
+<p align="center">
+  <img title="v1.0.0 Screenshot" src="https://raw.githubusercontent.com/chrislaskey/dynamic_form/refs/heads/main/examples/screenshot-example-09-v1.0.0.gif" width="800">
+</p>
 
 **See more**
 

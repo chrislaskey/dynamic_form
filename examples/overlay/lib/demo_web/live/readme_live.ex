@@ -239,21 +239,25 @@ defmodule DemoWeb.ReadmeLive do
           </a>'s Examples section, running live.
         </p>
 
-        <.example code={@example_basic}>
+        <.example title="A simple form" code={@example_basic}>
           <:text>
-            Forms are defined using the
-            <code class="bg-gray-100 px-1 rounded">&lt;DynamicForm.form /&gt;</code>
-            component. It can either be defined in data or using component
-            slots. The <code class="bg-gray-100 px-1 rounded">&lt;:field /&gt;</code>
-            slots are rendered in the order they are defined. The library runs
-            the whole validation lifecycle itself and messages the parent
-            LiveView on every valid submission — the
-            <code class="bg-gray-100 px-1 rounded">handle_info/2</code>
-            handler is where the side effect happens. The
-            <code class="bg-gray-100 px-1 rounded">payload</code>
-            is a struct containing information about the form, including the
-            <code class="bg-gray-100 px-1 rounded">data</code>
-            key which is a map of the submitted data.
+            <p>
+              Forms are defined using the
+              <code class="bg-gray-100 px-1 rounded">&lt;DynamicForm.form /&gt;</code>
+              component. It can either be defined in data or using component
+              slots. The <code class="bg-gray-100 px-1 rounded">&lt;:field /&gt;</code>
+              slots are rendered in the order they are defined.
+            </p>
+            <p>
+              The library runs the whole validation lifecycle itself and
+              messages the parent LiveView on every valid submission — the
+              <code class="bg-gray-100 px-1 rounded">handle_info/2</code>
+              handler is where the side effect happens. The
+              <code class="bg-gray-100 px-1 rounded">payload</code>
+              is a struct containing information about the form, including the
+              <code class="bg-gray-100 px-1 rounded">data</code>
+              key which is a map of the submitted data.
+            </p>
           </:text>
           <DynamicForm.form id="readme-basic">
             <:field type="text" name="name" label="Name" required />
@@ -272,8 +276,10 @@ defmodule DemoWeb.ReadmeLive do
 
         <.example title="Prefilling form data" code={@example_data}>
           <:text>
-            Use the <code class="bg-gray-100 px-1 rounded">data</code>
-            attribute to prefill the form with existing data:
+            <p>
+              Use the <code class="bg-gray-100 px-1 rounded">data</code>
+              attribute to prefill the form with existing data:
+            </p>
           </:text>
           <DynamicForm.form id="readme-data" data={%{email: "hello@world.com"}}>
             <:field type="text" name="name" label="Name" required />
@@ -290,13 +296,15 @@ defmodule DemoWeb.ReadmeLive do
 
         <.example title="Lifecycle hooks" code={@example_lifecycle}>
           <:text>
-            The <code class="bg-gray-100 px-1 rounded">on_submit</code>
-            attribute mirrors <code class="bg-gray-100 px-1 rounded">phx-submit</code>:
-            it runs on every submit — valid or not — so expensive checks (like
-            the uniqueness lookup below) batch with the built-in errors into
-            one complete list, rendered inline on the form. Try the email
-            <code class="bg-gray-100 px-1 rounded">taken@example.com</code>
-            to see it:
+            <p>
+              The <code class="bg-gray-100 px-1 rounded">on_submit</code>
+              attribute mirrors <code class="bg-gray-100 px-1 rounded">phx-submit</code>:
+              it runs on every submit — valid or not — so expensive checks
+              (like the uniqueness lookup below) batch with the built-in errors
+              into one complete list, rendered inline on the form. Try the
+              email <code class="bg-gray-100 px-1 rounded">taken@example.com</code>
+              to see it:
+            </p>
           </:text>
           <DynamicForm.form id="readme-lifecycle" on_submit={&Demo.Submissions.verify/1}>
             <:field type="text" name="name" label="Name" required />
@@ -328,9 +336,11 @@ defmodule DemoWeb.ReadmeLive do
 
         <.example title="Validation and visibility" code={@example_support}>
           <:text>
-            Layer in additional validation attrs and conditional visibility —
-            the details field only appears when the subject is <code class="bg-gray-100 px-1 rounded">support</code>, and hidden
-            required fields are excluded from validation automatically:
+            <p>
+              Layer in additional validation attrs and conditional visibility —
+              the details field only appears when the subject is <code class="bg-gray-100 px-1 rounded">support</code>, and hidden
+              required fields are excluded from validation automatically:
+            </p>
           </:text>
           <DynamicForm.form id="readme-support" on_submit={&Demo.Submissions.verify/1}>
             <:field type="text" name="name" label="Name" min_length={2} required />
@@ -361,25 +371,39 @@ defmodule DemoWeb.ReadmeLive do
 
         <section class="mt-10 space-y-4">
           <h2 class="text-xl font-semibold text-gray-900">Styling and custom fields</h2>
-          <p class="text-gray-600">
-            The library uses a version of the CoreComponents module that's
-            generated by new Phoenix projects. It can be configured to use your
-            project's custom components — either its version of CoreComponents
-            or a custom module — globally in config or per-form using the
-            <code class="bg-gray-100 px-1 rounded">components</code>
-            attribute. When using a custom component module, the library falls
-            back to the built-in version for any component the custom module
-            doesn't define. A custom module is the preferred way to add custom
-            fields as well as change the styling of the forms; there is also
-            the ability to define custom markup using the slot body. See the
-            <a
-              href="https://github.com/chrislaskey/dynamic_form/blob/main/guides/styling.md"
-              class="font-semibold text-indigo-600 hover:text-indigo-500"
-            >
-              Styling guide
-            </a>
-            for detailed information on custom inputs and styling.
-          </p>
+          <div class="space-y-4 text-gray-600">
+            <p>
+              The library uses a version of the CoreComponents module that's
+              generated by new Phoenix projects.
+            </p>
+            <p>
+              It can be configured to use your project's custom components —
+              either its version of CoreComponents or a custom module. It can
+              be configured globally in config or per-form using the
+              <code class="bg-gray-100 px-1 rounded">components</code>
+              attribute.
+            </p>
+            <p>
+              When using a custom component module, the library is smart enough
+              to fall back to using the built-in version that ships with the
+              library if a component is not defined in the custom module.
+            </p>
+            <p>
+              Using a custom module is the preferred way to add custom fields
+              as well as change the styling of the forms. There is also the
+              ability to define custom markup using the slot body.
+            </p>
+            <p>
+              See the
+              <a
+                href="https://github.com/chrislaskey/dynamic_form/blob/main/guides/styling.md"
+                class="font-semibold text-indigo-600 hover:text-indigo-500"
+              >
+                Styling guide
+              </a>
+              for detailed information on custom inputs and styling.
+            </p>
+          </div>
           <.code_block code={@example_styling} />
           <div class="rounded-lg bg-white shadow-sm ring-1 ring-gray-900/5 p-6">
             <DynamicForm.form
@@ -427,9 +451,11 @@ defmodule DemoWeb.ReadmeLive do
 
         <.example title="Grouping fields" code={@example_grouping}>
           <:text>
-            Group fields into panels, and take over rendering where you need to
-            — here a custom range control via a slot body, while the library
-            still owns the label, errors, and changeset validation:
+            <p>
+              Group fields into panels, and take over rendering where you need
+              to — here a custom range control via a slot body, while the
+              library still owns the label, errors, and changeset validation:
+            </p>
           </:text>
           <DynamicForm.form
             id="readme-grouping"
@@ -480,17 +506,25 @@ defmodule DemoWeb.ReadmeLive do
 
         <.example title="Nested forms" code={@example_nested}>
           <:text>
-            Use nested forms to allow users to add multiple records in the same
-            form. The user can add and remove entries. Each entry is validated
-            with its own child changeset, and the submitted value arrives as a
-            list of maps. See the
-            <a
-              href="https://github.com/chrislaskey/dynamic_form/blob/main/guides/nested-forms.md"
-              class="font-semibold text-indigo-600 hover:text-indigo-500"
-            >
-              Nested forms guide
-            </a>
-            for entry seeding, min/max entry counts, and per-entry validation:
+            <p>
+              Use nested forms to allow users to add multiple records in the
+              same form.
+            </p>
+            <p>
+              The user can add and remove entries. Each entry is validated with
+              its own child changeset, and the submitted value arrives as a
+              list of maps.
+            </p>
+            <p>
+              See the
+              <a
+                href="https://github.com/chrislaskey/dynamic_form/blob/main/guides/nested-forms.md"
+                class="font-semibold text-indigo-600 hover:text-indigo-500"
+              >
+                Nested forms guide
+              </a>
+              for entry seeding, min/max entry counts, and per-entry validation:
+            </p>
           </:text>
           <DynamicForm.form
             id="readme-nested"
@@ -555,14 +589,19 @@ defmodule DemoWeb.ReadmeLive do
 
         <.example title="Render only" code={@example_render_only}>
           <:text>
-            The library handles events and validations by default. These can be
-            turned off if you prefer to just use the library as a renderer and
-            to instead handle the actions yourself using the standard
-            <code class="bg-gray-100 px-1 rounded">handle_event</code>
-            handlers in the LiveView. Use the <code class="bg-gray-100 px-1 rounded">form</code>, <code class="bg-gray-100 px-1 rounded">phx_change</code>,
-            <code class="bg-gray-100 px-1 rounded">phx_submit</code>
-            and <code class="bg-gray-100 px-1 rounded">render_only</code>
-            attributes to manage the lifecycle in the LiveView:
+            <p>
+              The library handles events and validations by default. These can
+              be turned off if you prefer to just use the library as a renderer
+              and to instead handle the actions yourself using the standard
+              <code class="bg-gray-100 px-1 rounded">handle_event</code>
+              handlers in the LiveView.
+            </p>
+            <p>
+              Use the <code class="bg-gray-100 px-1 rounded">form</code>, <code class="bg-gray-100 px-1 rounded">phx_change</code>,
+              <code class="bg-gray-100 px-1 rounded">phx_submit</code>
+              and <code class="bg-gray-100 px-1 rounded">render_only</code>
+              attributes to manage the lifecycle in the LiveView:
+            </p>
           </:text>
           <DynamicForm.form
             id="readme-render-only"
@@ -617,7 +656,7 @@ defmodule DemoWeb.ReadmeLive do
     ~H"""
     <section class="mt-10 space-y-4">
       <h2 :if={@title} class="text-xl font-semibold text-gray-900">{@title}</h2>
-      <p class="text-gray-600">{render_slot(@text)}</p>
+      <div class="space-y-4 text-gray-600">{render_slot(@text)}</div>
       <.code_block code={@code} />
       <div class="rounded-lg bg-white shadow-sm ring-1 ring-gray-900/5 p-6">
         {render_slot(@inner_block)}
