@@ -1,7 +1,7 @@
 defmodule DynamicForm.MixProject do
   use Mix.Project
 
-  @version "0.17.3"
+  @version "0.17.4"
 
   def project do
     [
@@ -24,10 +24,10 @@ defmodule DynamicForm.MixProject do
     [
       {:phoenix_live_view, "~> 1.0"},
       {:phoenix_html, "~> 4.0"},
-      {:phoenix_ecto, "~> 4.4"},
-      {:ecto, "~> 3.0"},
+      {:phoenix_ecto, ">= 0.0.0"},
+      {:ecto, ">= 0.0.0"},
       {:gettext, ">= 0.0.0"},
-      {:jason, "~> 1.4"},
+      {:jason, ">= 0.0.0"},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:ex_doc, "~> 0.34", only: :dev, runtime: false}
     ]
