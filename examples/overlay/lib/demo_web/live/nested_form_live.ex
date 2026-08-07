@@ -161,7 +161,11 @@ defmodule DemoWeb.NestedFormLive do
                 validation_summary="detailed"
               />
             <% :slots -> %>
-              <DynamicForm.form id="nested-slot-form" submit_text="Save Project">
+              <DynamicForm.form
+                id="nested-slot-form"
+                components={DemoWeb.FormComponents}
+                submit_text="Save Project"
+              >
                 <:field type="text" name="project" label="Project name" required />
 
                 <:nested
@@ -245,6 +249,12 @@ defmodule DemoWeb.NestedFormLive do
               (<code>:let</code> slot body rendered once per entry) and a
               <code>&lt;:group&gt;</code> panel inside the nested form
             </li>
+            <li>
+              Notice the indigo entry cards in declarative mode — the components module
+              (<code>DemoWeb.FormComponents</code>) defines <code>nested_entry/1</code>,
+              replacing the default bordered container around each entry; create and edit
+              mode show the built-in style
+            </li>
           </ul>
         </div>
       </div>
@@ -254,7 +264,7 @@ defmodule DemoWeb.NestedFormLive do
 
   defp slot_definition_source do
     ~S"""
-    <DynamicForm.form id="nested-slot-form" submit_text="Save Project">
+    <DynamicForm.form id="nested-slot-form" components={DemoWeb.FormComponents} submit_text="Save Project">
       <:field type="text" name="project" label="Project name" required />
 
       <:nested name="milestones" title="Milestones" entry_title="Milestone {panelIndex}"

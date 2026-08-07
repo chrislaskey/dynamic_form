@@ -165,6 +165,21 @@ defmodule DemoWeb.NestedFormLiveTest do
       assert html =~ ~s(name="dynamic_form[milestones][0][quarter]")
     end
 
+    test "entries render through the components module's nested_entry/1", %{conn: conn} do
+      {:ok, view, html} = live(conn, "/nested-forms")
+
+      # Create mode uses the library's built-in entry container
+      assert html =~ "mt-3 rounded-lg border border-gray-200 p-4"
+      refute html =~ "border-indigo-400"
+
+      # Slots mode passes components={DemoWeb.FormComponents}, whose
+      # nested_entry/1 replaces the container
+      html = switch_to_slots(view)
+
+      assert html =~ "border-indigo-400"
+      refute html =~ "mt-3 rounded-lg border border-gray-200 p-4"
+    end
+
     test "custom :let control renders per entry", %{conn: conn} do
       {:ok, view, _html} = live(conn, "/nested-forms")
       switch_to_slots(view)

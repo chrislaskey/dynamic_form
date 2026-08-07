@@ -29,6 +29,14 @@ defmodule DynamicForm.ComponentsTest do
     end
 
     def translate_error({msg, _opts}), do: "custom: " <> msg
+
+    def nested_entry(assigns) do
+      ~H"""
+      <div data-custom-nested-entry={@index} data-nested-name={@name}>
+        {render_slot(@inner_block)}
+      </div>
+      """
+    end
   end
 
   @instance %Instance{
@@ -125,6 +133,53 @@ defmodule DynamicForm.ComponentsTest do
 
       refute html =~ "data-custom"
       assert html =~ ~s(class="phx-submit-loading:opacity-75 btn btn-primary")
+    end
+
+    test "nested_entry wraps each repeating entry, keeping the entry contents" do
+      instance = %Instance{
+        id: "nested-entry-test",
+        elements: [
+          %Instance.Question{
+            name: "addresses",
+            type: "paneldynamic",
+            title: "Addresses",
+            templateElements: [
+              %Instance.Question{name: "street", type: "text", title: "Street"}
+            ]
+          }
+        ]
+      }
+
+      params = %{"addresses" => [%{"street" => "110 Main St"}, %{"street" => "13 Dearborn"}]}
+      changeset = DynamicForm.Changeset.create_changeset(instance, params)
+      form = Phoenix.Component.to_form(changeset, as: "dynamic_form")
+
+      render = fn overrides ->
+        render_component(
+          &DynamicForm.form/1,
+          Keyword.merge(
+            [id: "nested-entry-test", render_only: true, instance: instance, form: form],
+            overrides
+          )
+        )
+      end
+
+      # Delegated: the custom container replaces the built-in one per entry,
+      # with the entry contents (fields, remove button) rendered inside it
+      html = render.(components: CustomComponents)
+
+      assert html =~ ~s(data-custom-nested-entry="0")
+      assert html =~ ~s(data-custom-nested-entry="1")
+      assert html =~ ~s(data-nested-name="addresses")
+      assert html =~ ~s(name="dynamic_form[addresses][0][street]")
+      assert html =~ ~s(phx-click="remove_nested_entry")
+      refute html =~ "mt-3 rounded-lg border border-gray-200 p-4"
+
+      # Fallback: the built-in container renders the default classes
+      html = render.([])
+
+      assert html =~ "mt-3 rounded-lg border border-gray-200 p-4"
+      refute html =~ "data-custom-nested-entry"
     end
 
     test "the application config applies without a per-form attribute" do

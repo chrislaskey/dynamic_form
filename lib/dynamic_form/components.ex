@@ -30,6 +30,7 @@ defmodule DynamicForm.Components do
   | `input_checkbox_group/1` | multi-select checkbox groups | no — built-in fallback |
   | `label/1`, `error/1` | around custom-control slot bodies | no (private in Phoenix 1.8) — built-in fallback |
   | `section/1` | panels | no — built-in fallback |
+  | `nested_entry/1` | the container around each repeating nested-form entry (receives `index`, `name`, and the entry contents as `inner_block`) | no — built-in fallback |
   | `button/1` | the submit button | yes — delegates when exported |
   | `translate_error/1` | error messages (routes through the app's Gettext) | yes — delegates when exported |
 

@@ -201,6 +201,24 @@ Beyond per-entry validation of the template questions:
   of atom-keyed maps with cast values, entries omitting unanswered
   questions (matching SurveyJS).
 
+## Styling the entry container
+
+Each repeating entry renders inside the `nested_entry/1` component — a
+bordered card by default. Define `nested_entry/1` on your
+[components module](styling.md) to restyle it; it receives `index`, the
+question `name`, and the entry contents (title, remove button, child
+fields) as `inner_block`:
+
+```elixir
+def nested_entry(assigns) do
+  ~H"""
+  <div class="mt-3 border-l-4 border-indigo-300 bg-indigo-50/50 p-4">
+    {render_slot(@inner_block)}
+  </div>
+  """
+end
+```
+
 ## Standalone renderer events
 
 `DynamicForm.form/1` and `DynamicForm.RendererLive` handle adding and

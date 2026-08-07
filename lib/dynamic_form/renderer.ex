@@ -736,27 +736,30 @@ defmodule DynamicForm.Renderer do
       <p :if={@children == []} class="mt-2 text-sm italic text-gray-500">
         {@question.noEntriesText || "No entries yet."}
       </p>
-      <div
-        :for={{child, index} <- Enum.with_index(@children)}
-        class="mt-3 rounded-lg border border-gray-200 p-4"
-      >
-        <div class="mb-2 flex items-center justify-between">
-          <h4 class="text-sm font-semibold text-gray-900">{entry_title(@question, index)}</h4>
-          <button
-            :if={@show_remove?}
-            type="button"
-            phx-click="remove_nested_entry"
-            phx-value-path={@path}
-            phx-value-index={index}
-            phx-target={@target}
-            data-confirm={@confirm_text}
-            class="btn btn-sm btn-ghost text-red-600"
-          >
-            {@question.removePanelText || "Remove"}
-          </button>
-        </div>
-        {render_entry(@question, @form, child, index, @opts)}
-      </div>
+      <%= for {child, index} <- Enum.with_index(@children) do %>
+        {Components.render(@components, :nested_entry, %{
+          index: index,
+          name: @question.name,
+          inner_block: [
+            %{
+              __slot__: :inner_block,
+              inner_block: fn _changed, _arg ->
+                render_nested_entry_contents(%{
+                  question: @question,
+                  form: @form,
+                  child: child,
+                  index: index,
+                  opts: @opts,
+                  show_remove?: @show_remove?,
+                  path: @path,
+                  target: @target,
+                  confirm_text: @confirm_text
+                })
+              end
+            }
+          ]
+        })}
+      <% end %>
       <%= for msg <- @errors do %>
         {Components.render(@components, :error, %{
           inner_block: [%{__slot__: :inner_block, inner_block: fn _changed, _arg -> msg end}]
@@ -792,6 +795,30 @@ defmodule DynamicForm.Renderer do
 
       ~H""
     end
+  end
+
+  # The contents of one nested-form entry — the entry title, remove button,
+  # and child fields — wrapped in a slot for the nested_entry component. The
+  # container is style-only; the add/remove behavior stays here.
+  defp render_nested_entry_contents(assigns) do
+    ~H"""
+    <div class="mb-2 flex items-center justify-between">
+      <h4 class="text-sm font-semibold text-gray-900">{entry_title(@question, @index)}</h4>
+      <button
+        :if={@show_remove?}
+        type="button"
+        phx-click="remove_nested_entry"
+        phx-value-path={@path}
+        phx-value-index={@index}
+        phx-target={@target}
+        data-confirm={@confirm_text}
+        class="btn btn-sm btn-ghost text-red-600"
+      >
+        {@question.removePanelText || "Remove"}
+      </button>
+    </div>
+    {render_entry(@question, @form, @child, @index, @opts)}
+    """
   end
 
   defp render_custom_question(question, form, opts) do

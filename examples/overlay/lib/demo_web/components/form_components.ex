@@ -1,12 +1,16 @@
 defmodule DemoWeb.FormComponents do
   @moduledoc """
   A components module extending the app's CoreComponents with a custom
-  field type.
+  field type and a restyled nested-entry container.
 
   Demonstrates the custom field type pattern: the `"multiselect"` type is
   registered via `custom_field_types` (declaring it casts as
   `{:array, :string}`) and rendered by the matching `input/1` clause here.
   Every other input delegates to the app's Phoenix-generated CoreComponents.
+
+  Also demonstrates `nested_entry/1`: forms rendered with this module wrap
+  each repeating nested-form entry in an indigo accent card instead of the
+  library's default bordered box.
   """
 
   use Phoenix.Component
@@ -51,4 +55,14 @@ defmodule DemoWeb.FormComponents do
 
   # Everything else renders through the app's generated CoreComponents
   def input(assigns), do: DemoWeb.CoreComponents.input(assigns)
+
+  # Restyles the container around each nested-form entry; the entry title,
+  # remove button, and child fields arrive in the inner block
+  def nested_entry(assigns) do
+    ~H"""
+    <div class="mt-3 rounded-r-lg border-l-4 border-indigo-400 bg-indigo-50/60 p-4">
+      {render_slot(@inner_block)}
+    </div>
+    """
+  end
 end

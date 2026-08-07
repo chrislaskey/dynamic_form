@@ -885,6 +885,34 @@ defmodule DynamicForm.CoreComponents do
   end
 
   @doc """
+  Renders the container around one nested-form entry.
+
+  Nested forms (`paneldynamic` / `<:nested>`) render each repeating entry
+  inside this container. The inner block carries everything the entry
+  contains — the entry title, the remove button, and the child fields — so
+  overriding this component restyles the box without touching the
+  add/remove behavior.
+
+  ## Examples
+
+      <.nested_entry index={0} name="addresses">
+        ...entry title, remove button, child fields...
+      </.nested_entry>
+  """
+  attr(:index, :integer, required: true, doc: "Zero-based position of the entry")
+  attr(:name, :string, default: nil, doc: "The nested form's question name")
+  attr(:class, :string, default: nil, doc: "Additional CSS classes")
+  slot(:inner_block, required: true)
+
+  def nested_entry(assigns) do
+    ~H"""
+    <div class={["mt-3 rounded-lg border border-gray-200 p-4", @class]}>
+      <%= render_slot(@inner_block) %>
+    </div>
+    """
+  end
+
+  @doc """
   Renders a standalone radio button input.
 
   This is typically used for custom layouts where you need individual radio buttons.

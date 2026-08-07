@@ -66,6 +66,7 @@ falls back to the built-in when missing:
 | `input_checkbox_group/1` | multi-select checkbox groups | no — built-in fallback |
 | `label/1`, `error/1` | around custom-control slot bodies | no — built-in fallback |
 | `section/1` | panels | no — built-in fallback |
+| `nested_entry/1` | the container around each repeating nested-form entry | no — built-in fallback |
 | `button/1` | the submit button | yes — delegates |
 | `translate_error/1` | error messages via the app's Gettext | yes — delegates |
 
