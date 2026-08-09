@@ -475,6 +475,12 @@ defmodule DynamicForm.RendererLive do
 
   defp recursively_convert_to_string_keys(%Decimal{} = value), do: value
 
+  defp recursively_convert_to_string_keys(%_{} = struct) do
+    struct
+    |> Map.from_struct()
+    |> recursively_convert_to_string_keys()
+  end
+
   defp recursively_convert_to_string_keys(map) when is_map(map) do
     Map.new(map, fn {key, value} ->
       string_key = to_string(key)

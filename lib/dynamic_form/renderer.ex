@@ -929,6 +929,12 @@ defmodule DynamicForm.Renderer do
     end
   end
 
+  defp stringify_keys(%_{} = struct) do
+    struct
+    |> Map.from_struct()
+    |> stringify_keys()
+  end
+
   defp stringify_keys(map) when is_map(map) do
     Map.new(map, fn {key, value} -> {to_string(key), value} end)
   end

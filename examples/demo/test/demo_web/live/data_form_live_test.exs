@@ -58,6 +58,26 @@ defmodule DemoWeb.DataFormLiveTest do
     refute html =~ "via on_success"
   end
 
+  test "edit mode prefills via struct data without raising", %{conn: conn} do
+    {:ok, view, _html} = live(conn, "/data-forms")
+
+    html =
+      view
+      |> element("form[phx-change=change_mode]")
+      |> render_change(%{"mode" => "edit_struct"})
+
+    assert html =~ ~s(value="Jane Smith")
+    assert html =~ ~s(value="jane.smith@example.com")
+
+    view
+    |> form("#contact-edit-form", %{
+      "dynamic_form" => Map.delete(@valid_contact_params["dynamic_form"], "email")
+    })
+    |> render_submit()
+
+    assert render(view) =~ "via on_success"
+  end
+
   test "edit mode prefills via data, locks email, and uses on_success", %{conn: conn} do
     {:ok, view, _html} = live(conn, "/data-forms")
 

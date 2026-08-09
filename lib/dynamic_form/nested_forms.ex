@@ -249,6 +249,12 @@ defmodule DynamicForm.NestedForms do
     end
   end
 
+  defp panel_prefixed(%_{} = struct) do
+    struct
+    |> Map.from_struct()
+    |> panel_prefixed()
+  end
+
   defp panel_prefixed(entry) do
     Map.new(entry, fn {key, value} -> {"panel.#{key}", value} end)
   end
