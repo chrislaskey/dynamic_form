@@ -193,6 +193,74 @@ an empty function — make the form fully self-contained. Unlike `on_change`
 and `on_submit`, which run *alongside* the built-in behavior, `on_success`
 *replaces* it.
 
+### Example: Using `on_success` to send updates to a LiveComponent instead of LiveView
+
+The default `{:dynamic_form, payload}` message is delivered via
+`send(self(), ...)` to the parent LiveView's `handle_info/2`. LiveComponents
+don't have `handle_info/2` — they only receive data through `update/2`. Use
+`on_success` with `Phoenix.LiveView.send_update/2` to route the payload back
+to the component:
+
+```elixir
+defmodule MyAppWeb.ContactFormComponent do
+  use MyAppWeb, :live_component
+
+  # Pattern-match on the event sent by on_success
+  def update(%{event: "form_success", payload: payload}, socket) do
+    {:ok, _contact} = MyApp.Contacts.create(payload.data)
+
+    {:ok,
+     socket
+     |> assign(:submission_count, socket.assigns.submission_count + 1)
+     |> assign(:last_submission, payload.data)}
+  end
+
+  def update(assigns, socket) do
+    {:ok,
+     socket
+     |> assign(assigns)
+     |> assign_new(:submission_count, fn -> 0 end)
+     |> assign_new(:last_submission, fn -> nil end)}
+  end
+
+  def render(assigns) do
+    ~H"""
+    <div>
+      <DynamicForm.form
+        id={"#{@id}-form"}
+        on_success={&handle_form_success(&1, @id)}
+      >
+        <:field type="text" name="name" label="Name" required />
+        <:field type="text" name="email" label="Email" format="email" required />
+      </DynamicForm.form>
+    </div>
+    """
+  end
+
+  defp handle_form_success(payload, component_id) do
+    Phoenix.LiveView.send_update(MyAppWeb.ContactFormComponent, %{
+      id: component_id,
+      event: "form_success",
+      payload: payload
+    })
+  end
+end
+```
+
+This works because `on_success` is called synchronously inside
+`RendererLive.handle_event("submit", ...)`, and all LiveComponents share
+their parent LiveView's process — so `send_update/2` (which targets
+`self()`) delivers the message to the right place. After the event handler
+completes, your component's `update/2` fires with the event assigns.
+
+The parent LiveView only needs to mount the component:
+
+```heex
+<.live_component module={MyAppWeb.ContactFormComponent} id="contact-form" />
+```
+
+No `handle_info/2` clause is needed in the parent.
+
 ## More details
 
 See the [Reference](reference.md#lifecycle-callback-contracts) for the

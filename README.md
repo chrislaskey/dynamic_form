@@ -86,7 +86,8 @@ or not — so expensive checks (like the uniqueness lookup below) batch with the
 built-in errors into one complete list, rendered inline on the form.
 
 See the [Lifecycle](guides/lifecycle.md) guide for more information on
-`on_submit`, `on_change`, and `on_success` lifecycle hooks.
+`on_submit`, `on_change`, and `on_success` lifecycle hooks - including how to
+use `on_success` to receive DynamicForm data in LiveComponents instead of LiveViews.
 
 ```heex
 <DynamicForm.form id="example-form" on_submit={&Contacts.verify/1}>

@@ -22,6 +22,7 @@ defmodule DemoWeb.Router do
     live "/data-forms", DataFormLive
     live "/showcase-form", ShowcaseFormLive
     live "/nested-forms", NestedFormLive
+    live "/livecomponent-form", ComponentFormLive
   end
 
   # Other scopes may use custom stacks.

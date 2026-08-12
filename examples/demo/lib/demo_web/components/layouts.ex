@@ -37,6 +37,7 @@ defmodule DemoWeb.Layouts do
           <.link navigate="/data-forms" class="hover:text-zinc-700">Data Forms</.link>
           <.link navigate="/showcase-form" class="hover:text-zinc-700">Showcase</.link>
           <.link navigate="/nested-forms" class="hover:text-zinc-700">Nested Forms</.link>
+          <.link navigate="/livecomponent-form" class="hover:text-zinc-700">LiveComponent</.link>
         </nav>
       </div>
     </header>
