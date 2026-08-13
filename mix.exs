@@ -47,7 +47,7 @@ defmodule DynamicForm.MixProject do
     [
       licenses: ["MIT"],
       links: %{"GitHub" => @source_url},
-      files: ~w(lib guides mix.exs README.md LICENSE.md)
+      files: ~w(lib guides mix.exs README.md CHANGELOG.md LICENSE.md)
     ]
   end
 
@@ -57,6 +57,7 @@ defmodule DynamicForm.MixProject do
       source_ref: "v#{@version}",
       extras: [
         "README.md",
+        "CHANGELOG.md",
         "LICENSE.md",
         "guides/usage.md",
         "guides/nested-forms.md",

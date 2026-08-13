@@ -31,7 +31,7 @@ defmodule Demo.Submissions do
   "Creates" a submission by logging it.
 
   The side-effect half of the lifecycle — called from the parent LiveView's
-  `handle_info/2` when a `{:dynamic_form, payload}` message arrives. A real
+  `handle_info/2` when a `{:dynamic_form, :success, payload}` message arrives. A real
   application would insert a record, send an email, call an API, etc.
   """
   def create(data) do

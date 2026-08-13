@@ -4,9 +4,9 @@ defmodule DynamicForm.Payload do
 
   The component builds a payload from the form's changeset on every change and
   submit. Lifecycle callbacks (`on_change` and `on_submit`) receive the payload
-  and return it — transformed or untouched — and a valid submission is
-  delivered to the parent LiveView as `{:dynamic_form, payload}` (or to a
-  custom `on_success` callback when one is defined).
+  and return it — transformed or untouched — and it is delivered to the parent
+  LiveView as `{:dynamic_form, event, payload}` (or, on a valid submission, to
+  a custom `on_success` callback when one is defined).
 
   ## Fields
 

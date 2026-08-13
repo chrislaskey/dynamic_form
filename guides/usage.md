@@ -253,25 +253,34 @@ preserved through submission the same way.
 
 ### Messages
 
-By default, the component sends the parent LiveView a
-`{:dynamic_form, %DynamicForm.Payload{}}` message on every **valid**
-submission — this is where the application performs the side effect (insert
-a record, send an email, navigate). Invalid submissions render their errors
-inline on the form and never message the parent:
+The component messages the parent LiveView as
+`{:dynamic_form, event, %DynamicForm.Payload{}}`. By default the only event
+is `:success`, a valid submission — this is where the application performs
+the side effect (insert a record, send an email, navigate):
 
 ```elixir
-def handle_info({:dynamic_form, %DynamicForm.Payload{data: data}}, socket) do
+def handle_info({:dynamic_form, :success, %DynamicForm.Payload{data: data}}, socket) do
   {:ok, contact} = MyApp.Contacts.create_contact(data)
   {:noreply, put_flash(socket, :info, "Created contact #{contact.id}")}
 end
 ```
 
 The payload carries the form's `id` (for matching when a page renders
-several forms), the final `changeset`, the applied `data`, and an `extra`
+several forms), the `changeset`, the applied `data`, and an `extra`
 map that `on_submit` can write derived values into.
 
+`send_message_on` adds the other two events — `:change` on every change and
+`:submit` on every submit, valid or not. Their payloads are routinely
+invalid, so check `DynamicForm.Payload.valid?/1` before acting on them, and
+pair `:change` with `change_debounce_in_ms` to keep a message off every
+keystroke:
+
+```heex
+<DynamicForm.form id="signup" send_message_on={[:success, :change]} change_debounce_in_ms={300}>
+```
+
 To take over success handling, define `on_success` — a 1-arity function
-receiving the payload. It **replaces** the default message: send a custom
+receiving the payload. It **replaces** the `:success` message: send a custom
 message, broadcast over PubSub, or do nothing to make the form fully
 self-contained:
 
@@ -335,9 +344,10 @@ end
 ```
 
 Override the event names with `phx_change` and `phx_submit`. The lifecycle
-attributes (`on_change`, `on_submit`, `on_success`, `data`, `form_name`,
-`validation_summary`) have no meaning without the managed lifecycle and
-raise, and file upload questions require the stateful component.
+attributes (`on_change`, `change_debounce_in_ms`, `on_submit`, `on_success`,
+`send_message_on`, `data`, `form_name`, `validation_summary`) have no
+meaning without the managed lifecycle and raise, and file upload questions
+require the stateful component.
 
 The Render Only section of the `/slot-forms` demo page shows the complete
 pattern. `DynamicForm.Renderer.render/1` is the underlying function
@@ -439,10 +449,10 @@ a graceful degradation that still round-trips the value.
 
 Three optional hooks let the application participate in the form lifecycle:
 `on_change` extends validation live as the user types (add
-`on_change_debounce_in_ms` to run it after a pause instead of on every
+`change_debounce_in_ms` to run it after a pause instead of on every
 keystroke), `on_submit` batches expensive submit-only checks (each receives a
-`DynamicForm.Payload` and returns it), and `on_success` replaces the default
-success message for forms that complete some other way.
+`DynamicForm.Payload` and returns it), and `on_success` replaces the
+`:success` message for forms that complete some other way.
 
 They are documented in one place — the
 [Lifecycle events guide](lifecycle.md) — with the signatures summarized in

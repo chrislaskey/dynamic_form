@@ -1,4 +1,4 @@
-defmodule DynamicForm.OnChangeDebounceTest do
+defmodule DynamicForm.ChangeDebounceTest do
   use ExUnit.Case, async: true
 
   import Phoenix.LiveViewTest
@@ -71,7 +71,7 @@ defmodule DynamicForm.OnChangeDebounceTest do
     Enum.map(socket.assigns.changeset.errors, fn {field, {message, _opts}} -> {field, message} end)
   end
 
-  describe "without on_change_debounce_in_ms" do
+  describe "without change_debounce_in_ms" do
     test "on_change runs inline on every change" do
       socket = mount_component(on_change: reporting_callback())
 
@@ -86,7 +86,7 @@ defmodule DynamicForm.OnChangeDebounceTest do
     end
 
     test "an interval of zero runs the callback inline" do
-      socket = mount_component(on_change: reporting_callback(), on_change_debounce_in_ms: 0)
+      socket = mount_component(on_change: reporting_callback(), change_debounce_in_ms: 0)
 
       socket = validate(socket, %{"username" => "taken"})
 
@@ -101,12 +101,19 @@ defmodule DynamicForm.OnChangeDebounceTest do
       assert errors(socket) == [username: "can't be blank"]
       refute_received {:phoenix, :send_update, _}
     end
+
+    test "an interval with nothing to defer is inert" do
+      socket = mount_component(change_debounce_in_ms: 50) |> validate(%{"username" => ""})
+
+      assert errors(socket) == [username: "can't be blank"]
+      refute_received {:phoenix, :send_update, _}
+    end
   end
 
-  describe "with on_change_debounce_in_ms" do
+  describe "with change_debounce_in_ms" do
     test "the change renders the built-in validations and defers the callback" do
       socket =
-        mount_component(on_change: reporting_callback(), on_change_debounce_in_ms: 50)
+        mount_component(on_change: reporting_callback(), change_debounce_in_ms: 50)
         |> validate(%{"username" => ""})
 
       refute_received {:on_change, _}
@@ -120,7 +127,7 @@ defmodule DynamicForm.OnChangeDebounceTest do
 
     test "the deferred run adds the callback's errors" do
       socket =
-        mount_component(on_change: reporting_callback(), on_change_debounce_in_ms: 50)
+        mount_component(on_change: reporting_callback(), change_debounce_in_ms: 50)
         |> validate(%{"username" => "taken"})
 
       assert errors(socket) == []
@@ -133,7 +140,7 @@ defmodule DynamicForm.OnChangeDebounceTest do
 
     test "the callback runs once for a burst of changes, against the latest data" do
       socket =
-        mount_component(on_change: reporting_callback(), on_change_debounce_in_ms: 50)
+        mount_component(on_change: reporting_callback(), change_debounce_in_ms: 50)
         |> validate(%{"username" => "ta"})
         |> validate(%{"username" => "tak"})
         |> validate(%{"username" => "taken"})
@@ -149,7 +156,7 @@ defmodule DynamicForm.OnChangeDebounceTest do
 
     test "a run already in the mailbox is dropped when a later change supersedes it" do
       socket =
-        mount_component(on_change: reporting_callback(), on_change_debounce_in_ms: 1)
+        mount_component(on_change: reporting_callback(), change_debounce_in_ms: 1)
         |> validate(%{"username" => "taken"})
 
       # Let the timer fire so its run is already queued: canceling a timer
@@ -168,7 +175,7 @@ defmodule DynamicForm.OnChangeDebounceTest do
 
     test "the pending run is dropped when the callback's errors no longer apply" do
       socket =
-        mount_component(on_change: reporting_callback(), on_change_debounce_in_ms: 50)
+        mount_component(on_change: reporting_callback(), change_debounce_in_ms: 50)
         |> validate(%{"username" => "taken"})
 
       socket = deliver_scheduled_run(socket)
@@ -185,14 +192,14 @@ defmodule DynamicForm.OnChangeDebounceTest do
 
     test "submitting runs the callback inline and supersedes the pending run" do
       socket =
-        mount_component(on_change: reporting_callback(), on_change_debounce_in_ms: 50)
+        mount_component(on_change: reporting_callback(), change_debounce_in_ms: 50)
         |> validate(%{"username" => "taken"})
 
       socket = submit(socket, %{"username" => "taken"})
 
       assert_received {:on_change, "taken"}
       assert errors(socket) == [username: "is already taken"]
-      refute_received {:dynamic_form, _}
+      refute_received {:dynamic_form, _, _}
 
       # The change's pending run is a no-op once delivered.
       socket = drain_scheduled_runs(socket)
@@ -202,16 +209,16 @@ defmodule DynamicForm.OnChangeDebounceTest do
     end
 
     test "a valid submit still messages the parent LiveView" do
-      mount_component(on_change: reporting_callback(), on_change_debounce_in_ms: 50)
+      mount_component(on_change: reporting_callback(), change_debounce_in_ms: 50)
       |> validate(%{"username" => "free"})
       |> submit(%{"username" => "free"})
 
-      assert_received {:dynamic_form, %DynamicForm.Payload{data: %{username: "free"}}}
+      assert_received {:dynamic_form, :success, %DynamicForm.Payload{data: %{username: "free"}}}
     end
 
     test "a new form definition supersedes the pending run" do
       socket =
-        mount_component(on_change: reporting_callback(), on_change_debounce_in_ms: 50)
+        mount_component(on_change: reporting_callback(), change_debounce_in_ms: 50)
         |> validate(%{"username" => "taken"})
 
       # A parent re-render with different initial data rebuilds the form.
@@ -228,20 +235,20 @@ defmodule DynamicForm.OnChangeDebounceTest do
     end
 
     test "a non-integer interval raises" do
-      socket = mount_component(on_change: reporting_callback(), on_change_debounce_in_ms: "300")
+      socket = mount_component(on_change: reporting_callback(), change_debounce_in_ms: "300")
 
       assert_raise ArgumentError,
-                   ~r/on_change_debounce_in_ms must be a non-negative integer/,
+                   ~r/change_debounce_in_ms must be a non-negative integer/,
                    fn ->
                      validate(socket, %{"username" => "taken"})
                    end
     end
 
     test "a negative interval raises" do
-      socket = mount_component(on_change: reporting_callback(), on_change_debounce_in_ms: -1)
+      socket = mount_component(on_change: reporting_callback(), change_debounce_in_ms: -1)
 
       assert_raise ArgumentError,
-                   ~r/on_change_debounce_in_ms must be a non-negative integer/,
+                   ~r/change_debounce_in_ms must be a non-negative integer/,
                    fn ->
                      validate(socket, %{"username" => "taken"})
                    end
@@ -249,30 +256,20 @@ defmodule DynamicForm.OnChangeDebounceTest do
   end
 
   describe "DynamicForm.form/1 validation" do
-    test "the interval requires on_change" do
-      assert_raise ArgumentError, ~r/without on_change/, fn ->
-        render_component(&DynamicForm.form/1,
-          id: "signup",
-          instance: @instance,
-          on_change_debounce_in_ms: 300
-        )
-      end
-    end
-
     test "render-only mode rejects the interval" do
       form =
         {%{}, %{username: :string}}
         |> Ecto.Changeset.cast(%{}, [:username])
         |> Phoenix.Component.to_form(as: "dynamic_form")
 
-      assert_raise ArgumentError, ~r/Remove: on_change, on_change_debounce_in_ms/, fn ->
+      assert_raise ArgumentError, ~r/Remove: on_change, change_debounce_in_ms/, fn ->
         render_component(&DynamicForm.form/1,
           id: "signup",
           instance: @instance,
           render_only: true,
           form: form,
           on_change: fn payload -> payload end,
-          on_change_debounce_in_ms: 300
+          change_debounce_in_ms: 300
         )
       end
     end

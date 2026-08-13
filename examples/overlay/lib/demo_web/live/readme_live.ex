@@ -18,7 +18,7 @@ defmodule DemoWeb.ReadmeLive do
   """
 
   @example_basic_handler ~S"""
-  def handle_info({:dynamic_form, payload}, socket) do
+  def handle_info({:dynamic_form, :success, payload}, socket) do
     {:ok, contact} = Demo.Submissions.create(payload.data)
     {:noreply, put_flash(socket, :info, "Created contact")}
   end
@@ -188,7 +188,7 @@ defmodule DemoWeb.ReadmeLive do
   # Only valid submissions arrive here — invalid ones render their errors
   # inline on the form. This is where the side effect happens.
   @impl true
-  def handle_info({:dynamic_form, %DynamicForm.Payload{} = payload}, socket) do
+  def handle_info({:dynamic_form, :success, %DynamicForm.Payload{} = payload}, socket) do
     {:ok, _result} = Demo.Submissions.create(payload.data)
     {:noreply, put_flash(socket, :info, "Form #{payload.id} submitted successfully")}
   end

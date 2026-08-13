@@ -25,7 +25,7 @@ defmodule DemoWeb.ShowcaseFormLive do
   # Only valid submissions arrive here — invalid ones render their errors
   # inline on the form. This is where the side effect happens.
   @impl true
-  def handle_info({:dynamic_form, %DynamicForm.Payload{data: data}}, socket) do
+  def handle_info({:dynamic_form, :success, %DynamicForm.Payload{data: data}}, socket) do
     {:ok, _result} = Demo.Submissions.create(data)
 
     {:noreply,

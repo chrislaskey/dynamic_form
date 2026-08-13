@@ -5,7 +5,7 @@ defmodule DemoWeb.ContactFormComponent do
 
   Demonstrates the `on_success` + `send_update/2` pattern: since
   LiveComponents don't have `handle_info/2`, the default
-  `{:dynamic_form, payload}` message won't reach them. Instead,
+  `{:dynamic_form, :success, payload}` message won't reach them. Instead,
   `on_success` calls `Phoenix.LiveView.send_update/2` to trigger
   this component's `update/2` with the submission data.
   """

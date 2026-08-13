@@ -294,7 +294,7 @@ defmodule DemoWeb.NestedFormLive do
   end
 
   @impl true
-  def handle_info({:dynamic_form, %DynamicForm.Payload{data: data}}, socket) do
+  def handle_info({:dynamic_form, :success, %DynamicForm.Payload{data: data}}, socket) do
     {:noreply,
      socket
      |> assign(:submitted_data, data)

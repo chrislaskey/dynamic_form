@@ -116,7 +116,7 @@ defmodule DynamicForm do
 
     * `on_change` — runs after the built-in validations on every change (and
       during the submit validation pass). Keep it cheap — it runs per
-      keystroke, unless `on_change_debounce_in_ms` is set.
+      keystroke, unless `change_debounce_in_ms` is set.
     * `on_submit` — runs on **every** submit, valid or not, so it can batch
       expensive checks with the built-in errors into one complete error list.
 
@@ -124,22 +124,35 @@ defmodule DynamicForm do
         <:field type="text" name="email" label="Email" required format="email" />
       </DynamicForm.form>
 
-  `on_change_debounce_in_ms` waits for that many milliseconds of quiet
-  before running `on_change`, so a callback too expensive for a keystroke
-  runs once the user pauses. The built-in validations still render on every
+  `change_debounce_in_ms` waits for that many milliseconds of quiet before
+  running the change work, so a callback too expensive for a keystroke runs
+  once the user pauses. The built-in validations still render on every
   change, and submitting always runs the callback inline:
 
       <DynamicForm.form id="signup" on_change={&Accounts.check_availability/1}
-                        on_change_debounce_in_ms={300}>
+                        change_debounce_in_ms={300}>
         <:field type="text" name="username" label="Username" required />
       </DynamicForm.form>
 
-  A **valid** submission delivers `{:dynamic_form, payload}` to the parent
-  LiveView by default; invalid submissions render their errors inline and
-  never message the parent. Define `on_success` — a 1-arity function
-  receiving the payload — to replace the default message with custom
-  behavior. See `DynamicForm.RendererLive` and `DynamicForm.Payload` for
-  the full contracts.
+  ## Messages
+
+  The parent LiveView is messaged as `{:dynamic_form, event, payload}`.
+  `send_message_on` picks the events — any of `[:success, :change,
+  :submit]`, defaulting to `[:success]`:
+
+      <DynamicForm.form id="signup" send_message_on={[:success, :change]}>
+
+      def handle_info({:dynamic_form, :change, payload}, socket) do
+        {:noreply, assign(socket, :preview, payload.data)}
+      end
+
+  `:change` and `:submit` payloads are routinely invalid — check
+  `DynamicForm.Payload.valid?/1` before acting on them. Pair `:change` with
+  `change_debounce_in_ms` to keep a message (and a parent re-render) off
+  every keystroke. Define `on_success` — a 1-arity function receiving the
+  payload — to replace the `:success` message with custom behavior. See
+  `DynamicForm.RendererLive` and `DynamicForm.Payload` for the full
+  contracts.
 
   ## Declarative mode
 
@@ -226,10 +239,10 @@ defmodule DynamicForm do
   visibility — while the parent's changeset drives the data. Override the
   event names with `phx_change` and `phx_submit`.
 
-  Lifecycle attributes (`on_change`, `on_change_debounce_in_ms`,
-  `on_submit`, `on_success`, `data`, `form_name`, `validation_summary`) have
-  no meaning without the managed lifecycle and raise. File upload questions
-  require the stateful component and raise.
+  Lifecycle attributes (`on_change`, `change_debounce_in_ms`, `on_submit`,
+  `on_success`, `send_message_on`, `data`, `form_name`,
+  `validation_summary`) have no meaning without the managed lifecycle and
+  raise. File upload questions require the stateful component and raise.
   """
   attr(:id, :string,
     required: true,
@@ -259,11 +272,11 @@ defmodule DynamicForm do
         "built-in validations on every change and during the submit validation pass"
   )
 
-  attr(:on_change_debounce_in_ms, :integer,
+  attr(:change_debounce_in_ms, :integer,
     default: nil,
     doc:
-      "Milliseconds of quiet before a change runs on_change; without it the " <>
-        "callback runs on every change. Requires on_change"
+      "Milliseconds of quiet before a change runs on_change and sends its " <>
+        ":change message; without it both happen on every change"
   )
 
   attr(:on_submit, :any,
@@ -287,7 +300,14 @@ defmodule DynamicForm do
     default: nil,
     doc:
       "1-arity function (DynamicForm.Payload), run on every valid submission " <>
-        "instead of sending the default {:dynamic_form, payload} message"
+        "instead of sending the {:dynamic_form, :success, payload} message"
+  )
+
+  attr(:send_message_on, :list,
+    default: nil,
+    doc:
+      "Lifecycle events that message the parent LiveView: any of " <>
+        "[:success, :change, :submit] (default: [:success])"
   )
 
   attr(:hide_submit, :boolean, default: false, doc: "Hide the submit button")
@@ -475,9 +495,10 @@ defmodule DynamicForm do
       id={@id}
       instance={@resolved_instance}
       on_change={@on_change}
-      on_change_debounce_in_ms={@on_change_debounce_in_ms}
+      change_debounce_in_ms={@change_debounce_in_ms}
       on_submit={@on_submit}
       on_success={@on_success}
+      send_message_on={@send_message_on}
       data={@data}
       form_name={@form_name}
       submit_text={@submit_text}
@@ -502,9 +523,10 @@ defmodule DynamicForm do
     invalid =
       [
         on_change: assigns.on_change,
-        on_change_debounce_in_ms: assigns.on_change_debounce_in_ms,
+        change_debounce_in_ms: assigns.change_debounce_in_ms,
         on_submit: assigns.on_submit,
         on_success: assigns.on_success,
+        send_message_on: assigns.send_message_on,
         validation_summary: assigns.validation_summary
       ]
       |> Enum.reject(fn {_attr, value} -> is_nil(value) end)
@@ -549,14 +571,6 @@ defmodule DynamicForm do
             "DynamicForm.form id=#{inspect(assigns.id)} received " <>
               "#{Enum.join(invalid, ", ")} without render_only — the component owns the " <>
               "form and its events unless render_only is set"
-    end
-
-    # The interval debounces on_change; on its own there is nothing to debounce.
-    if assigns.on_change_debounce_in_ms && is_nil(assigns.on_change) do
-      raise ArgumentError,
-            "DynamicForm.form id=#{inspect(assigns.id)} received " <>
-              "on_change_debounce_in_ms without on_change — the interval debounces the " <>
-              "on_change callback"
     end
   end
 

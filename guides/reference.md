@@ -13,9 +13,10 @@ Quick lookup tables. For narrative documentation see the
 | `title` | string | `nil` | Instance title (declarative mode) |
 | `description` | string | `nil` | Instance description (declarative mode) |
 | `on_change` | function | `nil` | 1-arity `(payload) -> payload`, after built-in validations on every change and during the submit validation pass |
-| `on_change_debounce_in_ms` | integer | `nil` | Milliseconds of quiet before a change runs `on_change`; requires `on_change`. `nil` and `0` run it on every change |
+| `change_debounce_in_ms` | integer | `nil` | Milliseconds of quiet before a change runs `on_change` and sends its `:change` message. `nil` and `0` run both on every change |
 | `on_submit` | function | `nil` | 1-arity `(payload) -> payload`, on every submit — valid or not |
-| `on_success` | function | `nil` | 1-arity `(payload)`, on every valid submission — replaces the default `{:dynamic_form, payload}` message |
+| `on_success` | function | `nil` | 1-arity `(payload)`, on every valid submission — replaces the `:success` message |
+| `send_message_on` | list | `[:success]` | Lifecycle events that message the parent: any of `[:success, :change, :submit]` |
 | `data` | map | `%{}` | Initial form data for edit mode — existing record values; a payload's `data` round-trips directly |
 | `form_name` | string | `"dynamic_form"` | Form namespace for params |
 | `submit_text` | string | `"Submit"` | Submit button text |
@@ -31,8 +32,9 @@ Quick lookup tables. For narrative documentation see the
 
 Exactly one of `instance`, `json`, or `<:field>` slots must be provided.
 `render_only` excludes the lifecycle attributes (`on_change`,
-`on_change_debounce_in_ms`, `on_submit`, `on_success`, `data`, `form_name`,
-`validation_summary`) and file upload questions — both raise.
+`change_debounce_in_ms`, `on_submit`, `on_success`, `send_message_on`,
+`data`, `form_name`, `validation_summary`) and file upload questions — both
+raise.
 
 `DynamicForm.RendererLive` (used directly via `<.live_component>`) accepts
 `id`, `instance`, and the same optional attributes from `data` down.
@@ -159,20 +161,28 @@ Field references use braces: `{field_name}`. Literals: `'strings'`, numbers,
 
 ## Messages
 
-Sent to the parent LiveView by default, on **valid** submissions only —
-invalid submissions render their errors inline and never message the parent.
-Defining `on_success` replaces the message with the callback:
+Sent to the parent LiveView, carrying the lifecycle event and the payload:
 
 ```elixir
-{:dynamic_form, %DynamicForm.Payload{}}
+{:dynamic_form, event, %DynamicForm.Payload{}}
 ```
+
+| Event | Sent | In `send_message_on` by default? |
+|---|---|---|
+| `:success` | On a valid submission (replaced by `on_success` when defined) | yes |
+| `:change` | On every change, after the built-in validations and `on_change` | no |
+| `:submit` | On every submit — valid or not — after `on_submit` | no |
+
+A valid submission with all three enabled delivers `:change`, `:submit`, and
+`:success`, in that order. `:change` and `:submit` payloads are routinely
+invalid — check `DynamicForm.Payload.valid?/1`.
 
 `%DynamicForm.Payload{}` fields:
 
 | Field | Value |
 |---|---|
 | `id` | The form component's id |
-| `changeset` | The form's final `Ecto.Changeset`; its `valid?` flag is the source of truth for validity (always `true` for delivered messages) |
+| `changeset` | The form's `Ecto.Changeset`; its `valid?` flag is the source of truth for validity (always `true` for `:success`) |
 | `data` | The applied changeset data |
 | `extra` | Empty map by default; written by `on_submit` via `Payload.put_extra/3` |
 
@@ -184,18 +194,24 @@ on_submit:  (DynamicForm.Payload.t()) -> DynamicForm.Payload.t()
 on_success: (DynamicForm.Payload.t()) -> any()
 ```
 
-`on_change` runs after built-in validations, on every change and during the
-submit validation pass — after `on_change_debounce_in_ms` milliseconds of
-quiet when that attribute is set, except on submit, where it always runs
-inline. `on_submit` runs on every submit — valid or not —
-so it can batch expensive checks with the built-in errors into one complete
-error list. Both are validation hooks that run *alongside* the built-in
-behavior: reject a submission with `DynamicForm.Payload.add_error/4`
-(validity lives on the changeset, so adding an error marks the submission
-invalid); perform side effects in the parent's `handle_info/2` instead.
+`on_change` runs after built-in validations, on every change (including a
+nested entry add/remove) and during the submit validation pass — after
+`change_debounce_in_ms` milliseconds of quiet when that attribute is set,
+except on submit, where it always runs inline. `on_submit` runs on every
+submit — valid or not — so it can batch expensive checks with the built-in
+errors into one complete error list. Both are validation hooks that run
+*alongside* the built-in behavior: reject a submission with
+`DynamicForm.Payload.add_error/4` (validity lives on the changeset, so
+adding an error marks the submission invalid); perform side effects in the
+parent's `handle_info/2` instead.
 
-`on_success` runs on every valid submission and *replaces* the default
-`{:dynamic_form, payload}` message; its return value is ignored.
+`on_success` runs on every valid submission and *replaces* the `:success`
+message; its return value is ignored. Listing `:success` in
+`send_message_on` alongside it raises.
+
+Messages reach the LiveView process only. A LiveComponent parent uses the
+callbacks with `Phoenix.LiveView.send_update/2` instead — see the
+[Lifecycle guide](lifecycle.md#example-using-callbacks-to-send-updates-to-a-livecomponent-instead-of-liveview).
 
 ## Upload metadata keys
 

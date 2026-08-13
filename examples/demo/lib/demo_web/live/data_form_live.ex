@@ -9,7 +9,7 @@ defmodule DemoWeb.DataFormLive do
     formats render identically, and an external submit button
   - Create vs edit mode: the same definition prefilled via `data`, a
     `readOnly` field, and an `on_success` callback replacing the default
-    `{:dynamic_form, payload}` message
+    `{:dynamic_form, :success, payload}` message
   """
 
   use DemoWeb, :live_view
@@ -53,7 +53,7 @@ defmodule DemoWeb.DataFormLive do
   # Default lifecycle: only valid submissions arrive here — invalid ones
   # render their errors inline. This is where the side effect happens.
   @impl true
-  def handle_info({:dynamic_form, %DynamicForm.Payload{} = payload}, socket) do
+  def handle_info({:dynamic_form, :success, %DynamicForm.Payload{} = payload}, socket) do
     {:ok, result} = Demo.Submissions.create(payload.data)
 
     {:noreply,
@@ -63,7 +63,7 @@ defmodule DemoWeb.DataFormLive do
   end
 
   # The edit-mode form's on_success callback sends this instead of the
-  # default {:dynamic_form, payload} message
+  # default {:dynamic_form, :success, payload} message
   @impl true
   def handle_info({:contact_updated, data}, socket) do
     {:noreply,
@@ -172,7 +172,7 @@ defmodule DemoWeb.DataFormLive do
           The same definition serves both modes. Edit mode prefills the form
           with <code>data={"{...}"}</code>
           (a payload's data round-trips directly), switches the email field to <code>readOnly</code>, and replaces the default
-          <code>{"{:dynamic_form, payload}"}</code>
+          <code>{"{:dynamic_form, :success, payload}"}</code>
           message with an <code>on_success</code>
           callback sending <code>{"{:contact_updated, data}"}</code>
           instead.

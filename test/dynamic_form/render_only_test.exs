@@ -96,8 +96,10 @@ defmodule DynamicForm.RenderOnlyTest do
     test "raises when lifecycle attributes are given" do
       for attrs <- [
             [on_change: fn payload -> payload end],
+            [change_debounce_in_ms: 300],
             [on_submit: fn payload -> payload end],
             [on_success: fn _payload -> :ok end],
+            [send_message_on: [:change]],
             [data: %{"name" => "Chris"}],
             [form_name: "custom"],
             [validation_summary: "detailed"]

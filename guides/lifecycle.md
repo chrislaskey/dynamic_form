@@ -21,20 +21,22 @@ side effects like inserting a record or navigating stay in the parent
 LiveView's `handle_info/2`.
 
 A third hook, `on_success`, replaces the default success message entirely for
-the rare form that needs to complete some other way.
+the rare form that needs to complete some other way. To hear about changes
+and submits in the parent as well, opt into their messages with
+`send_message_on`.
 
 ## Handling messages on form submit
 
-By default, the component sends the parent LiveView a message on every
-**valid** submission:
+The component messages the parent LiveView with a lifecycle event and the
+payload:
 
 ```elixir
-{:dynamic_form, %DynamicForm.Payload{}}
+{:dynamic_form, event, %DynamicForm.Payload{}}
 ```
 
-Invalid submissions never message the parent — the form renders their errors
-inline itself, so the parent only ever handles success. This is where the
-side effect happens.
+By default the only event is `:success`, a valid submission — invalid ones
+render their errors inline instead. This is where the side effect happens.
+[Other events](#choosing-which-events-message-the-parent) are opt-in.
 
 Here's a look at a complete LiveView:
 
@@ -61,7 +63,7 @@ defmodule MyAppWeb.ContactLive do
   end
 
   @impl true
-  def handle_info({:dynamic_form, %DynamicForm.Payload{data: data}}, socket) do
+  def handle_info({:dynamic_form, :success, %DynamicForm.Payload{data: data}}, socket) do
     {:ok, contact} = MyApp.Contacts.create_contact(data)
 
     {:noreply,
@@ -75,11 +77,11 @@ end
 When a page renders several forms, match on the payload's `id`:
 
 ```elixir
-def handle_info({:dynamic_form, %DynamicForm.Payload{id: "contact-form"} = payload}, socket) do
+def handle_info({:dynamic_form, :success, %DynamicForm.Payload{id: "contact-form"} = payload}, socket) do
   # ...
 end
 
-def handle_info({:dynamic_form, %DynamicForm.Payload{id: "signup-form"} = payload}, socket) do
+def handle_info({:dynamic_form, :success, %DynamicForm.Payload{id: "signup-form"} = payload}, socket) do
   # ...
 end
 ```
@@ -88,6 +90,35 @@ This alone is sufficient for many use-cases: define the dynamic form instance, t
 to build the UI and data validation, and then work with the results of submitting
 the form in the parent LiveView instance.
 
+### Choosing which events message the parent
+
+`send_message_on` picks the lifecycle events that message the parent — any
+combination of `[:success, :change, :submit]`, defaulting to `[:success]`:
+
+| Event | Sent |
+|---|---|
+| `:success` | On a valid submission |
+| `:change` | On every change, after the built-in validations and `on_change` |
+| `:submit` | On every submit — valid or not — after `on_submit` |
+
+```heex
+<DynamicForm.form id="signup" send_message_on={[:success, :change]}>
+```
+
+```elixir
+def handle_info({:dynamic_form, :change, payload}, socket) do
+  {:noreply, assign(socket, :preview, payload.data)}
+end
+```
+
+A valid submission with all three enabled delivers `:change`, `:submit`, and
+`:success`, in that order. `:change` and `:submit` payloads are routinely
+invalid — check `DynamicForm.Payload.valid?/1` before acting on them.
+
+Every `:change` message wakes the parent for a render, so pair `:change` with
+[`change_debounce_in_ms`](#debouncing-changes) on forms where a message per
+keystroke is more than you need.
+
 ### The payload
 
 Every message carries a `DynamicForm.Payload` struct:
@@ -95,7 +126,7 @@ Every message carries a `DynamicForm.Payload` struct:
 | Field | Value |
 |---|---|
 | `id` | The form component's id, for matching in `handle_info/2` |
-| `changeset` | The form's final `Ecto.Changeset` — its `valid?` flag is the source of truth for validity, and always `true` for delivered messages |
+| `changeset` | The form's `Ecto.Changeset` — its `valid?` flag is the source of truth for validity, and always `true` for `:success` |
 | `data` | The applied changeset data (`Ecto.Changeset.apply_changes/1`) |
 | `extra` | Empty by default; `on_submit` can stash derived data here |
 
@@ -132,15 +163,15 @@ Since it's run often, keep the checks simple and fast to execute. Do the more
 expensive checks only after the user hits the submit button, using `on_submit`
 — or debounce them, as below.
 
-### Debouncing `on_change`
+### Debouncing changes
 
 Some checks belong live on the form but cost more than a keystroke can
 afford: a uniqueness lookup, a call to a pricing service. Add
-`on_change_debounce_in_ms` to wait for that many milliseconds of quiet before
+`change_debounce_in_ms` to wait for that many milliseconds of quiet before
 running the callback:
 
 ```heex
-<DynamicForm.form id="signup" on_change={&check_availability/1} on_change_debounce_in_ms={300}>
+<DynamicForm.form id="signup" on_change={&check_availability/1} change_debounce_in_ms={300}>
 ```
 
 ```elixir
@@ -153,11 +184,12 @@ defp check_availability(payload) do
 end
 ```
 
-The attribute only debounces `on_change` — it does nothing on its own, and
-using it without `on_change` raises. The rest of the lifecycle is unchanged:
+The interval covers the whole change pass — `on_change` and the `:change`
+message together. The rest of the lifecycle is unchanged:
 
-- **Built-in validations still run on every change.** Only the callback is
-  deferred, so a debounced form is as responsive as an undebounced one.
+- **Built-in validations still run on every change.** Only the callback and
+  the message are deferred, so a debounced form is as responsive as an
+  undebounced one.
 - **Each change supersedes the pending run.** Typing eight characters in a
   burst runs the callback once, not eight times.
 - **Submitting always runs the callback inline.** A user who submits during
@@ -170,10 +202,10 @@ params, and the callback that would re-add them hasn't run yet — so a
 debounced error clears while the user types and returns once they pause.
 Errors from the built-in validators are unaffected.
 
-Pick the interval from what the callback costs: a few hundred milliseconds
-suits a per-keystroke query. `nil` (the default) and `0` both run the
-callback inline, so a computed interval can turn debouncing off without a
-separate branch in the template.
+Pick the interval from what the change pass costs: a few hundred milliseconds
+suits a per-keystroke query. `nil` (the default) and `0` both run it inline,
+so a computed interval can turn debouncing off without a separate branch in
+the template.
 
 ## Optional enhancement: `on_submit`
 
@@ -209,17 +241,17 @@ submission invalid. To pass derived data forward without a side effect, use
 `handle_info/2` on the same payload.
 
 When the returned payload is valid, it flows into the same
-`{:dynamic_form, payload}` message above, so the parent's `handle_info/2`
-handlers don't change when callbacks are added. When it's invalid, the
-errors render inline and the parent is never messaged — `on_submit` is a
-validation gate, not the place for the action itself.
+`{:dynamic_form, :success, payload}` message above, so the parent's
+`handle_info/2` handlers don't change when callbacks are added. When it's
+invalid, the errors render inline and no `:success` message is sent —
+`on_submit` is a validation gate, not the place for the action itself.
 
 ## Optional override: `on_success`
 
-Most forms should let the default `{:dynamic_form, payload}` message do its
-job. For the rare form that needs to complete some other way, define
-`on_success` — a 1-arity function called with the payload on every valid
-submission **instead of** sending the default message. Its return value is
+Most forms should let the default `{:dynamic_form, :success, payload}`
+message do its job. For the rare form that needs to complete some other way,
+define `on_success` — a 1-arity function called with the payload on every
+valid submission **instead of** sending that message. Its return value is
 ignored:
 
 ```heex
@@ -235,15 +267,15 @@ end
 Use it to send a differently-shaped message, broadcast over PubSub, or — with
 an empty function — make the form fully self-contained. Unlike `on_change`
 and `on_submit`, which run *alongside* the built-in behavior, `on_success`
-*replaces* it.
+*replaces* it. Listing `:success` in `send_message_on` alongside `on_success`
+raises, since the two ask for opposite things.
 
-### Example: Using `on_success` to send updates to a LiveComponent instead of LiveView
+### Example: Using callbacks to send updates to a LiveComponent instead of LiveView
 
-The default `{:dynamic_form, payload}` message is delivered via
-`send(self(), ...)` to the parent LiveView's `handle_info/2`. LiveComponents
-don't have `handle_info/2` — they only receive data through `update/2`. Use
-`on_success` with `Phoenix.LiveView.send_update/2` to route the payload back
-to the component:
+Messages are delivered via `send(self(), ...)` to the parent LiveView's
+`handle_info/2`. LiveComponents don't have `handle_info/2` — they only
+receive data through `update/2`. Use a callback with
+`Phoenix.LiveView.send_update/2` to route the payload back to the component:
 
 ```elixir
 defmodule MyAppWeb.ContactFormComponent do
@@ -297,6 +329,23 @@ their parent LiveView's process — so `send_update/2` (which targets
 `self()`) delivers the message to the right place. After the event handler
 completes, your component's `update/2` fires with the event assigns.
 
+`on_change` and `on_submit` route the same way — they're the LiveComponent
+equivalent of the `:change` and `:submit` messages. Both must return the
+payload, so call `send_update/2` for the side effect and hand the payload
+back untouched:
+
+```elixir
+defp handle_form_change(payload, component_id) do
+  Phoenix.LiveView.send_update(MyAppWeb.ContactFormComponent, %{
+    id: component_id,
+    event: "form_change",
+    payload: payload
+  })
+
+  payload
+end
+```
+
 The parent LiveView only needs to mount the component:
 
 ```heex
@@ -316,26 +365,26 @@ callback signatures and the payload fields in table form.
 internally:
 
 ```
-user types ──▶ phx-change ──▶ built-in validations ──▶ on_change(payload)
-                              conditional logic re-evaluated   (deferred by
-                              (inline errors display once the   on_change_debounce_in_ms
-                              form has been submitted)          when set)
+user types ──▶ phx-change ──▶ built-in validations ──▶ on_change(payload) ──▶ :change
+   (or adds/removes    conditional logic re-evaluated   (both deferred by
+    a nested entry)    (inline errors display once the   change_debounce_in_ms
+                        form has been submitted)         when set)
 
-user submits ─▶ phx-submit ─▶ built-in validations ──▶ on_change(payload)
+user submits ─▶ phx-submit ─▶ built-in validations ──▶ on_change(payload) ──▶ :change
                     │                                  (inline, debounced or not)
                     │
-                    ├─ on_submit given ──▶ on_submit(payload)   [valid or not]
+                    ├─ on_submit(payload) when given ─────────▶ :submit   [valid or not]
                     │
-                    └─ changeset valid? ──▶ yes ──▶ {:dynamic_form, payload} to the parent
+                    └─ changeset valid? ──▶ yes ──▶ :success to the parent
                                             │       (or on_success(payload) when defined)
-                                            no ──▶ errors rendered inline, no message
+                                            no ──▶ errors rendered inline, no :success
 ```
 
 Validation runs on every change and every submit — the component handles it
 without involving the parent LiveView. `on_change` and `on_submit` extend
-the cycle from the application side; the parent hears about valid
-submissions and performs the side effect in `handle_info/2`, unless
-`on_success` overrides how success completes.
+the cycle from the application side; the parent hears about whichever events
+`send_message_on` lists and performs the side effect in `handle_info/2`,
+unless `on_success` overrides how success completes.
 
 To opt out of the managed lifecycle entirely, use
 [render-only mode](usage.md#render-only-mode): the definition renders

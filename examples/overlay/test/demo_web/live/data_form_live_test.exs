@@ -46,7 +46,7 @@ defmodule DemoWeb.DataFormLiveTest do
     assert html =~ ~s(name="dynamic_form[first_name]")
   end
 
-  test "create mode delivers {:dynamic_form, payload} to the parent", %{conn: conn} do
+  test "create mode delivers {:dynamic_form, :success, payload} to the parent", %{conn: conn} do
     {:ok, view, _html} = live(conn, "/data-forms")
 
     view

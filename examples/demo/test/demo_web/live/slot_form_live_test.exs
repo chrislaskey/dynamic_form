@@ -101,7 +101,7 @@ defmodule DemoWeb.SlotFormLiveTest do
 
     # The one-character name violates min_length and the untouched required
     # fields (email, subject) submit "" — all errors render inline; no
-    # {:dynamic_form, _} message reaches the parent, so no submission result
+    # {:dynamic_form, :success, _} message reaches the parent, so no submission result
     # appears
     html =
       view

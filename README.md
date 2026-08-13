@@ -54,7 +54,7 @@ form, including the `data` key which is map of the submitted data.
 ```
 
 ```elixir
-def handle_info({:dynamic_form, payload}, socket) do
+def handle_info({:dynamic_form, :success, payload}, socket) do
   {:ok, contact} = Contacts.create_contact(payload.data)
   {:noreply, put_flash(socket, :info, "Created contact #{contact.id}")}
 end
@@ -86,13 +86,17 @@ or not — so expensive checks (like the uniqueness lookup below) batch with the
 built-in errors into one complete list, rendered inline on the form.
 
 The `on_change` attribute mirrors `phx-change`, running on every change. Pair it
-with `on_change_debounce_in_ms` when the check costs more than a keystroke can
+with `change_debounce_in_ms` when the check costs more than a keystroke can
 afford — the callback then runs after that many milliseconds of quiet, while the
 built-in validations keep rendering on every change.
 
+The parent hears about valid submissions by default. `send_message_on` opts into
+the rest of the lifecycle — `{:dynamic_form, :change, payload}` on every change,
+`{:dynamic_form, :submit, payload}` on every submit, valid or not.
+
 See the [Lifecycle](guides/lifecycle.md) guide for more information on
-`on_submit`, `on_change`, and `on_success` lifecycle hooks - including how to
-use `on_success` to receive DynamicForm data in LiveComponents instead of LiveViews.
+`on_submit`, `on_change`, `on_success`, and messages - including how to use the
+callbacks to receive DynamicForm data in LiveComponents instead of LiveViews.
 
 ```heex
 <DynamicForm.form id="example-form" on_submit={&Contacts.verify/1}>
@@ -324,7 +328,7 @@ layout tweaks — lives in the overlay; edit there, copy over the demo
 - **[SurveyJS compatibility](guides/surveyjs.md)** — defining forms as data:
   what's supported, what isn't, and DynamicForm's extensions
 - **[Lifecycle events](guides/lifecycle.md)** — the form lifecycle, the
-  `{:dynamic_form, payload}` message, and the `on_change`/`on_submit`/
+  `{:dynamic_form, event, payload}` messages, and the `on_change`/`on_submit`/
   `on_success` hooks
 - **[Styling](guides/styling.md)** — the default daisyUI styling, custom
   components modules, and per-field markup overrides
@@ -341,7 +345,7 @@ in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:dynamic_form, "~> 0.17"}
+    {:dynamic_form, "~> 0.19"}
   ]
 end
 ```

@@ -84,7 +84,7 @@ defmodule DemoWeb.ComponentFormLive do
           <p class="mt-2 text-gray-600">
             DynamicForm used inside a LiveComponent. Since LiveComponents don't have
             <code class="bg-gray-100 px-2 py-1 rounded">handle_info/2</code>, the default
-            <code class="bg-gray-100 px-2 py-1 rounded">{"{:dynamic_form, payload}"}</code>
+            <code class="bg-gray-100 px-2 py-1 rounded">{"{:dynamic_form, :success, payload}"}</code>
             message can't reach them. Instead, pass an
             <code class="bg-gray-100 px-2 py-1 rounded">on_success</code>
             callback that calls

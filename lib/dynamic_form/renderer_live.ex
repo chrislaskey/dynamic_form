@@ -17,14 +17,17 @@ defmodule DynamicForm.RendererLive do
     * `:on_change` - 1-arity function `(payload) -> payload` run after the
       built-in validations on every change and during the submit validation
       pass (default: `nil`; see "Lifecycle callbacks" below)
-    * `:on_change_debounce_in_ms` - Milliseconds of quiet before a change runs
-      `on_change`; without it the callback runs on every change (integer,
-      default: `nil`; see "Debouncing `on_change`" below)
+    * `:change_debounce_in_ms` - Milliseconds of quiet before a change runs
+      `on_change` and sends its `:change` message; without it both happen on
+      every change (integer, default: `nil`; see "Debouncing changes" below)
     * `:on_submit` - 1-arity function `(payload) -> payload` run on every
       submit — valid or not (default: `nil`; see "Lifecycle callbacks" below)
     * `:on_success` - 1-arity function `(payload)` run on every valid
-      submission *instead of* the default `{:dynamic_form, payload}` message
+      submission *instead of* the `{:dynamic_form, :success, payload}` message
       to the parent LiveView (default: `nil`; see "Messages" below)
+    * `:send_message_on` - Lifecycle events that message the parent LiveView:
+      any of `[:success, :change, :submit]` (list, default: `[:success]`;
+      see "Messages" below)
     * `:data` - Initial form data for edit mode — existing record values;
       a payload's `data` round-trips directly (map, default: `%{}`)
     * `:form_name` - Form namespace for submitted params (string, default: `"dynamic_form"`)
@@ -53,7 +56,7 @@ defmodule DynamicForm.RendererLive do
         instance={@form_instance}
       />
 
-      def handle_info({:dynamic_form, %DynamicForm.Payload{data: data}}, socket) do
+      def handle_info({:dynamic_form, :success, %DynamicForm.Payload{data: data}}, socket) do
         {:ok, contact} = MyApp.Contacts.create_contact(data)
         {:noreply, put_flash(socket, :info, "Created contact \#{contact.id}")}
       end
@@ -146,26 +149,26 @@ defmodule DynamicForm.RendererLive do
         end
       end
 
-  ## Debouncing `on_change`
+  ## Debouncing changes
 
-  `on_change_debounce_in_ms` trades immediacy for fewer callback runs: the
-  callback waits for the given milliseconds of quiet instead of running on
-  every change. It only applies alongside `on_change` — the attribute alone
-  does nothing.
+  `change_debounce_in_ms` trades immediacy for fewer runs: `on_change` and
+  the `:change` message wait for the given milliseconds of quiet instead of
+  firing on every change.
 
       <.live_component
         module={DynamicForm.RendererLive}
         id="signup-form"
         instance={@form_instance}
         on_change={&MyApp.Accounts.check_availability/1}
-        on_change_debounce_in_ms={300}
+        change_debounce_in_ms={300}
       />
 
   The built-in validations still render on every change — only the callback
-  is deferred, so a debounced form is as responsive as an undebounced one.
-  Each change supersedes the pending run, so a callback that costs more than
-  a keystroke can afford (a database lookup, an API call) runs once the user
-  pauses rather than once per character.
+  and the message are deferred, so a debounced form is as responsive as an
+  undebounced one. Each change supersedes the pending run, so work that costs
+  more than a keystroke can afford (a database lookup, an API call, a parent
+  re-render per `:change` message) happens once the user pauses rather than
+  once per character.
 
   Between the change and the deferred run the callback's errors are absent:
   the changeset is rebuilt from the new params on every change, and the
@@ -173,31 +176,46 @@ defmodule DynamicForm.RendererLive do
   `on_change` inline, so a debounced callback can never be skipped by
   submitting during the quiet period.
 
-  A `nil` or `0` interval runs the callback inline, exactly as if the
-  attribute were absent.
+  A `nil` or `0` interval runs both inline, exactly as if the attribute were
+  absent.
 
   ## Messages
 
-  By default, the component sends the parent LiveView a message on every
-  **valid** submission:
+  The component messages the parent LiveView with a lifecycle event and the
+  payload:
 
-      {:dynamic_form, %DynamicForm.Payload{}}
+      {:dynamic_form, event, %DynamicForm.Payload{}}
 
-  Invalid submissions never message the parent — their errors render inline
-  on the form. The payload delivered is the one returned by the callbacks
-  (or built by the component when none are configured), so anything stashed
-  in `:extra` is available in `handle_info/2`.
+  `send_message_on` picks the events, defaulting to `[:success]`:
 
-  Defining `on_success` **replaces** the default message: the function is
-  called with the payload on every valid submission and no
-  `{:dynamic_form, payload}` message is sent. Its return value is ignored.
-  Use it to send a custom message, broadcast over PubSub, or make the form
-  fully self-contained.
+    * `:success` - a valid submission
+    * `:change` - every change, after the built-in validations and
+      `on_change` (debounced by `change_debounce_in_ms`)
+    * `:submit` - every submit, valid or not, after `on_submit`
+
+  A valid submission with all three enabled delivers `:change`, `:submit`,
+  and `:success`, in that order. `:change` and `:submit` payloads are
+  routinely invalid — check `DynamicForm.Payload.valid?/1` before acting on
+  them. The payload delivered is the one returned by the callbacks (or built
+  by the component when none are configured), so anything stashed in
+  `:extra` is available in `handle_info/2`.
+
+  Defining `on_success` **replaces** the success message: the function is
+  called with the payload on every valid submission and no `:success`
+  message is sent. Its return value is ignored. Use it to send a custom
+  message, broadcast over PubSub, or make the form fully self-contained.
+  Listing `:success` in `send_message_on` alongside `on_success` raises.
+
+  Messages go to the LiveView process, so a LiveComponent parent can't
+  receive them — have the callbacks call `Phoenix.LiveView.send_update/2`
+  instead.
   """
 
   use Phoenix.LiveComponent
   import Phoenix.LiveView, only: [allow_upload: 3, cancel_upload: 3, send_update_after: 3]
   alias DynamicForm.{Renderer, Changeset, Instance, NestedForms, Payload}
+
+  @message_events [:success, :change, :submit]
 
   @impl true
   def mount(socket) do
@@ -214,8 +232,8 @@ defmodule DynamicForm.RendererLive do
       Map.has_key?(assigns, :action) && assigns.action == :cancel_upload ->
         handle_cancel_upload_update(assigns, socket)
 
-      Map.has_key?(assigns, :action) && assigns.action == :run_on_change ->
-        handle_run_on_change_update(assigns, socket)
+      Map.has_key?(assigns, :action) && assigns.action == :run_change ->
+        handle_run_change_update(assigns, socket)
 
       true ->
         handle_normal_update(assigns, socket)
@@ -241,6 +259,7 @@ defmodule DynamicForm.RendererLive do
       {:ok,
        socket
        |> assign(assigns)
+       |> assign_send_message_on(assigns)
        |> assign(:instance, instance)
        |> assign(:initial_data, initial_data)}
     else
@@ -256,6 +275,7 @@ defmodule DynamicForm.RendererLive do
       socket =
         socket
         |> assign(assigns)
+        |> assign_send_message_on(assigns)
         |> assign(:instance, instance)
         |> assign(:changeset, changeset)
         |> assign(:form, form)
@@ -263,9 +283,9 @@ defmodule DynamicForm.RendererLive do
         |> assign(:initial_data, initial_data)
         |> assign(:gettext, gettext)
         |> assign(:submitting, false)
-        # The form starts over, so a debounced on_change run scheduled
-        # against the previous definition or data no longer applies.
-        |> cancel_debounced_on_change()
+        # The form starts over, so a debounced change scheduled against the
+        # previous definition or data no longer applies.
+        |> cancel_debounced_change()
         |> allow_uploads_for_direct_upload_fields(instance)
 
       {:ok, socket}
@@ -307,22 +327,13 @@ defmodule DynamicForm.RendererLive do
     {:ok, socket}
   end
 
-  # A debounced on_change run, delivered by the timer scheduled in the
-  # "validate" event. The token fences a superseded run: canceling a timer
-  # can't recall a message already sitting in the process mailbox, so a run
-  # whose token no longer matches is dropped instead of applied over newer
-  # state.
-  defp handle_run_on_change_update(%{token: token}, socket) do
-    if token == socket.assigns[:on_change_token] do
-      payload =
-        socket.assigns.changeset
-        |> build_payload(socket)
-        |> apply_callback(socket, :on_change)
-
-      {:ok,
-       socket
-       |> assign(:on_change_timer, nil)
-       |> assign_changeset(payload.changeset)}
+  # A debounced change, delivered by the timer scheduled when the form
+  # changed. The token fences a superseded run: canceling a timer can't
+  # recall a message already sitting in the process mailbox, so a run whose
+  # token no longer matches is dropped instead of applied over newer state.
+  defp handle_run_change_update(%{token: token}, socket) do
+    if token == socket.assigns[:change_token] do
+      {:ok, socket |> assign(:change_timer, nil) |> run_change()}
     else
       {:ok, socket}
     end
@@ -385,25 +396,7 @@ defmodule DynamicForm.RendererLive do
         custom_field_types: socket.assigns[:custom_field_types]
       )
 
-    socket =
-      case on_change_debounce(socket) do
-        nil ->
-          payload =
-            changeset
-            |> build_payload(socket)
-            |> apply_callback(socket, :on_change)
-
-          assign_changeset(socket, payload.changeset)
-
-        interval ->
-          # Render the built-in validations now and defer the callback: the
-          # form stays as responsive as an undebounced one.
-          socket
-          |> assign_changeset(changeset)
-          |> schedule_debounced_on_change(interval)
-      end
-
-    {:noreply, socket}
+    {:noreply, apply_change(socket, changeset)}
   end
 
   # Append a freshly seeded entry to a paneldynamic question's value. `path`
@@ -442,21 +435,24 @@ defmodule DynamicForm.RendererLive do
     form_params = Map.get(params, socket.assigns.form_name, %{})
     merged_params = merge_data(socket.assigns.initial_data, form_params)
 
-    # Submitting supersedes any debounced run: on_change always runs inline
-    # here, so a submit during the quiet period can't skip the callback.
+    # Submitting supersedes any debounced run: the change pass always runs
+    # inline here, so a submit during the quiet period can't skip it.
     socket =
       socket
-      |> cancel_debounced_on_change()
+      |> cancel_debounced_change()
       |> assign(:submitting, true)
 
-    payload =
+    changed =
       socket.assigns.instance
       |> Changeset.create_changeset(merged_params,
         custom_field_types: socket.assigns[:custom_field_types]
       )
       |> build_payload(socket)
       |> apply_callback(socket, :on_change)
-      |> apply_callback(socket, :on_submit)
+
+    socket = send_message(socket, :change, changed)
+    payload = apply_callback(changed, socket, :on_submit)
+    socket = send_message(socket, :submit, payload)
 
     if Payload.valid?(payload) do
       {:noreply,
@@ -515,13 +511,14 @@ defmodule DynamicForm.RendererLive do
     List.update_at(entries, String.to_integer(index), &update_entry_list(&1, rest, fun))
   end
 
-  # Revalidate after an entry add/remove.
+  # Revalidate after an entry add/remove: adding or removing an entry
+  # changes the form's data, so it runs the change pass like any other.
   defp rebuild_form(socket, params) do
     socket.assigns.instance
     |> Changeset.create_changeset(params,
       custom_field_types: socket.assigns[:custom_field_types]
     )
-    |> then(&assign_changeset(socket, &1))
+    |> then(&apply_change(socket, &1))
   end
 
   # Render a rebuilt changeset, preserving the current action so error
@@ -607,10 +604,35 @@ defmodule DynamicForm.RendererLive do
     end
   end
 
-  # The debounce interval for on_change, or nil when the callback runs
-  # inline: no callback to defer, no interval, or an interval of zero.
-  defp on_change_debounce(socket) do
-    case socket.assigns[:on_change_debounce_in_ms] do
+  # The form changed: render the built-in validations now, then run the
+  # change pass — on_change and the :change message — inline or after the
+  # debounce interval.
+  defp apply_change(socket, changeset) do
+    socket = assign_changeset(socket, changeset)
+
+    case change_debounce(socket) do
+      nil -> run_change(socket)
+      interval -> schedule_debounced_change(socket, interval)
+    end
+  end
+
+  # The change pass against the current changeset. Shared by the inline and
+  # debounced paths so both deliver the same payload.
+  defp run_change(socket) do
+    payload =
+      socket.assigns.changeset
+      |> build_payload(socket)
+      |> apply_callback(socket, :on_change)
+
+    socket
+    |> assign_changeset(payload.changeset)
+    |> send_message(:change, payload)
+  end
+
+  # The debounce interval for the change pass, or nil when it runs inline:
+  # nothing to defer, no interval, or an interval of zero.
+  defp change_debounce(socket) do
+    case socket.assigns[:change_debounce_in_ms] do
       nil ->
         nil
 
@@ -618,48 +640,96 @@ defmodule DynamicForm.RendererLive do
         nil
 
       interval when is_integer(interval) and interval > 0 ->
-        if socket.assigns[:on_change], do: interval, else: nil
+        if deferrable_change?(socket), do: interval, else: nil
 
       other ->
         raise ArgumentError,
-              "on_change_debounce_in_ms must be a non-negative integer of milliseconds, " <>
+              "change_debounce_in_ms must be a non-negative integer of milliseconds, " <>
                 "got: #{inspect(other)}"
     end
   end
 
-  # Debounce the callback: drop the run this change supersedes and schedule a
-  # fresh one. LiveComponents have no handle_info/2, so the timer arrives
-  # back through update/2 as a :run_on_change action.
-  defp schedule_debounced_on_change(socket, interval) do
-    socket = cancel_debounced_on_change(socket)
-    token = socket.assigns.on_change_token
+  defp deferrable_change?(socket) do
+    not is_nil(socket.assigns[:on_change]) or :change in socket.assigns.send_message_on
+  end
+
+  # Debounce the change pass: drop the run this change supersedes and
+  # schedule a fresh one. LiveComponents have no handle_info/2, so the timer
+  # arrives back through update/2 as a :run_change action.
+  defp schedule_debounced_change(socket, interval) do
+    socket = cancel_debounced_change(socket)
+    token = socket.assigns.change_token
 
     timer =
       send_update_after(
         __MODULE__,
-        [id: socket.assigns.id, action: :run_on_change, token: token],
+        [id: socket.assigns.id, action: :run_change, token: token],
         interval
       )
 
-    assign(socket, :on_change_timer, timer)
+    assign(socket, :change_timer, timer)
   end
 
   # Drop any pending debounced run and issue the token the next one will
   # carry. Canceling the timer is the fast path; the token is what makes a
   # run already in the mailbox a no-op when it arrives.
-  defp cancel_debounced_on_change(socket) do
-    case socket.assigns[:on_change_timer] do
+  defp cancel_debounced_change(socket) do
+    case socket.assigns[:change_timer] do
       nil -> :ok
       timer -> Process.cancel_timer(timer)
     end
 
     socket
-    |> assign(:on_change_timer, nil)
-    |> assign(:on_change_token, (socket.assigns[:on_change_token] || 0) + 1)
+    |> assign(:change_timer, nil)
+    |> assign(:change_token, (socket.assigns[:change_token] || 0) + 1)
   end
 
-  # Render the failed changeset's errors inline. Invalid submissions never
-  # message the parent — the form itself is the error channel.
+  # Helpers - Messages
+
+  # Resolve the lifecycle events that message the parent, rejecting a
+  # combination that can't be honored.
+  defp assign_send_message_on(socket, assigns) do
+    events =
+      case Map.get(assigns, :send_message_on) do
+        nil ->
+          [:success]
+
+        events when is_list(events) ->
+          validate_message_events!(events, socket)
+
+        other ->
+          raise ArgumentError,
+                "send_message_on must be a list of #{inspect(@message_events)}, " <>
+                  "got: #{inspect(other)}"
+      end
+
+    assign(socket, :send_message_on, events)
+  end
+
+  defp validate_message_events!(events, socket) do
+    case Enum.reject(events, &(&1 in @message_events)) do
+      [] -> :ok
+      unknown -> raise ArgumentError, "send_message_on got unknown events: #{inspect(unknown)}"
+    end
+
+    if :success in events and socket.assigns[:on_success] do
+      raise ArgumentError,
+            "send_message_on includes :success while on_success is set — on_success " <>
+              "replaces the success message. Remove one."
+    end
+
+    events
+  end
+
+  defp send_message(socket, event, payload) do
+    if event in socket.assigns.send_message_on do
+      send(self(), {:dynamic_form, event, payload})
+    end
+
+    socket
+  end
+
+  # Render the failed changeset's errors inline.
   defp handle_invalid_submit(socket, changeset) do
     changeset = Map.put(changeset, :action, :validate)
     form = to_form(changeset, as: socket.assigns.form_name)
@@ -670,24 +740,23 @@ defmodule DynamicForm.RendererLive do
     |> assign(:submitting, false)
   end
 
-  # Complete a valid submission: send the payload to the parent LiveView by
-  # default, or hand it to a custom on_success callback when one is given —
-  # the callback replaces the message entirely.
+  # Complete a valid submission: message the parent LiveView, or hand the
+  # payload to a custom on_success callback when one is given — the callback
+  # replaces the message entirely.
   defp handle_success(socket, payload) do
     case socket.assigns[:on_success] do
       nil ->
-        send(self(), {:dynamic_form, payload})
+        send_message(socket, :success, payload)
 
       fun when is_function(fun, 1) ->
         fun.(payload)
+        socket
 
       other ->
         raise ArgumentError,
               "on_success must be a 1-arity function receiving a DynamicForm.Payload, " <>
                 "got: #{inspect(other)}"
     end
-
-    socket
   end
 
   # Public API
