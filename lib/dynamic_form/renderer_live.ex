@@ -85,15 +85,17 @@ defmodule DynamicForm.RendererLive do
         form_name="user_profile"
       />
 
-  ### Disabled Fields
+  ### Read-only and disabled fields
 
-  Fields can be marked as `disabled: true` in the form instance configuration.
-  Disabled fields are displayed but cannot be edited by the user.
+  Questions marked `readOnly` are displayed but cannot be edited, and their
+  values still submit: text controls render `readonly`, and controls HTML has
+  no `readonly` for (selects, checkboxes, radios) render disabled alongside a
+  hidden input carrying the value.
 
-  **Important**: Disabled HTML fields are not submitted by browsers, so their values
-  are automatically preserved by merging the initial `:data` with form submissions.
-  This ensures disabled field values remain in the changeset throughout validation
-  and submission.
+  A question disabled by `enableIf` is a different case — it is not part of
+  this submission, so nothing carries its value. Extra keys in `:data` with
+  no matching question are merged back into every submission regardless, so
+  values like an `id` survive without a field of their own.
 
   ### External Submit Button
 

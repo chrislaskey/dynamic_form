@@ -270,15 +270,36 @@ defmodule DynamicForm.RendererTest do
       refute enabled =~ ~s(<input type="text" disabled)
     end
 
-    test "readOnly questions render disabled" do
+    test "readOnly text questions render readonly, so their value still submits" do
       html =
         render_instance(
           instance_with([
             %Instance.Question{name: "id", type: "text", title: "ID", readOnly: true}
-          ])
+          ]),
+          %{"id" => "abc-123"}
+        )
+
+      assert html =~ "readonly"
+      refute html =~ "disabled"
+    end
+
+    test "readOnly questions HTML has no readonly for render disabled plus a hidden value" do
+      html =
+        render_instance(
+          instance_with([
+            %Instance.Question{
+              name: "size",
+              type: "dropdown",
+              title: "Size",
+              choices: ["S", "M"],
+              readOnly: true
+            }
+          ]),
+          %{"size" => "M"}
         )
 
       assert html =~ "disabled"
+      assert html =~ ~s(<input type="hidden" name="dynamic_form[size]" value="M">)
     end
   end
 

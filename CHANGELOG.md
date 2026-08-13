@@ -14,6 +14,14 @@ All notable changes to this project are documented here. For releases before
 
 ### Fixed
 
+- Read-only values are no longer dropped inside nested entries. `readOnly`
+  rendered as an HTML `disabled` input, which browsers don't submit, and the
+  initial-data merge that covered for that restores top-level keys only — so
+  a read-only value inside a nested entry was lost on the first change. Text
+  controls now render `readonly` (still submitted), and controls HTML has no
+  `readonly` for render disabled alongside a hidden input carrying the value.
+  Questions disabled by `enableIf` are unaffected: they remain excluded from
+  the params.
 - The Usage guide's `type="custom"` example bound `:let={field}` and read
   `field.form`. That body receives the form itself, so the example raised
   `KeyError` as written.

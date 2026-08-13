@@ -278,9 +278,11 @@ directly with `<.live_component>` is equivalent.
 ### Edit mode
 
 Pre-populate a form by passing `data`. Fields marked `read_only`
-(`readOnly` in data mode) display their values but can't be edited — and
-because browsers don't submit read-only/disabled inputs, the initial data
-are merged back into every submission so those values survive validation:
+(`readOnly` in data mode) display their values but can't be edited, and
+still submit them: text inputs render `readonly`, and controls HTML has no
+`readonly` for (selects, checkboxes, radios) render disabled alongside a
+hidden input carrying the value. That holds inside nested entries too, where
+the initial data can't be merged back in per entry:
 
 ```heex
 <DynamicForm.form

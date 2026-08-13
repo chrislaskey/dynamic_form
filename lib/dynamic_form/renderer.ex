@@ -208,7 +208,11 @@ defmodule DynamicForm.Renderer do
 
   # Dispatch to appropriate renderer based on element type
   defp render_element(%Instance.Question{} = question, form, opts) do
-    render_question(question, form, opts)
+    assigns = %{question: question, form: form, opts: opts}
+
+    ~H"""
+    {render_question(@question, @form, @opts)}{readonly_value_inputs(@question, @form, @opts)}
+    """
   end
 
   defp render_element(%Instance.Element{} = element, form, opts) do
@@ -378,7 +382,7 @@ defmodule DynamicForm.Renderer do
 
   # Render a text input question
   defp render_question(%Instance.Question{type: "text"} = question, form, opts) do
-    disabled = question_disabled?(question, form, opts)
+    disabled = question_unavailable?(question, form, opts)
     field_atom = String.to_atom(question.name)
 
     # Determine input type
@@ -391,6 +395,7 @@ defmodule DynamicForm.Renderer do
       form: form,
       field_atom: field_atom,
       disabled: disabled,
+      readonly: !disabled && !!question.readOnly,
       label: label,
       input_type: input_type,
       components: Keyword.get(opts, :components)
@@ -403,7 +408,8 @@ defmodule DynamicForm.Renderer do
         type: @input_type,
         label: @label,
         placeholder: @question.placeholder,
-        disabled: @disabled
+        disabled: @disabled,
+        readonly: @readonly
       })}
       <%= if @question.description do %>
         <p class="mt-2 text-sm text-gray-500"><%= @question.description %></p>
@@ -414,7 +420,7 @@ defmodule DynamicForm.Renderer do
 
   # Render a comment/textarea question
   defp render_question(%Instance.Question{type: "comment"} = question, form, opts) do
-    disabled = question_disabled?(question, form, opts)
+    disabled = question_unavailable?(question, form, opts)
     field_atom = String.to_atom(question.name)
 
     label = question_label(question)
@@ -424,6 +430,7 @@ defmodule DynamicForm.Renderer do
       form: form,
       field_atom: field_atom,
       disabled: disabled,
+      readonly: !disabled && !!question.readOnly,
       label: label,
       components: Keyword.get(opts, :components)
     }
@@ -436,6 +443,7 @@ defmodule DynamicForm.Renderer do
         label: @label,
         placeholder: @question.placeholder,
         disabled: @disabled,
+        readonly: @readonly,
         rows: "4"
       })}
       <%= if @question.description do %>
@@ -981,10 +989,50 @@ defmodule DynamicForm.Renderer do
 
   # A question is disabled when the form is disabled, it is read-only, or its
   # enableIf expression evaluates to false
+  # Whether the control is rendered `disabled`. Read-only questions are
+  # included for the controls HTML has no `readonly` for — see
+  # readonly_value_inputs/3 for how their values still submit.
   defp question_disabled?(question, form, opts) do
-    Keyword.get(opts, :disabled, false) || question.readOnly ||
+    question.readOnly || question_unavailable?(question, form, opts)
+  end
+
+  # Disabled for a reason other than readOnly: the whole form is submitting,
+  # or an enableIf says this question is not part of this submission. Unlike
+  # a read-only value, these are meant to be excluded from the params.
+  defp question_unavailable?(question, form, opts) do
+    Keyword.get(opts, :disabled, false) ||
       not DynamicForm.Visibility.condition_met?(question.enableIf, get_form_params(form))
   end
+
+  # Browsers don't submit disabled inputs, so a read-only question's value
+  # would be lost on the next change — permanently inside a nested entry,
+  # where merge_data restores top-level keys only. Text and textarea controls
+  # render `readonly` and submit themselves; every other control mirrors its
+  # value into hidden inputs alongside the disabled control.
+  defp readonly_value_inputs(
+         %Instance.Question{readOnly: true, type: type} = question,
+         form,
+         opts
+       )
+       when type not in ~w(text comment paneldynamic file) do
+    field = form[String.to_atom(question.name)]
+
+    assigns = %{
+      name: if(type in ~w(checkbox tagbox), do: "#{field.name}[]", else: field.name),
+      values: readonly_values(field.value),
+      disabled: question_unavailable?(question, form, opts)
+    }
+
+    ~H"""
+    <input :for={value <- @values} :if={!@disabled} type="hidden" name={@name} value={value} />
+    """
+  end
+
+  defp readonly_value_inputs(_question, _form, _opts), do: nil
+
+  defp readonly_values(nil), do: []
+  defp readonly_values(values) when is_list(values), do: Enum.map(values, &to_string/1)
+  defp readonly_values(value), do: [to_string(value)]
 
   # Normalize decoded choices to {label, value} tuples for form components
   defp normalize_choices(nil), do: []

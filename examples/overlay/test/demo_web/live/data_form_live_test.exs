@@ -67,16 +67,14 @@ defmodule DemoWeb.DataFormLiveTest do
       |> render_change(%{"mode" => "edit"})
 
     # Prefilled from sample_edit_data/0, with the readOnly email field
-    # rendered as a disabled input
+    # rendered as a readonly input — not editable, but still submitted
     assert html =~ ~s(value="Jane Smith")
     assert html =~ ~s(value="jane.smith@example.com")
     [_, email_input] = String.split(html, ~s(id="contact-edit-form_email"), parts: 2)
     [email_input | _] = String.split(email_input, "/>", parts: 2)
-    assert email_input =~ "disabled"
+    assert email_input =~ "readonly"
 
-    # The on_success callback replaces the default message. The disabled
-    # email input doesn't submit (like a real browser); its value comes from
-    # the data prefill.
+    # The on_success callback replaces the default message.
     view
     |> form("#contact-edit-form", %{
       "dynamic_form" => Map.delete(@valid_contact_params["dynamic_form"], "email")
