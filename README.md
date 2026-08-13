@@ -85,6 +85,11 @@ The `on_submit` attribute mirrors `phx-submit`: it runs on every submit — vali
 or not — so expensive checks (like the uniqueness lookup below) batch with the
 built-in errors into one complete list, rendered inline on the form.
 
+The `on_change` attribute mirrors `phx-change`, running on every change. Pair it
+with `on_change_debounce_in_ms` when the check costs more than a keystroke can
+afford — the callback then runs after that many milliseconds of quiet, while the
+built-in validations keep rendering on every change.
+
 See the [Lifecycle](guides/lifecycle.md) guide for more information on
 `on_submit`, `on_change`, and `on_success` lifecycle hooks - including how to
 use `on_success` to receive DynamicForm data in LiveComponents instead of LiveViews.

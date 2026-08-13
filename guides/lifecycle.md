@@ -129,7 +129,51 @@ The `on_change` function is called whenever the form value changes, just like
 `phx-change`. It's also run when the user hits the `submit` button.
 
 Since it's run often, keep the checks simple and fast to execute. Do the more
-expensive checks only after the user hits the submit button, using `on_submit`.
+expensive checks only after the user hits the submit button, using `on_submit`
+— or debounce them, as below.
+
+### Debouncing `on_change`
+
+Some checks belong live on the form but cost more than a keystroke can
+afford: a uniqueness lookup, a call to a pricing service. Add
+`on_change_debounce_in_ms` to wait for that many milliseconds of quiet before
+running the callback:
+
+```heex
+<DynamicForm.form id="signup" on_change={&check_availability/1} on_change_debounce_in_ms={300}>
+```
+
+```elixir
+defp check_availability(payload) do
+  if Accounts.username_taken?(payload.data[:username]) do   # a query per run
+    DynamicForm.Payload.add_error(payload, :username, "is already taken")
+  else
+    payload
+  end
+end
+```
+
+The attribute only debounces `on_change` — it does nothing on its own, and
+using it without `on_change` raises. The rest of the lifecycle is unchanged:
+
+- **Built-in validations still run on every change.** Only the callback is
+  deferred, so a debounced form is as responsive as an undebounced one.
+- **Each change supersedes the pending run.** Typing eight characters in a
+  burst runs the callback once, not eight times.
+- **Submitting always runs the callback inline.** A user who submits during
+  the quiet period still gets the callback's errors — a debounced check can't
+  be skipped by submitting quickly.
+
+The one visible difference: between a change and its deferred run, errors the
+callback added are absent. Every change rebuilds the changeset from the new
+params, and the callback that would re-add them hasn't run yet — so a
+debounced error clears while the user types and returns once they pause.
+Errors from the built-in validators are unaffected.
+
+Pick the interval from what the callback costs: a few hundred milliseconds
+suits a per-keystroke query. `nil` (the default) and `0` both run the
+callback inline, so a computed interval can turn debouncing off without a
+separate branch in the template.
 
 ## Optional enhancement: `on_submit`
 
@@ -273,10 +317,12 @@ internally:
 
 ```
 user types ──▶ phx-change ──▶ built-in validations ──▶ on_change(payload)
-                              conditional logic re-evaluated
-                              (inline errors display once the form has been submitted)
+                              conditional logic re-evaluated   (deferred by
+                              (inline errors display once the   on_change_debounce_in_ms
+                              form has been submitted)          when set)
 
 user submits ─▶ phx-submit ─▶ built-in validations ──▶ on_change(payload)
+                    │                                  (inline, debounced or not)
                     │
                     ├─ on_submit given ──▶ on_submit(payload)   [valid or not]
                     │

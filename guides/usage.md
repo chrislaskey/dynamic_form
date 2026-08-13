@@ -438,10 +438,11 @@ a graceful degradation that still round-trips the value.
 ## Lifecycle callbacks
 
 Three optional hooks let the application participate in the form lifecycle:
-`on_change` extends validation live as the user types, `on_submit` batches
-expensive submit-only checks (each receives a `DynamicForm.Payload` and
-returns it), and `on_success` replaces the default success message for
-forms that complete some other way.
+`on_change` extends validation live as the user types (add
+`on_change_debounce_in_ms` to run it after a pause instead of on every
+keystroke), `on_submit` batches expensive submit-only checks (each receives a
+`DynamicForm.Payload` and returns it), and `on_success` replaces the default
+success message for forms that complete some other way.
 
 They are documented in one place — the
 [Lifecycle events guide](lifecycle.md) — with the signatures summarized in

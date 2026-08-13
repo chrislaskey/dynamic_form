@@ -17,6 +17,9 @@ defmodule DynamicForm.RendererLive do
     * `:on_change` - 1-arity function `(payload) -> payload` run after the
       built-in validations on every change and during the submit validation
       pass (default: `nil`; see "Lifecycle callbacks" below)
+    * `:on_change_debounce_in_ms` - Milliseconds of quiet before a change runs
+      `on_change`; without it the callback runs on every change (integer,
+      default: `nil`; see "Debouncing `on_change`" below)
     * `:on_submit` - 1-arity function `(payload) -> payload` run on every
       submit — valid or not (default: `nil`; see "Lifecycle callbacks" below)
     * `:on_success` - 1-arity function `(payload)` run on every valid
@@ -143,6 +146,36 @@ defmodule DynamicForm.RendererLive do
         end
       end
 
+  ## Debouncing `on_change`
+
+  `on_change_debounce_in_ms` trades immediacy for fewer callback runs: the
+  callback waits for the given milliseconds of quiet instead of running on
+  every change. It only applies alongside `on_change` — the attribute alone
+  does nothing.
+
+      <.live_component
+        module={DynamicForm.RendererLive}
+        id="signup-form"
+        instance={@form_instance}
+        on_change={&MyApp.Accounts.check_availability/1}
+        on_change_debounce_in_ms={300}
+      />
+
+  The built-in validations still render on every change — only the callback
+  is deferred, so a debounced form is as responsive as an undebounced one.
+  Each change supersedes the pending run, so a callback that costs more than
+  a keystroke can afford (a database lookup, an API call) runs once the user
+  pauses rather than once per character.
+
+  Between the change and the deferred run the callback's errors are absent:
+  the changeset is rebuilt from the new params on every change, and the
+  callback that would re-add them hasn't run yet. Submitting always runs
+  `on_change` inline, so a debounced callback can never be skipped by
+  submitting during the quiet period.
+
+  A `nil` or `0` interval runs the callback inline, exactly as if the
+  attribute were absent.
+
   ## Messages
 
   By default, the component sends the parent LiveView a message on every
@@ -163,7 +196,7 @@ defmodule DynamicForm.RendererLive do
   """
 
   use Phoenix.LiveComponent
-  import Phoenix.LiveView, only: [allow_upload: 3, cancel_upload: 3]
+  import Phoenix.LiveView, only: [allow_upload: 3, cancel_upload: 3, send_update_after: 3]
   alias DynamicForm.{Renderer, Changeset, Instance, NestedForms, Payload}
 
   @impl true
@@ -180,6 +213,9 @@ defmodule DynamicForm.RendererLive do
 
       Map.has_key?(assigns, :action) && assigns.action == :cancel_upload ->
         handle_cancel_upload_update(assigns, socket)
+
+      Map.has_key?(assigns, :action) && assigns.action == :run_on_change ->
+        handle_run_on_change_update(assigns, socket)
 
       true ->
         handle_normal_update(assigns, socket)
@@ -227,6 +263,9 @@ defmodule DynamicForm.RendererLive do
         |> assign(:initial_data, initial_data)
         |> assign(:gettext, gettext)
         |> assign(:submitting, false)
+        # The form starts over, so a debounced on_change run scheduled
+        # against the previous definition or data no longer applies.
+        |> cancel_debounced_on_change()
         |> allow_uploads_for_direct_upload_fields(instance)
 
       {:ok, socket}
@@ -266,6 +305,27 @@ defmodule DynamicForm.RendererLive do
   defp handle_cancel_upload_update(assigns, socket) do
     socket = cancel_upload(socket, assigns.upload_name, assigns.ref)
     {:ok, socket}
+  end
+
+  # A debounced on_change run, delivered by the timer scheduled in the
+  # "validate" event. The token fences a superseded run: canceling a timer
+  # can't recall a message already sitting in the process mailbox, so a run
+  # whose token no longer matches is dropped instead of applied over newer
+  # state.
+  defp handle_run_on_change_update(%{token: token}, socket) do
+    if token == socket.assigns[:on_change_token] do
+      payload =
+        socket.assigns.changeset
+        |> build_payload(socket)
+        |> apply_callback(socket, :on_change)
+
+      {:ok,
+       socket
+       |> assign(:on_change_timer, nil)
+       |> assign_changeset(payload.changeset)}
+    else
+      {:ok, socket}
+    end
   end
 
   @impl true
@@ -320,21 +380,30 @@ defmodule DynamicForm.RendererLive do
     form_params = Map.get(params, socket.assigns.form_name, %{})
     merged_params = merge_data(socket.assigns.initial_data, form_params)
 
-    payload =
-      socket.assigns.instance
-      |> Changeset.create_changeset(merged_params,
+    changeset =
+      Changeset.create_changeset(socket.assigns.instance, merged_params,
         custom_field_types: socket.assigns[:custom_field_types]
       )
-      |> build_payload(socket)
-      |> apply_callback(socket, :on_change)
 
-    changeset = Map.put(payload.changeset, :action, socket.assigns.changeset.action)
-    form = to_form(changeset, as: socket.assigns.form_name)
+    socket =
+      case on_change_debounce(socket) do
+        nil ->
+          payload =
+            changeset
+            |> build_payload(socket)
+            |> apply_callback(socket, :on_change)
 
-    {:noreply,
-     socket
-     |> assign(:changeset, changeset)
-     |> assign(:form, form)}
+          assign_changeset(socket, payload.changeset)
+
+        interval ->
+          # Render the built-in validations now and defer the callback: the
+          # form stays as responsive as an undebounced one.
+          socket
+          |> assign_changeset(changeset)
+          |> schedule_debounced_on_change(interval)
+      end
+
+    {:noreply, socket}
   end
 
   # Append a freshly seeded entry to a paneldynamic question's value. `path`
@@ -373,7 +442,12 @@ defmodule DynamicForm.RendererLive do
     form_params = Map.get(params, socket.assigns.form_name, %{})
     merged_params = merge_data(socket.assigns.initial_data, form_params)
 
-    socket = assign(socket, :submitting, true)
+    # Submitting supersedes any debounced run: on_change always runs inline
+    # here, so a submit during the quiet period can't skip the callback.
+    socket =
+      socket
+      |> cancel_debounced_on_change()
+      |> assign(:submitting, true)
 
     payload =
       socket.assigns.instance
@@ -441,15 +515,19 @@ defmodule DynamicForm.RendererLive do
     List.update_at(entries, String.to_integer(index), &update_entry_list(&1, rest, fun))
   end
 
-  # Revalidate after an entry add/remove, preserving the current action so
-  # error display doesn't change mid-edit.
+  # Revalidate after an entry add/remove.
   defp rebuild_form(socket, params) do
-    changeset =
-      socket.assigns.instance
-      |> Changeset.create_changeset(params,
-        custom_field_types: socket.assigns[:custom_field_types]
-      )
-      |> Map.put(:action, socket.assigns.changeset.action)
+    socket.assigns.instance
+    |> Changeset.create_changeset(params,
+      custom_field_types: socket.assigns[:custom_field_types]
+    )
+    |> then(&assign_changeset(socket, &1))
+  end
+
+  # Render a rebuilt changeset, preserving the current action so error
+  # display doesn't change mid-edit.
+  defp assign_changeset(socket, changeset) do
+    changeset = Map.put(changeset, :action, socket.assigns.changeset.action)
 
     socket
     |> assign(:changeset, changeset)
@@ -527,6 +605,57 @@ defmodule DynamicForm.RendererLive do
               "#{name} must be a 1-arity function receiving a DynamicForm.Payload, " <>
                 "got: #{inspect(other)}"
     end
+  end
+
+  # The debounce interval for on_change, or nil when the callback runs
+  # inline: no callback to defer, no interval, or an interval of zero.
+  defp on_change_debounce(socket) do
+    case socket.assigns[:on_change_debounce_in_ms] do
+      nil ->
+        nil
+
+      0 ->
+        nil
+
+      interval when is_integer(interval) and interval > 0 ->
+        if socket.assigns[:on_change], do: interval, else: nil
+
+      other ->
+        raise ArgumentError,
+              "on_change_debounce_in_ms must be a non-negative integer of milliseconds, " <>
+                "got: #{inspect(other)}"
+    end
+  end
+
+  # Debounce the callback: drop the run this change supersedes and schedule a
+  # fresh one. LiveComponents have no handle_info/2, so the timer arrives
+  # back through update/2 as a :run_on_change action.
+  defp schedule_debounced_on_change(socket, interval) do
+    socket = cancel_debounced_on_change(socket)
+    token = socket.assigns.on_change_token
+
+    timer =
+      send_update_after(
+        __MODULE__,
+        [id: socket.assigns.id, action: :run_on_change, token: token],
+        interval
+      )
+
+    assign(socket, :on_change_timer, timer)
+  end
+
+  # Drop any pending debounced run and issue the token the next one will
+  # carry. Canceling the timer is the fast path; the token is what makes a
+  # run already in the mailbox a no-op when it arrives.
+  defp cancel_debounced_on_change(socket) do
+    case socket.assigns[:on_change_timer] do
+      nil -> :ok
+      timer -> Process.cancel_timer(timer)
+    end
+
+    socket
+    |> assign(:on_change_timer, nil)
+    |> assign(:on_change_token, (socket.assigns[:on_change_token] || 0) + 1)
   end
 
   # Render the failed changeset's errors inline. Invalid submissions never

@@ -116,12 +116,22 @@ defmodule DynamicForm do
 
     * `on_change` — runs after the built-in validations on every change (and
       during the submit validation pass). Keep it cheap — it runs per
-      keystroke.
+      keystroke, unless `on_change_debounce_in_ms` is set.
     * `on_submit` — runs on **every** submit, valid or not, so it can batch
       expensive checks with the built-in errors into one complete error list.
 
       <DynamicForm.form id="contact-form" on_submit={&Contacts.verify/1}>
         <:field type="text" name="email" label="Email" required format="email" />
+      </DynamicForm.form>
+
+  `on_change_debounce_in_ms` waits for that many milliseconds of quiet
+  before running `on_change`, so a callback too expensive for a keystroke
+  runs once the user pauses. The built-in validations still render on every
+  change, and submitting always runs the callback inline:
+
+      <DynamicForm.form id="signup" on_change={&Accounts.check_availability/1}
+                        on_change_debounce_in_ms={300}>
+        <:field type="text" name="username" label="Username" required />
       </DynamicForm.form>
 
   A **valid** submission delivers `{:dynamic_form, payload}` to the parent
@@ -216,10 +226,10 @@ defmodule DynamicForm do
   visibility — while the parent's changeset drives the data. Override the
   event names with `phx_change` and `phx_submit`.
 
-  Lifecycle attributes (`on_change`, `on_submit`, `on_success`, `data`,
-  `form_name`, `validation_summary`) have no meaning without the managed
-  lifecycle and raise. File upload questions require the stateful component
-  and raise.
+  Lifecycle attributes (`on_change`, `on_change_debounce_in_ms`,
+  `on_submit`, `on_success`, `data`, `form_name`, `validation_summary`) have
+  no meaning without the managed lifecycle and raise. File upload questions
+  require the stateful component and raise.
   """
   attr(:id, :string,
     required: true,
@@ -247,6 +257,13 @@ defmodule DynamicForm do
     doc:
       "1-arity function (DynamicForm.Payload) -> DynamicForm.Payload, run after " <>
         "built-in validations on every change and during the submit validation pass"
+  )
+
+  attr(:on_change_debounce_in_ms, :integer,
+    default: nil,
+    doc:
+      "Milliseconds of quiet before a change runs on_change; without it the " <>
+        "callback runs on every change. Requires on_change"
   )
 
   attr(:on_submit, :any,
@@ -458,6 +475,7 @@ defmodule DynamicForm do
       id={@id}
       instance={@resolved_instance}
       on_change={@on_change}
+      on_change_debounce_in_ms={@on_change_debounce_in_ms}
       on_submit={@on_submit}
       on_success={@on_success}
       data={@data}
@@ -484,6 +502,7 @@ defmodule DynamicForm do
     invalid =
       [
         on_change: assigns.on_change,
+        on_change_debounce_in_ms: assigns.on_change_debounce_in_ms,
         on_submit: assigns.on_submit,
         on_success: assigns.on_success,
         validation_summary: assigns.validation_summary
@@ -530,6 +549,14 @@ defmodule DynamicForm do
             "DynamicForm.form id=#{inspect(assigns.id)} received " <>
               "#{Enum.join(invalid, ", ")} without render_only — the component owns the " <>
               "form and its events unless render_only is set"
+    end
+
+    # The interval debounces on_change; on its own there is nothing to debounce.
+    if assigns.on_change_debounce_in_ms && is_nil(assigns.on_change) do
+      raise ArgumentError,
+            "DynamicForm.form id=#{inspect(assigns.id)} received " <>
+              "on_change_debounce_in_ms without on_change — the interval debounces the " <>
+              "on_change callback"
     end
   end
 

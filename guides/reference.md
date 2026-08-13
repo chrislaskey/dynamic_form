@@ -13,6 +13,7 @@ Quick lookup tables. For narrative documentation see the
 | `title` | string | `nil` | Instance title (declarative mode) |
 | `description` | string | `nil` | Instance description (declarative mode) |
 | `on_change` | function | `nil` | 1-arity `(payload) -> payload`, after built-in validations on every change and during the submit validation pass |
+| `on_change_debounce_in_ms` | integer | `nil` | Milliseconds of quiet before a change runs `on_change`; requires `on_change`. `nil` and `0` run it on every change |
 | `on_submit` | function | `nil` | 1-arity `(payload) -> payload`, on every submit — valid or not |
 | `on_success` | function | `nil` | 1-arity `(payload)`, on every valid submission — replaces the default `{:dynamic_form, payload}` message |
 | `data` | map | `%{}` | Initial form data for edit mode — existing record values; a payload's `data` round-trips directly |
@@ -29,9 +30,9 @@ Quick lookup tables. For narrative documentation see the
 | `phx_submit` | string | `"submit"` | Render-only mode: submit event name |
 
 Exactly one of `instance`, `json`, or `<:field>` slots must be provided.
-`render_only` excludes the lifecycle attributes (`on_change`, `on_submit`,
-`on_success`, `data`, `form_name`, `validation_summary`) and file upload
-questions — both raise.
+`render_only` excludes the lifecycle attributes (`on_change`,
+`on_change_debounce_in_ms`, `on_submit`, `on_success`, `data`, `form_name`,
+`validation_summary`) and file upload questions — both raise.
 
 `DynamicForm.RendererLive` (used directly via `<.live_component>`) accepts
 `id`, `instance`, and the same optional attributes from `data` down.
@@ -184,7 +185,9 @@ on_success: (DynamicForm.Payload.t()) -> any()
 ```
 
 `on_change` runs after built-in validations, on every change and during the
-submit validation pass. `on_submit` runs on every submit — valid or not —
+submit validation pass — after `on_change_debounce_in_ms` milliseconds of
+quiet when that attribute is set, except on submit, where it always runs
+inline. `on_submit` runs on every submit — valid or not —
 so it can batch expensive checks with the built-in errors into one complete
 error list. Both are validation hooks that run *alongside* the built-in
 behavior: reject a submission with `DynamicForm.Payload.add_error/4`
