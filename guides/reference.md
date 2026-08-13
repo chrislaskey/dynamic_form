@@ -266,4 +266,5 @@ Functions the renderer dispatches through the `components` module
 | `DynamicForm.Changeset.get_questions/1` | Flat list of questions, including nested panels |
 | `DynamicForm.Payload.add_error/4` | Add a changeset error, marking the submission invalid |
 | `DynamicForm.Payload.put_extra/3` | Stash derived data on the payload for the parent's `handle_info/2` |
+| `DynamicForm.form_data/1` | Inside a `<:field>` slot body: the whole form's current values, same shape as `payload.data` |
 | `DynamicForm.submit_button/1` | Submit button component usable outside the form element |

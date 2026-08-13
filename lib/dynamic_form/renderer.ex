@@ -116,6 +116,7 @@ defmodule DynamicForm.Renderer do
       |> assign(:parent_id, parent_id)
       |> assign(:components, components)
       |> assign(:field_types, field_types)
+      |> assign(:form_data, applied_form_data(assigns.form))
 
     ~H"""
     <.form
@@ -127,7 +128,7 @@ defmodule DynamicForm.Renderer do
       phx-target={@target}
     >
       <%= for element <- visible_elements(@instance.elements, @form) do %>
-        <%= render_element(element, f, disabled: @disabled, gettext: @gettext, uploads: @uploads, parent_id: @parent_id, components: @components, custom_field_types: @field_types, target: @target) %>
+        <%= render_element(element, f, disabled: @disabled, gettext: @gettext, uploads: @uploads, parent_id: @parent_id, components: @components, custom_field_types: @field_types, target: @target, form_data: @form_data) %>
       <% end %>
 
       <div :if={!@hide_submit} class="mt-6 flex items-center justify-end gap-x-6">
@@ -184,6 +185,27 @@ defmodule DynamicForm.Renderer do
     _ -> %{}
   end
 
+  # The whole form's current values, applied once per render and handed to
+  # slot bodies via DynamicForm.form_data/1. Render-only mode renders against
+  # a parent-owned form, so a non-changeset source falls back to its params.
+  defp applied_form_data(%Phoenix.HTML.Form{source: %Ecto.Changeset{} = changeset}) do
+    Ecto.Changeset.apply_changes(changeset)
+  end
+
+  defp applied_form_data(%Phoenix.HTML.Form{params: params}), do: params
+
+  # Attach the form-level data to the value a slot body receives. It rides in
+  # the form's options, which is private plumbing — DynamicForm.form_data/1 is
+  # the contract. Only slot bodies are decorated: the root form is rendered by
+  # Phoenix.Component.form/1, which spreads its options onto the <form> tag.
+  defp put_form_data(%Phoenix.HTML.FormField{} = field, data) do
+    %{field | form: put_form_data(field.form, data)}
+  end
+
+  defp put_form_data(%Phoenix.HTML.Form{} = form, data) do
+    %{form | options: Keyword.put(form.options, :form_data, data)}
+  end
+
   # Dispatch to appropriate renderer based on element type
   defp render_element(%Instance.Question{} = question, form, opts) do
     render_question(question, form, opts)
@@ -209,9 +231,9 @@ defmodule DynamicForm.Renderer do
 
   # Render fully custom elements: the slot body receives the Phoenix form so
   # it can read current values, e.g. <:field type="custom" :let={form}>
-  defp render_panel_or_html(%Instance.Element{type: "custom", slot: entry}, form, _opts)
+  defp render_panel_or_html(%Instance.Element{type: "custom", slot: entry}, form, opts)
        when not is_nil(entry) do
-    assigns = %{entry: entry, form: form}
+    assigns = %{entry: entry, form: put_form_data(form, Keyword.get(opts, :form_data))}
 
     ~H"""
     <div class="mb-4">
@@ -326,7 +348,7 @@ defmodule DynamicForm.Renderer do
 
     assigns = %{
       question: question,
-      field: field,
+      field: put_form_data(field, Keyword.get(opts, :form_data)),
       entry: entry,
       label: question_label(question),
       errors: Enum.map(errors, &Components.translate_error(components, &1)),

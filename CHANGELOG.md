@@ -3,6 +3,21 @@
 All notable changes to this project are documented here. For releases before
 0.19.0, see the git history.
 
+## 0.20.0
+
+### Added
+
+- `DynamicForm.form_data/1`: inside a `<:field>` slot body, the whole form's
+  current values as a map — the same shape as `payload.data`. Always
+  form-level, so a control inside one nested form can read another's
+  entries.
+
+### Fixed
+
+- The Usage guide's `type="custom"` example bound `:let={field}` and read
+  `field.form`. That body receives the form itself, so the example raised
+  `KeyError` as written.
+
 ## 0.19.0
 
 ### Breaking

@@ -159,6 +159,13 @@ error display, and changeset validation:
 </:field>
 ```
 
+The field is scoped to its entry — `field.form[:title].value` reads a
+sibling in the same entry. To read *outside* the entry, use
+`DynamicForm.form_data/1`, which returns the whole form's current values
+whatever scope the body is in, so a control in one nested form can build
+itself from another's entries. See
+[Reading the whole form from a body](usage.md#reading-the-whole-form-from-a-body).
+
 ## Conditional expressions and shadowing
 
 Inside a template, expressions resolve **innermost-first**:

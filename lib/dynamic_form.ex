@@ -99,6 +99,50 @@ defmodule DynamicForm do
   defdelegate submit_button(assigns), to: DynamicForm.RendererLive
 
   @doc """
+  The whole form's current values, for reading inside a `<:field>` slot body.
+
+  Takes the `Phoenix.HTML.FormField` a custom control receives, or the
+  `Phoenix.HTML.Form` a `type="custom"` element receives, and returns the
+  applied changeset data — the same map a `:change` message delivers as
+  `payload.data`, with nested entries as lists of maps:
+
+      %{name: "Ada", addresses: [%{street: "110 Main St", city: "Portland"}]}
+
+  The map is always form-level, even inside a nested entry, so a control in
+  one nested form can read another's entries:
+
+      <:field :let={field} nested="rooms" type="checkbox" name="teachers">
+        <%= for teacher <- DynamicForm.form_data(field)[:staff] || [] do %>
+          <label>
+            <input type="checkbox" name={"\#{field.name}[]"} value={teacher[:id]} />
+            {teacher[:name]}
+          </label>
+        <% end %>
+      </:field>
+
+  Values the user hasn't entered are absent rather than `nil`, as with any
+  `Ecto.Changeset.apply_changes/1` result — default to `[]` or `%{}` when
+  reading. In [render-only mode](usage.md#render-only-mode) the parent owns
+  the changeset, so the shape is whatever that changeset applies to.
+
+  Raises when given a form DynamicForm didn't render.
+  """
+  @spec form_data(Phoenix.HTML.FormField.t() | Phoenix.HTML.Form.t()) :: map()
+  def form_data(%Phoenix.HTML.FormField{form: form}), do: form_data(form)
+
+  def form_data(%Phoenix.HTML.Form{options: options}) do
+    case Keyword.fetch(options, :form_data) do
+      {:ok, data} ->
+        data
+
+      :error ->
+        raise ArgumentError,
+              "DynamicForm.form_data/1 works on the field or form a <:field> slot body " <>
+                "receives, and this form was not rendered by DynamicForm"
+    end
+  end
+
+  @doc """
   Renders a dynamic form from an instance, a SurveyJS-compatible JSON string,
   or `<:field>` slots (declarative mode).
 
@@ -208,6 +252,10 @@ defmodule DynamicForm do
       <:field type="custom" name="summary" :let={form}>
         <p>Total: {form[:amount].value}</p>
       </:field>
+
+  A body reads its own scope through the value it receives, and the whole
+  form — including other nested forms' entries — through
+  `DynamicForm.form_data/1`.
 
   Slot bodies are in-memory only: instances containing them JSON-encode
   without the bodies, and such forms cannot round-trip through the WYSIWYG

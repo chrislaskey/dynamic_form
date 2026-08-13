@@ -128,8 +128,9 @@ and errors, and the changeset still validates the field:
 Whatever the control submits under `field.name` flows through validation
 unchanged — the same contract as `<.form :let={f}>`.
 
-**Fully custom elements** — the body receives the Phoenix form, for arbitrary
-markup positioned within the form that reads current values:
+**Fully custom elements** — the body receives the Phoenix form itself (not a
+field), for arbitrary markup positioned within the form that reads current
+values:
 
 ```heex
 <:field :let={form} type="custom" name="summary">
@@ -140,6 +141,47 @@ markup positioned within the form that reads current values:
 Slot bodies are in-memory only: instances containing them JSON-encode with
 the bodies dropped, and declarative forms cannot round-trip through the
 WYSIWYG builder.
+
+#### Reading the whole form from a body
+
+`DynamicForm.form_data/1` takes whichever value the body receives — the
+field or the form — and returns the form's current values as a map, the same
+shape a `:change` message delivers as `payload.data`:
+
+```elixir
+%{name: "Ada", staff: [%{name: "Ada"}], rooms: [%{label: "Blue"}]}
+```
+
+It is always form-level, so a control inside one nested form can read
+another's entries. That makes cross-referencing self-contained: no messages
+to the parent, no state held outside the form, and renames show up
+immediately because the form re-renders on every change:
+
+```heex
+<:nested name="staff" title="Staff" />
+<:field nested="staff" type="text" name="name" label="Name" required />
+
+<:nested name="rooms" title="Rooms" />
+<:field :let={field} nested="rooms" type="checkbox" name="teachers" label="Teachers">
+  <%= for teacher <- DynamicForm.form_data(field)[:staff] || [] do %>
+    <label>
+      <input type="checkbox" name={"#{field.name}[]"} value={teacher[:name]} />
+      {teacher[:name]}
+    </label>
+  <% end %>
+</:field>
+```
+
+Values the user hasn't entered are absent rather than `nil` — default them
+when reading. A body's own entry is still reached through the form it
+receives (`field.form[:label].value`), which stays scoped to that entry.
+
+Two things to know when a stored value must survive edits to what it points
+at: a hand-rendered checkbox group needs the hidden empty input the built-in
+group emits (`<input type="hidden" name={"#{field.name}[]"} value="" />`) so
+unchecking everything still clears the field, and entries have no stable
+identity — using a renameable field as the value means a rename orphans the
+selections that reference it.
 
 ### Data mode
 
