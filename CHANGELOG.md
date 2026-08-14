@@ -45,6 +45,14 @@ All notable changes to this project are documented here. For releases before
 
 ### Fixed
 
+- Hiding a section no longer rewinds it to the data the form was loaded
+  with. A section hidden by `visible_if` submits nothing, and the gap was
+  being filled from the original `data` — discarding edits made while it was
+  visible, and its entries' ids along with them. The gap is now filled from
+  what the form is currently holding, falling back to the loaded data only
+  for keys the form has never held. A question disabled by `enable_if` keeps
+  its last value for the same reason, rather than reverting. Still section by
+  section: a question hidden *inside* a repeating entry loses its value.
 - Read-only values are no longer dropped inside nested entries. `readOnly`
   rendered as an HTML `disabled` input, which browsers don't submit, and the
   initial-data merge that covered for that restores top-level keys only — so

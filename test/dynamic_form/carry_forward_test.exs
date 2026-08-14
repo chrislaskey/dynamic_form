@@ -248,9 +248,10 @@ defmodule DynamicForm.CarryForwardTest do
       assert [%{age_group_ids: []}] = data(socket).programs
     end
 
-    test "a source absent from the submission prunes nothing" do
-      # The source exists in the definition but this submission carries no
-      # values for it — hidden by visible_if, say. Unobservable, not empty.
+    test "a source the submission omits keeps its references" do
+      # A hidden section submits nothing, and the gap is filled from what the
+      # form is already holding — entries and ids intact — so the reference
+      # is still valid rather than looking like a deleted entry.
       socket = mount_component(instance(), @seeded)
 
       socket =

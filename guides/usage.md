@@ -282,7 +282,18 @@ Pre-populate a form by passing `data`. Fields marked `read_only`
 still submit them: text inputs render `readonly`, and controls HTML has no
 `readonly` for (selects, checkboxes, radios) render disabled alongside a
 hidden input carrying the value. That holds inside nested entries too, where
-the initial data can't be merged back in per entry:
+the initial data can't be merged back in per entry.
+
+Anything the browser doesn't submit — a section hidden by `visible_if`, a
+question disabled by `enable_if` — keeps the value the form was already
+holding, so edits made before it was hidden survive, as do its entries' ids.
+Extra keys in `data` with no matching question, like an `id`, are merged
+back in from the data you passed. Passing *different* `data` isn't a merge
+at all: it rebuilds the form, so the new record's values win.
+
+One limit: this works section by section. A question hidden *inside* a
+repeating entry, while the rest of that entry submits normally, still loses
+its value.
 
 ```heex
 <DynamicForm.form

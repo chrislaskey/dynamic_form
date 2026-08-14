@@ -391,7 +391,7 @@ defmodule DynamicForm.RendererLive do
   @impl true
   def handle_event("validate", params, socket) do
     form_params = Map.get(params, socket.assigns.form_name, %{})
-    merged_params = merge_data(socket.assigns.initial_data, form_params)
+    merged_params = merge_data(socket, form_params)
 
     changeset =
       Changeset.create_changeset(socket.assigns.instance, merged_params,
@@ -435,7 +435,7 @@ defmodule DynamicForm.RendererLive do
   @impl true
   def handle_event("submit", params, socket) do
     form_params = Map.get(params, socket.assigns.form_name, %{})
-    merged_params = merge_data(socket.assigns.initial_data, form_params)
+    merged_params = merge_data(socket, form_params)
 
     # Submitting supersedes any debounced run: the change pass always runs
     # inline here, so a submit during the quiet period can't skip it.
@@ -543,21 +543,38 @@ defmodule DynamicForm.RendererLive do
     |> assign(:form, to_form(changeset, as: socket.assigns.form_name))
   end
 
-  defp merge_data(initial_data, changeset_data) do
-    # Merging data helps solve a few different scenarios:
-    #
-    # - Editing an existing record that has additional fields like `id` we want
-    #   to preserve. Technically this can be done in the form instance by
-    #   including a hidden `id` field but it's easy to miss. Especially if
-    #   using a WYSIWYG editor and are unfamiliar with forms.
-    #
-    # - Handling disabled fields. Disabled inputs aren't included in the changeset
-    #   which can cause disabled field values to disappear.
-    #
-    initial = recursively_convert_to_string_keys(initial_data)
-    changeset = recursively_convert_to_string_keys(changeset_data)
+  # The params a change or submit validates against, in three layers —
+  # weakest first:
+  #
+  #   1. the data the parent passed in, the only source for keys the form has
+  #      never rendered. Editing an existing record often carries extra
+  #      fields like `id` that no question collects, and they survive here.
+  #
+  #   2. what the form is currently holding. Browsers submit nothing for a
+  #      section hidden by `visible_if` or a question disabled by
+  #      `enable_if`, so without this those values would rewind to whatever
+  #      the form was loaded with — discarding edits made while the section
+  #      was visible, along with its entries' ids.
+  #
+  #   3. what the browser just sent, which always wins.
+  #
+  # A parent that passes different `data` doesn't reach this: that rebuilds
+  # the form (see definition_unchanged?/4), so the new data still wins.
+  defp merge_data(socket, form_params) do
+    socket.assigns.initial_data
+    |> recursively_convert_to_string_keys()
+    |> Map.merge(held_params(socket))
+    |> Map.merge(recursively_convert_to_string_keys(form_params))
+  end
 
-    Map.merge(initial, changeset)
+  # The params the current changeset was built from — already string-keyed,
+  # and holding raw values rather than cast ones, so a half-typed number
+  # survives a section being hidden the same way a valid one does.
+  defp held_params(socket) do
+    case socket.assigns[:changeset] do
+      %Ecto.Changeset{params: params} when is_map(params) -> params
+      _ -> %{}
+    end
   end
 
   defp recursively_convert_to_string_keys(%Decimal{} = value), do: value
