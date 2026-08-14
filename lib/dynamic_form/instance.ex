@@ -199,6 +199,7 @@ defmodule DynamicForm.Instance do
       :keyName,
       :keyDuplicationError,
       :defaultPanelValue,
+      :generateIds,
       :metadata,
       :slot
     ]
@@ -236,6 +237,7 @@ defmodule DynamicForm.Instance do
             keyName: String.t() | nil,
             keyDuplicationError: String.t() | nil,
             defaultPanelValue: map() | nil,
+            generateIds: boolean() | nil,
             metadata: map() | nil,
             slot: map() | nil
           }
@@ -279,6 +281,7 @@ defmodule DynamicForm.Instance do
         |> maybe_put(:keyName, question.keyName)
         |> maybe_put(:keyDuplicationError, question.keyDuplicationError)
         |> maybe_put(:defaultPanelValue, question.defaultPanelValue)
+        |> maybe_put(:generateIds, question.generateIds)
         |> maybe_put(:metadata, question.metadata)
 
       Jason.Encode.map(map, opts)

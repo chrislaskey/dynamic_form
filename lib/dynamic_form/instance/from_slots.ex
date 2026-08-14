@@ -181,6 +181,7 @@ defmodule DynamicForm.Instance.FromSlots do
       keyDuplicationError: entry[:key_error],
       defaultValue: entry[:default],
       defaultPanelValue: entry[:default_entry],
+      generateIds: entry[:generate_ids],
       isRequired: entry[:required],
       visibleIf: entry[:visible_if],
       enableIf: entry[:enable_if]

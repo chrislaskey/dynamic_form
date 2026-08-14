@@ -485,16 +485,19 @@ defmodule DynamicForm.RendererLive do
   end
 
   # Paneldynamic questions without initial data start with panelCount seeded
-  # entries (at least minPanelCount), mirroring SurveyJS.
+  # entries (at least minPanelCount), mirroring SurveyJS. Every entry is
+  # seeded separately so each gets its own id.
   defp seed_nested_entries(params, instance) do
-    instance.elements
-    |> Changeset.get_questions()
+    questions = Changeset.get_questions(instance.elements)
+
+    questions
     |> Enum.filter(&(&1.type == "paneldynamic"))
     |> Enum.reduce(params, fn question, acc ->
       count = max(question.panelCount || 0, question.minPanelCount || 0)
-      entries = List.duplicate(NestedForms.new_entry(question), count)
+      entries = Enum.map(1..count//1, fn _ -> NestedForms.new_entry(question) end)
       Map.put_new(acc, question.name, entries)
     end)
+    |> NestedForms.seed_entry_ids(questions)
   end
 
   # Walk the params tree along a dot-separated entry path and update the

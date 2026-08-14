@@ -908,13 +908,33 @@ defmodule DynamicForm.Renderer do
 
     elements = visible_template_elements(question.templateElements || [], context)
 
-    assigns = %{elements: elements, form: child_form, opts: child_opts}
+    assigns = %{
+      elements: elements,
+      form: child_form,
+      opts: child_opts,
+      entry_id: entry_id(question, child_form)
+    }
 
     ~H"""
+    <input
+      :if={@entry_id}
+      type="hidden"
+      name={"#{@form.name}[#{NestedForms.id_field()}]"}
+      value={@entry_id}
+    />
     <%= for element <- @elements do %>
       <%= render_element(element, @form, @opts) %>
     <% end %>
     """
+  end
+
+  # The entry's stable id, carried in a hidden input so it round-trips with
+  # the rest of the entry. Seeded once when the form is built or the entry is
+  # added — see DynamicForm.NestedForms.seed_entry_ids/2.
+  defp entry_id(question, child_form) do
+    if NestedForms.generate_ids?(question) do
+      child_form[String.to_atom(NestedForms.id_field())].value
+    end
   end
 
   # Suppress the parent-level :paneldynamic marker error — each entry renders

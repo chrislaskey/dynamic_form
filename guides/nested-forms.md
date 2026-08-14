@@ -208,6 +208,33 @@ Beyond per-entry validation of the template questions:
   of atom-keyed maps with cast values, entries omitting unanswered
   questions (matching SurveyJS).
 
+## Entry ids
+
+Entries are otherwise positional, so a value elsewhere in the form that
+references one has nothing durable to point at: a member field changes when
+the user edits it, and an index changes when entries are added or removed.
+Every entry therefore carries a **`dynamic_form_id`**, seeded once and
+round-tripped through a hidden input:
+
+- an entry loaded from `data` with an `id` **adopts that id**, so references
+  match the record the app already knows about;
+- an entry the user adds this session gets a generated one;
+- an entry that already has a `dynamic_form_id` keeps it.
+
+It arrives in `payload.data` alongside the entry's own fields:
+
+```elixir
+%{staff: [%{dynamic_form_id: "42", name: "Ada"}]}
+```
+
+**The id is only stable across sessions if you persist it and pass it back
+in `data`.** Without that, ids regenerate on reload and anything referencing
+them silently points at nothing. Where entries map to stored records with
+their own ids, that happens for free — the id is copied, not generated.
+
+Set `generate_ids={false}` (`"generateIds": false` in data mode) on a nested
+form that doesn't need identity, and no field is added to its entries.
+
 ## Styling the entry container
 
 Each repeating entry renders inside the `nested_entry/1` component — a

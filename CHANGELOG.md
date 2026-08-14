@@ -3,14 +3,17 @@
 All notable changes to this project are documented here. For releases before
 0.19.0, see the git history.
 
-## 0.20.0
+## 0.21.0
 
 ### Added
 
-- `DynamicForm.form_data/1`: inside a `<:field>` slot body, the whole form's
-  current values as a map — the same shape as `payload.data`. Always
-  form-level, so a control inside one nested form can read another's
-  entries.
+- Nested form entries carry a stable `dynamic_form_id`, so a value
+  referencing an entry survives edits and reordering. An entry loaded from
+  `data` with an `id` adopts it; one the user adds gets a generated id. The
+  field round-trips through a hidden input and appears in `payload.data` —
+  it is only stable across sessions if the application persists it and
+  passes it back in `data`. Opt out per nested form with
+  `generate_ids={false}` (`"generateIds": false`).
 
 ### Fixed
 
@@ -22,6 +25,18 @@ All notable changes to this project are documented here. For releases before
   `readonly` for render disabled alongside a hidden input carrying the value.
   Questions disabled by `enableIf` are unaffected: they remain excluded from
   the params.
+
+## 0.20.0
+
+### Added
+
+- `DynamicForm.form_data/1`: inside a `<:field>` slot body, the whole form's
+  current values as a map — the same shape as `payload.data`. Always
+  form-level, so a control inside one nested form can read another's
+  entries.
+
+### Fixed
+
 - The Usage guide's `type="custom"` example bound `:let={field}` and read
   `field.form`. That body receives the form itself, so the example raised
   `KeyError` as written.

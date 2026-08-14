@@ -32,7 +32,9 @@ In declarative mode, everything is composed from slots:
   list of maps, validated per entry.
 - **Slot bodies** — custom markup at three tiers: content blocks, custom
   controls that receive the form field (the library keeps the label, errors,
-  and validation), and fully custom elements that receive the form.
+  and validation), and fully custom elements that receive the form. Any body
+  can read the whole form's current values — including another nested form's
+  entries — with `DynamicForm.form_data/1`.
 
 ## Examples
 
@@ -215,8 +217,13 @@ The user can add and remove entries. Each entry is validated with its own child
 changeset, and the submitted value arrives as a list of maps
 (`%{name: "...", addresses: [%{street: "...", city: "..."}, ...]}`):
 
+Each entry also carries a stable `dynamic_form_id` — copied from the entry's
+`id` when the data came from a stored record, generated otherwise — so a value
+elsewhere in the form can reference an entry without breaking when the user
+edits or reorders them.
+
 See the [Nested forms](guides/nested-forms.md) guide for entry seeding,
-min/max entry counts, and per-entry validation.
+min/max entry counts, per-entry validation, and entry ids.
 
 ```heex
 <DynamicForm.form id="example-form" on_submit={&Contacts.verify/1} components={MyAppWeb.CoreComponents}>
@@ -345,7 +352,7 @@ in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:dynamic_form, "~> 0.20"}
+    {:dynamic_form, "~> 0.21"}
   ]
 end
 ```

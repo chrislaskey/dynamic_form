@@ -345,10 +345,25 @@ defmodule DynamicForm.NestedFormsTest do
           defaultPanelValue: %{"city" => "Boston"}
         )
 
-      assert NestedForms.new_entry(question) == %{
-               "street" => "Unknown",
-               "city" => "Boston"
-             }
+      assert %{"street" => "Unknown", "city" => "Boston", "dynamic_form_id" => id} =
+               NestedForms.new_entry(question)
+
+      assert is_binary(id)
+    end
+
+    test "seeds a distinct id per entry" do
+      question = addresses_question([])
+
+      ids =
+        Enum.map(1..3, fn _ -> NestedForms.new_entry(question)["dynamic_form_id"] end)
+
+      assert length(Enum.uniq(ids)) == 3
+    end
+
+    test "generate_ids false seeds no id" do
+      question = addresses_question(generateIds: false)
+
+      refute Map.has_key?(NestedForms.new_entry(question), "dynamic_form_id")
     end
   end
 

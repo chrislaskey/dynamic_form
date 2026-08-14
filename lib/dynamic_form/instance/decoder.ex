@@ -116,6 +116,7 @@ defmodule DynamicForm.Instance.Decoder do
       keyName: Map.get(data, "keyName"),
       keyDuplicationError: Map.get(data, "keyDuplicationError"),
       defaultPanelValue: Map.get(data, "defaultPanelValue"),
+      generateIds: Map.get(data, "generateIds"),
       metadata: Map.get(data, "metadata")
     }
   end

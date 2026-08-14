@@ -100,6 +100,7 @@ fields join it with `<:field nested="...">`. See the
 | `no_entries_text` | string | Shown at zero entries (→ `noEntriesText`) |
 | `confirm_delete` / `confirm_text` | boolean / string | Confirmation before removing (→ `confirmDelete`/`confirmDeleteText`) |
 | `key` / `key_error` | string | Member field unique across entries + error message (→ `keyName`/`keyDuplicationError`) |
+| `generate_ids` | boolean | Seed each entry with a stable `dynamic_form_id` (default `true`; → `generateIds`) |
 | `default` | list | Initial value: list of entry maps (→ `defaultValue`) |
 | `default_entry` | map | Values seeded into each newly added entry (→ `defaultPanelValue`) |
 | `required` | boolean | At least one entry required (→ `isRequired`) |

@@ -25,6 +25,30 @@ defmodule DynamicForm.NestedForms do
 
   alias DynamicForm.{Changeset, Instance}
 
+  @id_field "dynamic_form_id"
+
+  @doc """
+  The entry field carrying a stable id, when `generateIds` is on.
+
+  Entries are otherwise positional, so a value referencing one (a checkbox
+  listing another nested form's entries, say) has nothing durable to point
+  at: a member field changes when the user edits it, and an index changes
+  when entries are added or removed. This field is seeded once — copied from
+  the entry's `id` when the data came from a stored record, generated
+  otherwise — and round-trips through a hidden input.
+
+  It is only stable across sessions if the application persists it and
+  passes it back in `data`.
+  """
+  def id_field, do: @id_field
+
+  @doc """
+  Whether a paneldynamic question seeds entry ids. On unless `generateIds`
+  is explicitly `false`.
+  """
+  def generate_ids?(%Instance.Question{generateIds: false}), do: false
+  def generate_ids?(%Instance.Question{}), do: true
+
   @doc """
   Builds one child changeset per entry of a paneldynamic question.
 
@@ -53,7 +77,7 @@ defmodule DynamicForm.NestedForms do
       ) do
     template = %Instance{
       id: "#{question.name}-template",
-      elements: question.templateElements || []
+      elements: template_elements(question)
     }
 
     children =
@@ -107,7 +131,8 @@ defmodule DynamicForm.NestedForms do
   The initial params for a newly added entry.
 
   Template questions' `defaultValue`s seed the entry, overridden by the
-  question's `defaultPanelValue`.
+  question's `defaultPanelValue`, plus a generated `dynamic_form_id` unless
+  the question sets `generateIds` to `false`.
   """
   def new_entry(%Instance.Question{type: "paneldynamic"} = question) do
     defaults =
@@ -122,7 +147,72 @@ defmodule DynamicForm.NestedForms do
 
     default_entry = Map.new(question.defaultPanelValue || %{}, fn {k, v} -> {to_string(k), v} end)
 
-    Map.merge(defaults, default_entry)
+    defaults
+    |> Map.merge(default_entry)
+    |> put_entry_id(question)
+  end
+
+  @doc """
+  Seeds `dynamic_form_id` on every entry of the given questions' values.
+
+  Runs over string-keyed params when a form is built or reset, recursing
+  into nested templates. An entry that already carries an id keeps it; one
+  carrying an `id` from a stored record adopts that; anything else — an
+  entry the user created this session — gets a generated one.
+
+  Generation happens here rather than at render time on purpose: a fresh id
+  per render would be worse than no id at all.
+  """
+  def seed_entry_ids(params, questions) when is_map(params) do
+    questions
+    |> Enum.filter(&(&1.type == "paneldynamic"))
+    |> Enum.reduce(params, fn question, acc ->
+      case Map.get(acc, question.name) do
+        nil ->
+          acc
+
+        value ->
+          Map.put(acc, question.name, Enum.map(entries(value), &seed_entry(&1, question)))
+      end
+    end)
+  end
+
+  def seed_entry_ids(params, _questions), do: params
+
+  defp seed_entry(entry, question) when is_map(entry) do
+    entry
+    |> put_entry_id(question)
+    |> seed_entry_ids(Changeset.get_questions(question.templateElements || []))
+  end
+
+  defp seed_entry(entry, _question), do: entry
+
+  # An id already on the entry wins, then the record's own `id`, then a
+  # generated one.
+  defp put_entry_id(entry, question) do
+    cond do
+      not generate_ids?(question) -> entry
+      present?(Map.get(entry, @id_field)) -> entry
+      present?(Map.get(entry, "id")) -> Map.put(entry, @id_field, to_string(entry["id"]))
+      true -> Map.put(entry, @id_field, Ecto.UUID.generate())
+    end
+  end
+
+  defp present?(nil), do: false
+  defp present?(""), do: false
+  defp present?(_value), do: true
+
+  # The id is cast as an ordinary template field so it round-trips with the
+  # entry, but it is not part of templateElements — the renderer emits its
+  # own hidden input rather than a labelled control.
+  defp template_elements(question) do
+    elements = question.templateElements || []
+
+    if generate_ids?(question) do
+      elements ++ [%Instance.Question{name: @id_field, type: "text"}]
+    else
+      elements
+    end
   end
 
   @doc """

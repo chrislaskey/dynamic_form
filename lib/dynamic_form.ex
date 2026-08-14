@@ -497,6 +497,13 @@ defmodule DynamicForm do
     attr(:confirm_text, :string, doc: "Confirmation dialog text")
     attr(:key, :string, doc: "Member field whose value must be unique across entries")
     attr(:key_error, :string, doc: "Error message for key duplicates")
+
+    attr(:generate_ids, :boolean,
+      doc:
+        "Seed each entry with a stable dynamic_form_id, copied from the entry's id " <>
+          "when the data came from a stored record (default true)"
+    )
+
     attr(:default, :list, doc: "Initial value: a list of entry maps (edit-mode style seeding)")
     attr(:default_entry, :map, doc: "Values seeded into each newly added entry")
     attr(:required, :boolean, doc: "At least one entry is required")

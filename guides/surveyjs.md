@@ -131,6 +131,10 @@ Beyond the SurveyJS format, definitions can carry:
 
 - **`metadata`** — per-question extension point: file upload configuration,
   `"style"` (`"horizontal"`/`"vertical"`) for radiogroup/checkbox layout.
+- **`generateIds`** — on by default for `paneldynamic`: every entry carries a
+  stable `dynamic_form_id`, copied from the entry's `id` when the data came
+  from a stored record. See
+  [Nested forms: Entry ids](nested-forms.md#entry-ids).
 - **Declarative mode** — the same instances can be defined with `<:field>`
   slots in HEEx, including custom markup via slot bodies (in-memory only;
   dropped on JSON encoding). See [Usage: Defining forms](usage.md#defining-forms).
