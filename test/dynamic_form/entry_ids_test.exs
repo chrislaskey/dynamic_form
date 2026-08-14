@@ -141,6 +141,37 @@ defmodule DynamicForm.EntryIdsTest do
     end
   end
 
+  describe "parent re-renders" do
+    # Ids are seeded into the changeset's params, never into initial_data:
+    # initial_data is compared on every parent re-render to decide whether the
+    # form resets, so a fresh id per render would wipe in-progress input.
+    test "an unchanged re-render keeps the id and in-progress input" do
+      assigns = %{id: "school", instance: instance(), data: %{"staff" => [%{"name" => "Ada"}]}}
+
+      {:ok, socket} = RendererLive.update(assigns, %Phoenix.LiveView.Socket{})
+      [id] = ids(socket)
+
+      socket =
+        validate(socket, %{"staff" => %{"0" => %{"dynamic_form_id" => id, "name" => "Ada L"}}})
+
+      {:ok, socket} = RendererLive.update(assigns, socket)
+
+      assert ids(socket) == [id]
+      assert [%{name: "Ada L"}] = entries(socket)
+    end
+
+    test "an unchanged re-render keeps a seeded entry's id" do
+      assigns = %{id: "school", instance: instance(panelCount: 2)}
+
+      {:ok, socket} = RendererLive.update(assigns, %Phoenix.LiveView.Socket{})
+      seeded = ids(socket)
+
+      {:ok, socket} = RendererLive.update(assigns, socket)
+
+      assert ids(socket) == seeded
+    end
+  end
+
   describe "nested inside another nested form" do
     @deep %Instance{
       id: "org",

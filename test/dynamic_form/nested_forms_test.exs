@@ -345,25 +345,16 @@ defmodule DynamicForm.NestedFormsTest do
           defaultPanelValue: %{"city" => "Boston"}
         )
 
-      assert %{"street" => "Unknown", "city" => "Boston", "dynamic_form_id" => id} =
-               NestedForms.new_entry(question)
-
-      assert is_binary(id)
+      assert NestedForms.new_entry(question) == %{
+               "street" => "Unknown",
+               "city" => "Boston"
+             }
     end
 
-    test "seeds a distinct id per entry" do
-      question = addresses_question([])
-
-      ids =
-        Enum.map(1..3, fn _ -> NestedForms.new_entry(question)["dynamic_form_id"] end)
-
-      assert length(Enum.uniq(ids)) == 3
-    end
-
-    test "generate_ids false seeds no id" do
-      question = addresses_question(generateIds: false)
-
-      refute Map.has_key?(NestedForms.new_entry(question), "dynamic_form_id")
+    test "does not seed an id — that happens over the changeset's params" do
+      # Generating here would leak into initial_data, which is compared on
+      # every parent re-render to decide whether the form resets.
+      refute Map.has_key?(NestedForms.new_entry(addresses_question([])), "dynamic_form_id")
     end
   end
 

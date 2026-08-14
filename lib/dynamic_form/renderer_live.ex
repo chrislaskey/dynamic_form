@@ -268,7 +268,7 @@ defmodule DynamicForm.RendererLive do
       gettext = Map.get(assigns, :gettext, DynamicForm.Gettext)
 
       changeset =
-        Changeset.create_changeset(instance, initial_data,
+        Changeset.create_changeset(instance, seed_entry_ids(initial_data, instance),
           custom_field_types: Map.get(assigns, :custom_field_types)
         )
 
@@ -488,16 +488,22 @@ defmodule DynamicForm.RendererLive do
   # entries (at least minPanelCount), mirroring SurveyJS. Every entry is
   # seeded separately so each gets its own id.
   defp seed_nested_entries(params, instance) do
-    questions = Changeset.get_questions(instance.elements)
-
-    questions
+    instance.elements
+    |> Changeset.get_questions()
     |> Enum.filter(&(&1.type == "paneldynamic"))
     |> Enum.reduce(params, fn question, acc ->
       count = max(question.panelCount || 0, question.minPanelCount || 0)
       entries = Enum.map(1..count//1, fn _ -> NestedForms.new_entry(question) end)
       Map.put_new(acc, question.name, entries)
     end)
-    |> NestedForms.seed_entry_ids(questions)
+  end
+
+  # Entry ids are form state, not initial data. `initial_data` is compared on
+  # every parent re-render to decide whether the form resets, so generating
+  # ids into it would make it differ every time and wipe in-progress input —
+  # they are seeded into the changeset's params instead.
+  defp seed_entry_ids(params, instance) do
+    NestedForms.seed_entry_ids(params, Changeset.get_questions(instance.elements))
   end
 
   # Walk the params tree along a dot-separated entry path and update the
@@ -517,10 +523,11 @@ defmodule DynamicForm.RendererLive do
   end
 
   # Revalidate after an entry add/remove: adding or removing an entry
-  # changes the form's data, so it runs the change pass like any other.
+  # changes the form's data, so it runs the change pass like any other. A
+  # freshly added entry gets its id here — existing entries keep theirs.
   defp rebuild_form(socket, params) do
     socket.assigns.instance
-    |> Changeset.create_changeset(params,
+    |> Changeset.create_changeset(seed_entry_ids(params, socket.assigns.instance),
       custom_field_types: socket.assigns[:custom_field_types]
     )
     |> then(&apply_change(socket, &1))

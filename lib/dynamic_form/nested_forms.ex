@@ -131,8 +131,10 @@ defmodule DynamicForm.NestedForms do
   The initial params for a newly added entry.
 
   Template questions' `defaultValue`s seed the entry, overridden by the
-  question's `defaultPanelValue`, plus a generated `dynamic_form_id` unless
-  the question sets `generateIds` to `false`.
+  question's `defaultPanelValue`. The entry's `dynamic_form_id` is seeded
+  separately by `seed_entry_ids/2`, which runs over the changeset's params —
+  generating one here would leak into `initial_data` and reset the form on
+  every parent re-render.
   """
   def new_entry(%Instance.Question{type: "paneldynamic"} = question) do
     defaults =
@@ -147,9 +149,7 @@ defmodule DynamicForm.NestedForms do
 
     default_entry = Map.new(question.defaultPanelValue || %{}, fn {k, v} -> {to_string(k), v} end)
 
-    defaults
-    |> Map.merge(default_entry)
-    |> put_entry_id(question)
+    Map.merge(defaults, default_entry)
   end
 
   @doc """
