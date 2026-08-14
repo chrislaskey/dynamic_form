@@ -428,6 +428,36 @@ defmodule DynamicForm do
         ~s|Choices for dropdown/radiogroup/checkbox/tagbox: [{"Label", "value"}, ...] or ["value", ...]|
     )
 
+    attr(:choices_from, :string,
+      doc:
+        "Carry forward: build this field's choices from another question's values, " <>
+          "typically a <:nested> form. Mutually exclusive with options"
+    )
+
+    attr(:choice_value, :string,
+      doc:
+        "Carry forward: the source field supplying each choice's value " <>
+          "(default: the entry's dynamic_form_id)"
+    )
+
+    attr(:choice_text, :string,
+      doc:
+        ~s|Carry forward: the source field supplying each choice's label, or a | <>
+          ~s|template interpolating them — "{min} - {max}", "{panelIndex}"|
+    )
+
+    attr(:choices_mode, :string,
+      doc:
+        ~s|Carry forward from another choice field: "all" (default), "selected", | <>
+          ~s|or "unselected"|
+    )
+
+    attr(:no_choices_text, :string,
+      doc:
+        "Shown in place of the control when the field has no choices yet — " <>
+          "typically a carried-forward source with no entries"
+    )
+
     attr(:required, :boolean)
     attr(:required_if, :string, doc: "SurveyJS expression, e.g. \"{other} notempty\"")
     attr(:visible_if, :string, doc: "SurveyJS expression, e.g. \"{subject} = 'support'\"")

@@ -3,6 +3,34 @@
 All notable changes to this project are documented here. For releases before
 0.19.0, see the git history.
 
+## Unreleased
+
+### Added
+
+- Carry forward (SurveyJS's `choicesFromQuestion`): a choice field can build
+  its options from a `<:nested>` form's entries with `choices_from`, labelled
+  by `choice_text` — a member field's name or a template interpolating
+  several (`"{min} - {max}"`, `"{panelIndex}"`). Values default to the
+  entry's `dynamic_form_id`, so a selection survives edits to the entry it
+  points at. Source names resolve innermost-first, so a nested form inside
+  the same entry wins over a form-level one of the same name.
+- `no_choices_text` replaces a carried-forward field's control while its
+  source has no entries yet, so an empty checkbox group can say "Add an age
+  group above to assign it here" instead of rendering nothing.
+- Carry forward from another **choice field**, not just a nested form: its
+  options carry over, narrowed by `choices_mode` — `"all"` (default),
+  `"selected"`, or `"unselected"` (SurveyJS's `choicesFromQuestionMode`).
+- Values a carried-forward source no longer offers are cleared during
+  validation — a deleted entry, an option removed from the definition, or the
+  source emptied entirely. Nothing is cleared when the form can't observe the
+  source: no such question in the definition, or a submission that carries no
+  values for it (hidden by `visible_if`, say).
+
+### Changed
+
+- A choice field no longer requires an `options` list when it has a slot body
+  rendering its own choices, or a `choices_from` source.
+
 ## 0.21.0
 
 ### Added

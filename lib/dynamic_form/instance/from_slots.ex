@@ -58,6 +58,7 @@ defmodule DynamicForm.Instance.FromSlots do
   @question_types ~w(text comment dropdown radiogroup checkbox boolean rating tagbox file)
   @element_types ~w(html image custom)
   @choice_types ~w(dropdown radiogroup checkbox tagbox)
+  @choice_modes ~w(all selected unselected)
 
   @doc """
   Validates slot entries and builds a `%DynamicForm.Instance{}`.
@@ -205,6 +206,11 @@ defmodule DynamicForm.Instance.FromSlots do
       description: entry[:description],
       defaultValue: entry[:default],
       choices: entry[:options],
+      choicesFromQuestion: entry[:choices_from],
+      choiceValuesFromQuestion: entry[:choice_value],
+      choiceTextsFromQuestion: entry[:choice_text],
+      choicesFromQuestionMode: entry[:choices_mode],
+      noChoicesText: entry[:no_choices_text],
       validators: build_validators(entry),
       isRequired: entry[:required],
       requiredIf: entry[:required_if],
@@ -337,6 +343,135 @@ defmodule DynamicForm.Instance.FromSlots do
     validate_cycles!(nesteds)
     validate_unique_names!(fields, groups, nesteds)
     validate_nested_members!(fields, nesteds)
+    validate_carry_forward!(fields, nesteds)
+  end
+
+  # choices_from builds a field's choices from a <:nested> form's entries.
+  defp validate_carry_forward!(fields, nesteds) do
+    validate_carry_forward_cycles!(fields)
+
+    Enum.each(fields, fn entry ->
+      cond do
+        entry[:choices_from] != nil -> validate_carry_forward_source!(entry, fields, nesteds)
+        entry[:choice_value] != nil -> raise_carry_forward_orphan!(entry, "choice_value")
+        entry[:choice_text] != nil -> raise_carry_forward_orphan!(entry, "choice_text")
+        entry[:choices_mode] != nil -> raise_carry_forward_orphan!(entry, "choices_mode")
+        true -> :ok
+      end
+    end)
+  end
+
+  defp raise_carry_forward_orphan!(entry, attr) do
+    raise ArgumentError,
+          "<:field name=\"#{entry[:name]}\"> received #{attr} without choices_from — " <>
+            "#{attr} configures where carried-forward choices come from"
+  end
+
+  defp validate_carry_forward_source!(entry, fields, nesteds) do
+    source = entry[:choices_from]
+
+    if entry[:type] not in @choice_types do
+      raise ArgumentError,
+            "<:field type=\"#{entry[:type]}\" name=\"#{entry[:name]}\"> received " <>
+              "choices_from, which only applies to choice fields: " <>
+              "#{Enum.join(@choice_types, ", ")}"
+    end
+
+    candidates =
+      Enum.filter(nesteds, &(&1[:name] == source)) ++
+        Enum.filter(fields, &(&1[:name] == source and &1[:type] in @choice_types))
+
+    in_scope = Enum.filter(candidates, &(&1[:nested] == entry[:nested]))
+    at_form_level = Enum.filter(candidates, &(&1[:nested] == nil))
+
+    if entry[:nested] != nil and in_scope != [] and at_form_level != [] do
+      raise ArgumentError,
+            "<:field name=\"#{entry[:name]}\"> choices_from=#{inspect(source)} is ambiguous: " <>
+              "a question with that name exists both inside #{inspect(entry[:nested])} and " <>
+              "at the form level. Rename one of them"
+    end
+
+    case in_scope ++ at_form_level do
+      [] ->
+        raise ArgumentError,
+              "<:field name=\"#{entry[:name]}\"> choices_from=#{inspect(source)} does not " <>
+                "match a <:nested> form or a choice field"
+
+      [source_entry | _] ->
+        validate_carry_forward_config!(entry, source_entry)
+    end
+  end
+
+  # A nested source carries one choice per entry, so it needs to know which
+  # fields label and identify them. A choice-typed source already has
+  # {text, value} pairs, so those attrs have nothing to configure — but the
+  # selected/unselected modes only make sense there.
+  defp validate_carry_forward_config!(entry, %{__slot__: :nested} = nested) do
+    if entry[:choice_text] == nil do
+      raise ArgumentError,
+            "<:field name=\"#{entry[:name]}\"> requires choice_text with choices_from — " <>
+              "without it the choices would be labelled with their opaque ids. Name a field " <>
+              ~s|of #{inspect(nested[:name])}, or interpolate several: choice_text="{min} - {max}"|
+    end
+
+    if entry[:choices_mode] != nil do
+      raise ArgumentError,
+            "<:field name=\"#{entry[:name]}\"> received choices_mode, which applies to " <>
+              "choices carried forward from another choice field. " <>
+              "#{inspect(nested[:name])} is a <:nested> form — every entry is a choice"
+    end
+
+    if nested[:generate_ids] == false and entry[:choice_value] == nil do
+      raise ArgumentError,
+            "<:field name=\"#{entry[:name]}\"> carries choices forward from " <>
+              "#{inspect(nested[:name])}, which sets generate_ids={false} — so its entries " <>
+              "have no stable id. Give the nested form ids, or name a value field with " <>
+              "choice_value"
+    end
+  end
+
+  defp validate_carry_forward_config!(entry, source) do
+    Enum.each([:choice_text, :choice_value], fn attr ->
+      if entry[attr] != nil do
+        raise ArgumentError,
+              "<:field name=\"#{entry[:name]}\"> received #{attr}, which applies to choices " <>
+                "carried forward from a <:nested> form. #{inspect(source[:name])} is a choice " <>
+                "field — its options already have a label and a value"
+      end
+    end)
+
+    if entry[:choices_mode] not in [nil | @choice_modes] do
+      raise ArgumentError,
+            "<:field name=\"#{entry[:name]}\"> has choices_mode " <>
+              "#{inspect(entry[:choices_mode])} — expected one of: " <>
+              "#{Enum.join(@choice_modes, ", ")}"
+    end
+  end
+
+  # A carries from B, B carries from A — reachable only between choice
+  # fields, since a nested form's entries are never themselves carried.
+  defp validate_carry_forward_cycles!(fields) do
+    edges =
+      for entry <- fields, entry[:choices_from] != nil, into: %{} do
+        {entry[:name], entry[:choices_from]}
+      end
+
+    Enum.each(Map.keys(edges), &walk_carry_forward!(&1, edges, []))
+  end
+
+  defp walk_carry_forward!(name, edges, seen) do
+    cond do
+      name in seen ->
+        raise ArgumentError,
+              "<:field> choices_from references form a cycle: " <>
+                Enum.join(Enum.reverse([name | seen]), " → ")
+
+      Map.has_key?(edges, name) ->
+        walk_carry_forward!(Map.fetch!(edges, name), edges, [name | seen])
+
+      true ->
+        :ok
+    end
   end
 
   defp validate_field!(entry, custom_types) do
@@ -375,10 +510,18 @@ defmodule DynamicForm.Instance.FromSlots do
   end
 
   defp validate_type_requirements!(type, entry) when type in @choice_types do
-    if empty_options?(entry) do
+    # Options can come from the choices_from source or be rendered by a slot
+    # body instead of an options list.
+    if empty_options?(entry) and entry[:choices_from] == nil and entry[:inner_block] == nil do
       raise ArgumentError,
             "<:field type=\"#{type}\" name=\"#{entry[:name]}\"> requires an options list, " <>
-              "e.g. options={[{\"Label\", \"value\"}, ...]}"
+              "a choices_from source, or a slot body rendering its own choices"
+    end
+
+    if not empty_options?(entry) and entry[:choices_from] != nil do
+      raise ArgumentError,
+            "<:field type=\"#{type}\" name=\"#{entry[:name]}\"> received both options and " <>
+              "choices_from — a field's choices come from one or the other"
     end
   end
 

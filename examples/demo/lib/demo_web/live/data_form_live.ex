@@ -201,13 +201,20 @@ defmodule DemoWeb.DataFormLive do
           <.definition
             title="Initial Params (edit mode)"
             subtitle="Passed as data={...}; the definition stays the same, with the email field switched to readOnly"
-            code={inspect(if(@mode == :edit_struct, do: sample_edit_struct_data(), else: sample_edit_data()), pretty: true)}
+            code={
+              inspect(
+                if(@mode == :edit_struct, do: sample_edit_struct_data(), else: sample_edit_data()),
+                pretty: true
+              )
+            }
           />
         <% end %>
 
         <.definition
           title="Form Definition (Instance structs)"
-          code={inspect((@mode in [:edit, :edit_struct] && @edit_form) || @contact_form, pretty: true)}
+          code={
+            inspect((@mode in [:edit, :edit_struct] && @edit_form) || @contact_form, pretty: true)
+          }
         />
 
         <div class="rounded-lg bg-white shadow-sm ring-1 ring-gray-900/5 p-6">
@@ -270,7 +277,10 @@ defmodule DemoWeb.DataFormLive do
   end
 
   defp sample_edit_struct_data do
-    struct(Demo.SampleContact, Map.new(sample_edit_data(), fn {k, v} -> {String.to_atom(k), v} end))
+    struct(
+      Demo.SampleContact,
+      Map.new(sample_edit_data(), fn {k, v} -> {String.to_atom(k), v} end)
+    )
   end
 
   # Edit mode reuses the create definition with the email field locked

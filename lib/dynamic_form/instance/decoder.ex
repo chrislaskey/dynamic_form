@@ -117,6 +117,11 @@ defmodule DynamicForm.Instance.Decoder do
       keyDuplicationError: Map.get(data, "keyDuplicationError"),
       defaultPanelValue: Map.get(data, "defaultPanelValue"),
       generateIds: Map.get(data, "generateIds"),
+      choicesFromQuestion: Map.get(data, "choicesFromQuestion"),
+      choiceValuesFromQuestion: Map.get(data, "choiceValuesFromQuestion"),
+      choiceTextsFromQuestion: Map.get(data, "choiceTextsFromQuestion"),
+      choicesFromQuestionMode: Map.get(data, "choicesFromQuestionMode"),
+      noChoicesText: Map.get(data, "noChoicesText"),
       metadata: Map.get(data, "metadata")
     }
   end

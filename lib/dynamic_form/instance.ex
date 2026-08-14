@@ -200,6 +200,11 @@ defmodule DynamicForm.Instance do
       :keyDuplicationError,
       :defaultPanelValue,
       :generateIds,
+      :choicesFromQuestion,
+      :choiceValuesFromQuestion,
+      :choiceTextsFromQuestion,
+      :choicesFromQuestionMode,
+      :noChoicesText,
       :metadata,
       :slot
     ]
@@ -238,6 +243,11 @@ defmodule DynamicForm.Instance do
             keyDuplicationError: String.t() | nil,
             defaultPanelValue: map() | nil,
             generateIds: boolean() | nil,
+            choicesFromQuestion: String.t() | nil,
+            choiceValuesFromQuestion: String.t() | nil,
+            choiceTextsFromQuestion: String.t() | nil,
+            choicesFromQuestionMode: String.t() | nil,
+            noChoicesText: String.t() | nil,
             metadata: map() | nil,
             slot: map() | nil
           }
@@ -282,6 +292,11 @@ defmodule DynamicForm.Instance do
         |> maybe_put(:keyDuplicationError, question.keyDuplicationError)
         |> maybe_put(:defaultPanelValue, question.defaultPanelValue)
         |> maybe_put(:generateIds, question.generateIds)
+        |> maybe_put(:choicesFromQuestion, question.choicesFromQuestion)
+        |> maybe_put(:choiceValuesFromQuestion, question.choiceValuesFromQuestion)
+        |> maybe_put(:choiceTextsFromQuestion, question.choiceTextsFromQuestion)
+        |> maybe_put(:choicesFromQuestionMode, question.choicesFromQuestionMode)
+        |> maybe_put(:noChoicesText, question.noChoicesText)
         |> maybe_put(:metadata, question.metadata)
 
       Jason.Encode.map(map, opts)

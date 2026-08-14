@@ -67,7 +67,14 @@ For `paneldynamic`: `templateElements` (alias `questions`), `templateTitle`
 `removePanelText` (alias `panelRemoveText`), `noEntriesText`,
 `confirmDelete`, `confirmDeleteText`, `keyName`, `keyDuplicationError`, and
 `defaultPanelValue`. Template expressions support the `{panel.field}`
-scope prefix. Not supported: `displayMode`/`renderMode` variants other than
+scope prefix.
+
+Carry forward: `choicesFromQuestion` builds a choice question's options from
+a `paneldynamic`'s entries — with `choiceValuesFromQuestion` and
+`choiceTextsFromQuestion` selecting the value and label — or from another
+choice question's options, narrowed by `choicesFromQuestionMode`
+(`all`/`selected`/`unselected`). See
+[Nested forms](nested-forms.md#choices-from-another-nested-form). Not supported: `displayMode`/`renderMode` variants other than
 the default list (`carousel`, `tab`), `templateVisibleIf`,
 `{parentPanel.*}`/`{prevPanel.*}` references, and file uploads inside
 templates.
@@ -135,6 +142,9 @@ Beyond the SurveyJS format, definitions can carry:
   stable `dynamic_form_id`, copied from the entry's `id` when the data came
   from a stored record. See
   [Nested forms: Entry ids](nested-forms.md#entry-ids).
+- **`choiceTextsFromQuestion` as a template** — beyond naming one member
+  field, it can interpolate several (`"{min} - {max}"`, `"{panelIndex}"`),
+  which SurveyJS's single-question form can't express.
 - **Declarative mode** — the same instances can be defined with `<:field>`
   slots in HEEx, including custom markup via slot bodies (in-memory only;
   dropped on JSON encoding). See [Usage: Defining forms](usage.md#defining-forms).

@@ -51,6 +51,11 @@ raise.
 | `input_type` | string | `text` | HTML input type pass-through (`email`, `number`, ...) |
 | `default` | any | questions | Default value seeded into the form params (→ `defaultValue`) |
 | `options` | list | choice types | Choices: `[{"Label", "value"}, ...]` or `["value", ...]` (→ `choices`) |
+| `choices_from` | string | choice types | Carry forward: build choices from a `<:nested>` form's entries (→ `choicesFromQuestion`). Excludes `options` |
+| `choice_text` | string | choice types | Label for each carried choice: a member field name, or a template — `"{min} - {max}"`, `"{panelIndex}"` (→ `choiceTextsFromQuestion`). Required with `choices_from` |
+| `choice_value` | string | choice types | Value for each carried choice (→ `choiceValuesFromQuestion`; default: the entry's `dynamic_form_id`). Nested sources only |
+| `choices_mode` | string | choice types | Carrying forward from another choice field: `"all"` (default), `"selected"`, `"unselected"` (→ `choicesFromQuestionMode`) |
+| `no_choices_text` | string | choice types | Shown in place of the control while a carried-forward source has no entries (→ `noChoicesText`) |
 | `required` | boolean | questions | Required field (→ `isRequired`) |
 | `required_if` | string | questions | Conditional requirement expression (→ `requiredIf`) |
 | `visible_if` | string | all | Conditional visibility expression (→ `visibleIf`) |

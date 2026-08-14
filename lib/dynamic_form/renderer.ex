@@ -117,6 +117,7 @@ defmodule DynamicForm.Renderer do
       |> assign(:components, components)
       |> assign(:field_types, field_types)
       |> assign(:form_data, applied_form_data(assigns.form))
+      |> assign(:questions, questions_by_name(instance.elements))
 
     ~H"""
     <.form
@@ -128,7 +129,7 @@ defmodule DynamicForm.Renderer do
       phx-target={@target}
     >
       <%= for element <- visible_elements(@instance.elements, @form) do %>
-        <%= render_element(element, f, disabled: @disabled, gettext: @gettext, uploads: @uploads, parent_id: @parent_id, components: @components, custom_field_types: @field_types, target: @target, form_data: @form_data) %>
+        <%= render_element(element, f, disabled: @disabled, gettext: @gettext, uploads: @uploads, parent_id: @parent_id, components: @components, custom_field_types: @field_types, target: @target, form_data: @form_data, questions: @questions) %>
       <% end %>
 
       <div :if={!@hide_submit} class="mt-6 flex items-center justify-end gap-x-6">
@@ -208,15 +209,42 @@ defmodule DynamicForm.Renderer do
 
   # Dispatch to appropriate renderer based on element type
   defp render_element(%Instance.Question{} = question, form, opts) do
-    assigns = %{question: question, form: form, opts: opts}
+    assigns = %{
+      question: question,
+      form: form,
+      opts: opts,
+      no_choices?: no_choices?(question, opts),
+      components: Keyword.get(opts, :components),
+      label: question_label(question)
+    }
 
     ~H"""
-    {render_question(@question, @form, @opts)}{readonly_value_inputs(@question, @form, @opts)}
+    <%= if @no_choices? do %>
+      <div class="mb-4">
+        {Components.render(@components, :label, %{
+          inner_block: [
+            %{__slot__: :inner_block, inner_block: fn _changed, _arg -> @label end}
+          ]
+        })}
+        <p class="mt-2 text-sm text-gray-500">{@question.noChoicesText}</p>
+      </div>
+    <% else %>
+      {render_question(@question, @form, @opts)}{readonly_value_inputs(@question, @form, @opts)}
+    <% end %>
     """
   end
 
   defp render_element(%Instance.Element{} = element, form, opts) do
     render_panel_or_html(element, form, opts)
+  end
+
+  # A choice question whose choices are all carried forward has none to show
+  # until its source has entries. Rather than an empty control, render the
+  # question's noChoicesText — "Add an age group above to assign it here".
+  defp no_choices?(%Instance.Question{noChoicesText: nil}, _opts), do: false
+
+  defp no_choices?(%Instance.Question{} = question, opts) do
+    question.choicesFromQuestion != nil and resolve_choices(question, opts) == []
   end
 
   # Render HTML elements defined with a slot body (see Instance.FromSlots).
@@ -457,7 +485,7 @@ defmodule DynamicForm.Renderer do
   defp render_question(%Instance.Question{type: "dropdown"} = question, form, opts) do
     disabled = question_disabled?(question, form, opts)
     field_atom = String.to_atom(question.name)
-    choices = normalize_choices(question.choices)
+    choices = resolve_choices(question, opts)
 
     label = question_label(question)
 
@@ -492,7 +520,7 @@ defmodule DynamicForm.Renderer do
   defp render_question(%Instance.Question{type: "radiogroup"} = question, form, opts) do
     disabled = question_disabled?(question, form, opts)
     field_atom = String.to_atom(question.name)
-    choices = normalize_choices(question.choices)
+    choices = resolve_choices(question, opts)
 
     # Get style from metadata
     style =
@@ -600,7 +628,7 @@ defmodule DynamicForm.Renderer do
   defp render_question(%Instance.Question{type: "checkbox"} = question, form, opts) do
     disabled = question_disabled?(question, form, opts)
     field_atom = String.to_atom(question.name)
-    choices = normalize_choices(question.choices)
+    choices = resolve_choices(question, opts)
     label = question_label(question)
 
     style =
@@ -641,7 +669,7 @@ defmodule DynamicForm.Renderer do
   defp render_question(%Instance.Question{type: "tagbox"} = question, form, opts) do
     disabled = question_disabled?(question, form, opts)
     field_atom = String.to_atom(question.name)
-    choices = normalize_choices(question.choices)
+    choices = resolve_choices(question, opts)
     label = question_label(question)
 
     assigns = %{
@@ -860,7 +888,7 @@ defmodule DynamicForm.Renderer do
       form: form,
       field_atom: field_atom,
       disabled: disabled,
-      choices: normalize_choices(question.choices),
+      choices: resolve_choices(question, opts),
       label: question_label(question),
       components: Keyword.get(opts, :components)
     }
@@ -905,6 +933,10 @@ defmodule DynamicForm.Renderer do
         :entry_path,
         Keyword.get(opts, :entry_path, []) ++ [question.name, to_string(index)]
       )
+      # This entry's own values and questions, so a carried-forward source
+      # name resolves innermost-first — see resolve_choices/2.
+      |> Keyword.put(:entry_data, Ecto.Changeset.apply_changes(child))
+      |> Keyword.put(:entry_questions, questions_by_name(question.templateElements || []))
 
     elements = visible_template_elements(question.templateElements || [], context)
 
@@ -1053,6 +1085,177 @@ defmodule DynamicForm.Renderer do
   defp readonly_values(nil), do: []
   defp readonly_values(values) when is_list(values), do: Enum.map(values, &to_string/1)
   defp readonly_values(value), do: [to_string(value)]
+
+  # A question's choices: its own `choices`, or — when it declares
+  # `choicesFromQuestion` — one choice per entry of the source question
+  # (SurveyJS's carry forward).
+  #
+  # The source name resolves innermost-first, matching how `{field}`
+  # expressions scope inside a template: the enclosing entry's values first,
+  # then form-level. That is what lets a field inside one entry list "this
+  # entry's own children" as well as a top-level nested form's entries.
+  defp resolve_choices(%Instance.Question{choicesFromQuestion: nil} = question, _opts) do
+    normalize_choices(question.choices)
+  end
+
+  defp resolve_choices(%Instance.Question{} = question, opts) do
+    case source_question(question.choicesFromQuestion, opts) do
+      %Instance.Question{type: "paneldynamic"} -> carried_from_entries(question, opts)
+      %Instance.Question{} = source -> carried_from_choices(source, question, opts)
+      nil -> carried_from_entries(question, opts)
+    end
+  end
+
+  # The source question, innermost-first: a question in the enclosing entry's
+  # template shadows a form-level one of the same name.
+  defp source_question(name, opts) do
+    entry_scope = Keyword.get(opts, :entry_questions) || %{}
+    form_scope = Keyword.get(opts, :questions) || %{}
+
+    Map.get(entry_scope, name) || Map.get(form_scope, name)
+  end
+
+  # One choice per entry of a nested form.
+  defp carried_from_entries(question, opts) do
+    case source_value(question.choicesFromQuestion, opts) do
+      nil ->
+        []
+
+      value ->
+        value
+        |> NestedForms.entries()
+        |> Enum.with_index()
+        |> Enum.flat_map(&carried_choice(&1, question))
+    end
+  end
+
+  # The source's own choices, optionally narrowed to what the user has (or
+  # hasn't) selected there — SurveyJS's choicesFromQuestionMode.
+  defp carried_from_choices(source, question, opts) do
+    choices = normalize_choices(source.choices)
+
+    case question.choicesFromQuestionMode do
+      mode when mode in [nil, "all"] ->
+        choices
+
+      mode when mode in ["selected", "unselected"] ->
+        selected =
+          source.name
+          |> source_value(opts)
+          |> List.wrap()
+          |> Enum.map(&to_string/1)
+
+        Enum.filter(choices, fn {_text, value} ->
+          to_string(value) in selected == (mode == "selected")
+        end)
+
+      other ->
+        raise ArgumentError,
+              "#{question.name} has choices_mode #{inspect(other)} — " <>
+                ~s|expected "all", "selected", or "unselected"|
+    end
+  end
+
+  defp source_value(name, opts) do
+    entry_scope = Keyword.get(opts, :entry_data) || %{}
+    form_scope = Keyword.get(opts, :form_data) || %{}
+
+    field_value(entry_scope, name) || field_value(form_scope, name)
+  end
+
+  # Questions by name for one scope, for resolving a carried-forward source.
+  # Panels are transparent — their questions belong to the enclosing scope —
+  # while a nested form's template is its own scope.
+  defp questions_by_name(elements) when is_list(elements) do
+    Enum.reduce(elements, %{}, fn
+      %Instance.Question{} = question, acc ->
+        Map.put(acc, question.name, question)
+
+      %Instance.Element{elements: nested}, acc when is_list(nested) ->
+        Map.merge(acc, questions_by_name(nested))
+
+      _element, acc ->
+        acc
+    end)
+  end
+
+  defp questions_by_name(_elements), do: %{}
+
+  # Values reach here as applied changeset data (atom keys) in the managed
+  # lifecycle, and as raw params (string keys) when render-only mode renders
+  # against a form the parent built from params. Read both rather than
+  # silently finding nothing.
+  defp field_value(map, name) when is_map(map) and is_binary(name) do
+    case Map.fetch(map, String.to_atom(name)) do
+      {:ok, value} -> value
+      :error -> Map.get(map, name)
+    end
+  end
+
+  defp field_value(_map, _name), do: nil
+
+  # One choice per source entry: the value identifies it (the entry id
+  # unless choiceValuesFromQuestion names a field), the text labels it.
+  # Entries missing either are skipped rather than rendered blank — a
+  # half-filled entry isn't a choice yet.
+  defp carried_choice({entry, index}, question) when is_map(entry) do
+    value = carried_value(entry, question)
+    text = carried_text(entry, index, question)
+
+    if blank?(value) or blank?(text), do: [], else: [{to_string(text), to_string(value)}]
+  end
+
+  defp carried_choice(_entry, _question), do: []
+
+  defp carried_value(entry, %Instance.Question{choiceValuesFromQuestion: nil}) do
+    field_value(entry, NestedForms.id_field())
+  end
+
+  defp carried_value(entry, %Instance.Question{choiceValuesFromQuestion: field}) do
+    field_value(entry, field)
+  end
+
+  defp carried_text(entry, index, %Instance.Question{choiceTextsFromQuestion: template})
+       when is_binary(template) do
+    if String.contains?(template, "{") do
+      interpolate_choice_text(template, entry, index)
+    else
+      field_value(entry, template)
+    end
+  end
+
+  defp carried_text(_entry, _index, _question), do: nil
+
+  # "{min} - {max}" against the entry's values, plus {panelIndex} for the
+  # 1-based position — the same token templateTitle uses.
+  #
+  # A template referencing a field the entry hasn't filled in yields nil, not
+  # a half-formed label: "6 - " is not a choice worth offering.
+  defp interpolate_choice_text(template, entry, index) do
+    template = String.replace(template, "{panelIndex}", to_string(index + 1))
+
+    fields =
+      ~r/\{([^}]+)\}/
+      |> Regex.scan(template, capture: :all_but_first)
+      |> List.flatten()
+
+    values = Enum.map(fields, &to_string(field_value(entry, &1)))
+
+    if Enum.any?(values, &blank?/1) do
+      nil
+    else
+      fields
+      |> Enum.zip(values)
+      |> Enum.reduce(template, fn {field, value}, acc ->
+        String.replace(acc, "{#{field}}", value)
+      end)
+      |> String.trim()
+    end
+  end
+
+  defp blank?(nil), do: true
+  defp blank?(""), do: true
+  defp blank?(_value), do: false
 
   # Normalize decoded choices to {label, value} tuples for form components
   defp normalize_choices(nil), do: []

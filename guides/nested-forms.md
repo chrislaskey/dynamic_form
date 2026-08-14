@@ -235,6 +235,131 @@ their own ids, that happens for free — the id is copied, not generated.
 Set `generate_ids={false}` (`"generateIds": false` in data mode) on a nested
 form that doesn't need identity, and no field is added to its entries.
 
+## Choices from another nested form
+
+A choice field can build its options from another question's entries —
+SurveyJS calls this *carry forward*. Each program below picks which age
+groups it serves, and the choices track the age groups as the user adds,
+edits, and removes them:
+
+```heex
+<:nested name="age_groups" title="Age groups" min_entries={1} />
+<:field nested="age_groups" type="dropdown" name="min" options={@months} required />
+<:field nested="age_groups" type="dropdown" name="max" options={@months} required />
+
+<:nested name="programs" title="Programs" />
+<:field nested="programs" type="text" name="name" label="Name" required />
+<:field nested="programs" type="checkbox" name="age_group_ids" label="Age groups"
+        choices_from="age_groups" choice_text="{min} - {max}" />
+```
+
+- **`choices_from`** names the source nested form.
+- **`choice_text`** labels each choice: a member field's name, or a template
+  interpolating several — `{panelIndex}` gives the 1-based entry number.
+  Required, since the alternative is labelling choices with opaque ids. An
+  entry missing any interpolated field isn't offered as a choice, so a
+  half-filled age group doesn't appear until it's complete.
+- **`choice_value`** names the field supplying the stored value. It defaults
+  to the entry's `dynamic_form_id`, which is what makes a selection survive
+  the user editing the entry it points at.
+- **`no_choices_text`** replaces the control entirely while the source has no
+  entries to offer — the label stays, with your message under it, instead of
+  an empty checkbox group:
+
+  ```heex
+  <:field nested="programs" type="checkbox" name="age_group_ids" label="Age groups"
+          choices_from="age_groups" choice_text="{min} - {max}"
+          no_choices_text="Add an age group above to assign it to this program." />
+  ```
+
+In data mode the same three are `choicesFromQuestion`,
+`choiceTextsFromQuestion`, and `choiceValuesFromQuestion`.
+
+Names resolve **innermost-first**: a source inside the same entry wins over a
+form-level one of the same name. That's what makes per-entry sources work —
+each team's lead chosen from that team's own members:
+
+```heex
+<:nested name="teams" title="Teams" />
+<:nested nested="teams" name="members" title="Members" />
+<:field nested="members" type="text" name="name" label="Name" required />
+<:field nested="teams" type="dropdown" name="lead" label="Lead"
+        choices_from="members" choice_text="{name}" />
+```
+
+### What happens to stale references
+
+A value the source no longer offers is cleared during validation, so it never
+reaches `payload.data`. That covers a deleted entry, an option removed from
+the definition, and emptying the source entirely — the alternative would hand
+your application a payload that contradicts itself, with ids pointing at
+entries the same submission deletes.
+
+Clearing a single-value field (a dropdown) empties it, so a `required` error
+can appear without the user touching anything. It also happens on load, so
+reopening a record whose stored value is no longer offered clears it before
+the user sees the form.
+
+Nothing is cleared when the form can't observe what the source offers:
+
+- the definition has no such question — a hand-edited JSON definition, since
+  declarative mode raises when `choices_from` names nothing;
+- the submission carries no values for the source, as when `visible_if` hides
+  it.
+
+A source hidden by `visible_if` still supplies choices — its values are data
+whether or not it renders.
+
+### Carrying forward from another choice field
+
+The source can also be an ordinary choice question rather than a nested form.
+Its own options carry forward, optionally narrowed by what the user selected
+there with `choices_mode` — `"all"` (default), `"selected"`, or
+`"unselected"`:
+
+```heex
+<:field type="checkbox" name="languages" label="Languages you speak"
+        options={[{"English", "en"}, {"Spanish", "es"}, {"Portuguese", "pt"}]} />
+<:field type="dropdown" name="primary_language" label="Primary language"
+        choices_from="languages" choices_mode="selected" />
+```
+
+`choice_text` and `choice_value` don't apply here — the source's options
+already have a label and a value — and `choices_mode` doesn't apply to a
+nested source, where every entry is a choice. Both raise if crossed. A value
+the source stops offering is pruned, the same as a deleted entry.
+
+### Render-only mode
+
+The parent owns the changeset in [render-only
+mode](usage.md#render-only-mode), so the entry-id seeding `DynamicForm.form/1`
+does is the parent's job. Seed before building the changeset, or the default
+value resolves to nothing:
+
+```elixir
+questions = DynamicForm.Changeset.get_questions(instance.elements)
+
+changeset =
+  params
+  |> DynamicForm.NestedForms.seed_entry_ids(questions)
+  |> then(&DynamicForm.Changeset.create_changeset(instance, &1))
+```
+
+Naming a real member field with `choice_value` avoids the seeding entirely,
+at the cost of the stability ids give you. Pruning is also the parent's:
+it runs inside `DynamicForm.Changeset.create_changeset/3`, so a hand-rolled
+changeset keeps stale references.
+
+### Persisting references
+
+Selections are only meaningful as long as the ids they point at come back.
+For a create flow, or one where the reference is consumed server-side and
+never re-edited, generated ids are enough. **If a saved record is reopened
+for editing, the source entries must return with the same ids** — persist
+`dynamic_form_id`, or give the entries an `id` for the library to adopt.
+Otherwise every reference is orphaned, and pruning deletes it on the first
+change.
+
 ## Styling the entry container
 
 Each repeating entry renders inside the `nested_entry/1` component — a

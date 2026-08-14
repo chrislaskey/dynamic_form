@@ -82,8 +82,7 @@ defmodule DemoWeb.ComponentFormLive do
         <div class="mb-8">
           <h1 class="text-3xl font-bold text-gray-900">LiveComponent Example</h1>
           <p class="mt-2 text-gray-600">
-            DynamicForm used inside a LiveComponent. Since LiveComponents don't have
-            <code class="bg-gray-100 px-2 py-1 rounded">handle_info/2</code>, the default
+            DynamicForm used inside a LiveComponent. Since LiveComponents don't have <code class="bg-gray-100 px-2 py-1 rounded">handle_info/2</code>, the default
             <code class="bg-gray-100 px-2 py-1 rounded">{"{:dynamic_form, :success, payload}"}</code>
             message can't reach them. Instead, pass an
             <code class="bg-gray-100 px-2 py-1 rounded">on_success</code>
@@ -99,7 +98,8 @@ defmodule DemoWeb.ComponentFormLive do
         <p class="text-sm text-gray-500 mb-6">
           The LiveComponent defines a private
           <code class="bg-gray-100 px-1 py-0.5 rounded text-xs">handle_form_success/2</code>
-          function that captures the component's <code class="bg-gray-100 px-1 py-0.5 rounded text-xs">@id</code>
+          function that captures the component's
+          <code class="bg-gray-100 px-1 py-0.5 rounded text-xs">@id</code>
           and calls <code class="bg-gray-100 px-1 py-0.5 rounded text-xs">send_update/2</code>.
           After a valid submission, the component's
           <code class="bg-gray-100 px-1 py-0.5 rounded text-xs">update/2</code>
@@ -110,8 +110,7 @@ defmodule DemoWeb.ComponentFormLive do
           <h3 class="text-sm font-semibold text-indigo-900 mb-2">Key Insight</h3>
           <p class="text-sm text-indigo-700">
             <code class="bg-indigo-100 px-1 py-0.5 rounded text-xs">on_success</code>
-            is called synchronously inside
-            <code class="bg-indigo-100 px-1 py-0.5 rounded text-xs">RendererLive.handle_event("submit", ...)</code>.
+            is called synchronously inside <code class="bg-indigo-100 px-1 py-0.5 rounded text-xs">RendererLive.handle_event("submit", ...)</code>.
             Since all LiveComponents share their parent LiveView's process,
             <code class="bg-indigo-100 px-1 py-0.5 rounded text-xs">send_update/2</code>
             targets the right process automatically.
