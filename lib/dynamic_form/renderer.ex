@@ -1091,9 +1091,13 @@ defmodule DynamicForm.Renderer do
         if Instance.blank?(question.description) do
           text
         else
-          Phoenix.HTML.raw(
-            ~s(#{text}<br><span class="text-gray-500">#{question.description}</span>)
-          )
+          {:safe,
+           [
+             escaped(text),
+             ~s(<br><span class="text-gray-500">),
+             escaped(question.description),
+             ~s(</span>)
+           ]}
         end
     end
   end
@@ -1108,11 +1112,19 @@ defmodule DynamicForm.Renderer do
 
       text ->
         if question.isRequired do
-          Phoenix.HTML.raw(~s(#{text} <span class="text-red-500">*</span>))
+          {:safe, [escaped(text), ~s( <span class="text-red-500">*</span>)]}
         else
           text
         end
     end
+  end
+
+  # Definition text is escaped before being combined with the library's own
+  # markup: a title or description can come from stored JSON, so it is data,
+  # not trusted markup. A value deliberately wrapped in `Phoenix.HTML.raw/1`
+  # passes through unescaped, which is how a definition opts into markup.
+  defp escaped(text) do
+    text |> Phoenix.HTML.html_escape() |> elem(1)
   end
 
   # A question is disabled when the form is disabled, it is read-only, or its

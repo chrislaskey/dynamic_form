@@ -182,6 +182,77 @@ defmodule DynamicForm.RendererTest do
     end
   end
 
+  describe "label escaping" do
+    @injection "Name <script>alert('x')</script>"
+
+    test "a required question's title is escaped, marker and all" do
+      # The marker is composed with raw markup, so the title around it has to
+      # be escaped — a definition can come from stored JSON
+      html =
+        render_instance(
+          instance_with([
+            %Instance.Question{
+              name: "name",
+              type: "text",
+              title: @injection,
+              isRequired: true
+            }
+          ])
+        )
+
+      refute html =~ "<script>"
+      assert html =~ "&lt;script&gt;"
+      assert html =~ ~s(<span class="text-red-500">*</span>)
+    end
+
+    test "a checkbox escapes both its title and its inline description" do
+      html =
+        render_instance(
+          instance_with([
+            %Instance.Question{
+              name: "agree",
+              type: "boolean",
+              title: @injection,
+              description: ~S|<img src=x onerror="alert(1)">|
+            }
+          ])
+        )
+
+      refute html =~ "<script>"
+      refute html =~ "<img src=x"
+      assert html =~ "&lt;script&gt;"
+      assert html =~ "&lt;img src=x"
+    end
+
+    test "a title without a required marker is escaped too" do
+      html =
+        render_instance(
+          instance_with([%Instance.Question{name: "name", type: "text", title: @injection}])
+        )
+
+      refute html =~ "<script>"
+      assert html =~ "&lt;script&gt;"
+    end
+
+    test "a title wrapped in raw/1 still renders as markup" do
+      # The opt-in: a definition that deliberately carries markup
+      html =
+        render_instance(
+          instance_with([
+            %Instance.Question{
+              name: "name",
+              type: "text",
+              title: Phoenix.HTML.raw("Name <em>optional</em>"),
+              isRequired: true
+            }
+          ])
+        )
+
+      assert html =~ "<em>optional</em>"
+      assert html =~ ~s(<span class="text-red-500">*</span>)
+    end
+  end
+
   describe "element types" do
     test "renders html elements" do
       html =
@@ -252,7 +323,7 @@ defmodule DynamicForm.RendererTest do
     test "members share a wrapping row by default" do
       html = render_instance(group_with([]))
 
-      assert html =~ "flex flex-wrap items-start gap-4"
+      assert html =~ "flex flex-wrap items-center gap-4"
     end
 
     test "the members' own bottom margin is reset so gap owns the spacing" do

@@ -836,7 +836,7 @@ defmodule DynamicForm.CoreComponents do
   # reset — otherwise a row carries a stray margin under it. Members are never
   # given `flex-1`: that would set `flex-basis: 0` and discard any width a
   # field's own markup asks for.
-  defp members_class("horizontal"), do: "flex flex-wrap items-start gap-4 [&>*]:mb-0"
+  defp members_class("horizontal"), do: "flex flex-wrap items-center gap-4 [&>*]:mb-0"
   defp members_class("vertical"), do: "flex flex-col gap-4 [&>*]:mb-0"
 
   defp members_class(type) do

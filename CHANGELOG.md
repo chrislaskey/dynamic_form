@@ -78,6 +78,13 @@ All notable changes to this project are documented here. For releases before
 
 ### Fixed
 
+- A question's title and description are escaped when composed with the
+  library's own markup. Building the required marker and a checkbox's inline
+  description interpolated them into a raw HTML string, so a definition loaded
+  from storage could inject markup into the page. A title deliberately wrapped
+  in `Phoenix.HTML.raw/1` still renders as markup, which is now the way to opt
+  in. Every other title and description already went through HEEx and was
+  never affected.
 - Fields inside a `<:group>` render like fields anywhere else. The group's
   contents took a shortcut past the wrapper every other field goes through,
   so two things silently didn't work inside one: `no_choices_text` never
