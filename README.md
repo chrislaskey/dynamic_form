@@ -200,7 +200,7 @@ errors, and changeset validation:
   </:field>
 
   <:field type="boolean" name="ship" label="Ship to a different address?" />
-  <:group name="address" title="Shipping Address" visible_if="{ship} = true" />
+  <:group type="vertical" name="address" title="Shipping Address" visible_if="{ship} = true" />
   <:field group="address" type="text" name="street" label="Street" required />
   <:field group="address" type="text" name="city" label="City" required />
 </DynamicForm.form>
