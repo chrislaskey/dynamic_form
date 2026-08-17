@@ -528,7 +528,13 @@ defmodule DynamicForm do
     attr(:min_entries, :integer, doc: "Entries cannot be removed below this; validated on submit")
     attr(:max_entries, :integer, doc: "The add button hides at this count; validated on submit")
     attr(:add_text, :string, doc: ~s|Add button label (default "Add new")|)
-    attr(:remove_text, :string, doc: ~s|Remove button label (default "Remove")|)
+
+    attr(:remove_text, :string,
+      doc:
+        ~s|Remove button label (default "Remove"). The control is an icon, so | <>
+          ~s|this becomes its tooltip and screen-reader name|
+    )
+
     attr(:no_entries_text, :string, doc: "Shown when the form has zero entries")
     attr(:confirm_delete, :boolean, doc: "Ask for confirmation before removing an entry")
     attr(:confirm_text, :string, doc: "Confirmation dialog text")

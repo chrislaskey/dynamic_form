@@ -102,7 +102,7 @@ fields join it with `<:field nested="...">`. See the
 | `entry_title` | string | Per-entry heading; `{panelIndex}` interpolates the 1-based number (→ `templateTitle`) |
 | `entries` | integer | Entries seeded on a fresh form (→ `panelCount`) |
 | `min_entries` / `max_entries` | integer | Count limits: buttons hide, and submit validates (→ `minPanelCount`/`maxPanelCount`) |
-| `add_text` / `remove_text` | string | Button labels (→ `addPanelText`/`removePanelText`) |
+| `add_text` / `remove_text` | string | Button labels (→ `addPanelText`/`removePanelText`). Remove is an icon button, so its label becomes the tooltip and screen-reader name |
 | `no_entries_text` | string | Shown at zero entries (→ `noEntriesText`) |
 | `confirm_delete` / `confirm_text` | boolean / string | Confirmation before removing (→ `confirmDelete`/`confirmDeleteText`) |
 | `key` / `key_error` | string | Member field unique across entries + error message (→ `keyName`/`keyDuplicationError`) |

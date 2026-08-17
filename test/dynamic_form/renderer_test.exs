@@ -432,6 +432,77 @@ defmodule DynamicForm.RendererTest do
       refute html =~ ~s(phx-click="remove_nested_entry")
     end
 
+    test "an entry lays its fields and its remove button out in two columns" do
+      html =
+        render_instance(
+          instance_with([addresses_question([])]),
+          %{"addresses" => [%{"street" => "x", "city" => "y"}]}
+        )
+
+      assert html =~ ~s(<div class="flex items-start gap-3">)
+      # The fields column takes the remaining width and shrinks rather than
+      # overflowing; the button top-aligns with the first field
+      assert html =~ ~s(<div class="min-w-0 flex-1">)
+    end
+
+    test "the remove button is an icon, labelled for hover and screen readers" do
+      html =
+        render_instance(
+          instance_with([addresses_question(removePanelText: "Remove address")]),
+          %{"addresses" => [%{"street" => "x", "city" => "y"}]}
+        )
+
+      assert html =~ ~s(aria-label="Remove address")
+      assert html =~ ~s(title="Remove address")
+      assert html =~ "<svg"
+      # The label is no longer rendered as the button's visible text
+      refute html =~ ">Remove address<"
+    end
+
+    test "the remove label falls back to Remove" do
+      html =
+        render_instance(
+          instance_with([addresses_question([])]),
+          %{"addresses" => [%{"street" => "x", "city" => "y"}]}
+        )
+
+      assert html =~ ~s(aria-label="Remove")
+    end
+
+    test "an entry title renders inside the fields column, above them" do
+      html =
+        render_instance(
+          instance_with([addresses_question(templateTitle: "Address {panelIndex}")]),
+          %{"addresses" => [%{"street" => "x"}]}
+        )
+
+      assert html =~ ~s(<div class="min-w-0 flex-1">)
+      assert html =~ ~s(<h4 class="mb-2 text-sm font-semibold text-gray-900">Address 1</h4>)
+    end
+
+    test "an untitled entry spends no vertical space on a heading" do
+      html =
+        render_instance(
+          instance_with([addresses_question([])]),
+          %{"addresses" => [%{"street" => "x"}]}
+        )
+
+      refute html =~ "<h4"
+    end
+
+    test "the button's column collapses when the entry cannot be removed" do
+      html =
+        render_instance(
+          instance_with([addresses_question(minPanelCount: 1)]),
+          %{"addresses" => [%{"street" => "x"}]}
+        )
+
+      # The two-column frame stays, but nothing occupies the right column
+      assert html =~ ~s(<div class="flex items-start gap-3">)
+      refute html =~ "<svg"
+      refute html =~ "aria-label"
+    end
+
     test "confirmDelete adds a data-confirm attribute" do
       html =
         render_instance(

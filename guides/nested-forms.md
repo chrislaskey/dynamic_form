@@ -363,10 +363,15 @@ change.
 ## Styling the entry container
 
 Each repeating entry renders inside the `nested_entry/1` component — a
-bordered card by default. Define `nested_entry/1` on your
-[components module](styling.md) to restyle it; it receives `index`, the
-question `name`, and the entry contents (title, remove button, child
-fields) as `inner_block`:
+bordered card by default. Inside it, the entry is two columns: the entry
+title (when `entry_title` is set) and the child fields on the left, and a
+remove icon button on the right, top-aligned with the first field. The
+right column collapses when the entry can't be removed, and the icon
+button's tooltip and screen-reader label come from `remove_text`.
+
+Define `nested_entry/1` on your [components module](styling.md) to restyle
+the card; it receives `index`, the question `name`, and that two-column
+frame as `inner_block`:
 
 ```elixir
 def nested_entry(assigns) do

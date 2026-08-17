@@ -778,6 +778,9 @@ defmodule DynamicForm.Renderer do
       path: Enum.join(Keyword.get(opts, :entry_path, []) ++ [question.name], "."),
       target: Keyword.get(opts, :target),
       confirm_text: entry_confirm_text(question),
+      # The configured label still does its job on hover and for screen
+      # readers, now that the control itself is an icon
+      remove_label: question.removePanelText || "Remove",
       show_add?: show_add_nested_entry?(question, count, disabled),
       show_remove?: show_remove_nested_entry?(question, count, disabled)
     }
@@ -815,7 +818,9 @@ defmodule DynamicForm.Renderer do
                   show_remove?: @show_remove?,
                   path: @path,
                   target: @target,
-                  confirm_text: @confirm_text
+                  confirm_text: @confirm_text,
+                  remove_label: @remove_label,
+                  title: entry_title(@question, index)
                 })
               end
             }
@@ -859,13 +864,19 @@ defmodule DynamicForm.Renderer do
     end
   end
 
-  # The contents of one nested-form entry — the entry title, remove button,
-  # and child fields — wrapped in a slot for the nested_entry component. The
-  # container is style-only; the add/remove behavior stays here.
+  # The contents of one nested-form entry, in two columns: the entry title and
+  # child fields on the left, the remove button on the right. The button
+  # top-aligns with the first field, and its column collapses entirely when the
+  # entry can't be removed. `min-w-0` lets the fields column shrink rather than
+  # overflow the entry. The nested_entry container is style-only; the
+  # add/remove behavior stays here.
   defp render_nested_entry_contents(assigns) do
     ~H"""
-    <div class="mb-2 flex items-center justify-between">
-      <h4 class="text-sm font-semibold text-gray-900">{entry_title(@question, @index)}</h4>
+    <div class="flex items-start gap-3">
+      <div class="min-w-0 flex-1">
+        <h4 :if={@title} class="mb-2 text-sm font-semibold text-gray-900">{@title}</h4>
+        {render_entry(@question, @form, @child, @index, @opts)}
+      </div>
       <button
         :if={@show_remove?}
         type="button"
@@ -874,12 +885,37 @@ defmodule DynamicForm.Renderer do
         phx-value-index={@index}
         phx-target={@target}
         data-confirm={@confirm_text}
-        class="btn btn-sm btn-ghost text-red-600"
+        aria-label={@remove_label}
+        title={@remove_label}
+        class="btn btn-sm btn-square btn-ghost text-red-600"
       >
-        {@question.removePanelText || "Remove"}
+        <.trash_icon />
       </button>
     </div>
-    {render_entry(@question, @form, @child, @index, @opts)}
+    """
+  end
+
+  # Inlined rather than routed through CoreComponents.icon/1: that renders a
+  # `hero-*` class, which only becomes a picture in apps that vendor heroicons.
+  # A missing decorative icon is invisible, but a missing icon in an icon-only
+  # button leaves a blank square, so this one carries its own path data.
+  defp trash_icon(assigns) do
+    ~H"""
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke-width="1.5"
+      stroke="currentColor"
+      aria-hidden="true"
+      class="size-4"
+    >
+      <path
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"
+      />
+    </svg>
     """
   end
 

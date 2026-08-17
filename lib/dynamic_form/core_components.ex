@@ -857,9 +857,9 @@ defmodule DynamicForm.CoreComponents do
 
   Nested forms (`paneldynamic` / `<:nested>`) render each repeating entry
   inside this container. The inner block carries everything the entry
-  contains — the entry title, the remove button, and the child fields — so
-  overriding this component restyles the box without touching the
-  add/remove behavior.
+  contains — a two-column frame with the entry title and child fields on the
+  left and the remove button on the right — so overriding this component
+  restyles the box without touching the layout or the add/remove behavior.
 
   ## Examples
 

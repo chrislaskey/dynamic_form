@@ -26,8 +26,6 @@ All notable changes to this project are documented here. For releases before
   source: no such question in the definition, or a submission that carries no
   values for it (hidden by `visible_if`, say).
 
-### Added
-
 - `<:group type="...">` (`"groupType"` in JSON) picks a group's layout:
   `"horizontal"` (default) puts its members on one row, wrapping as needed,
   and `"vertical"` stacks them. Members are sized by their content rather
@@ -47,6 +45,14 @@ All notable changes to this project are documented here. For releases before
 
 ### Changed
 
+- A nested-form entry is laid out in two columns: its title and child fields
+  on the left, its remove control on the right, top-aligned with the first
+  field. The control is a trash icon rather than a text button, and its
+  column collapses when the entry can't be removed — so an untitled entry
+  spends no vertical space on a header row at all. `remove_text`
+  (`removePanelText`) still applies, now as the icon's tooltip and
+  screen-reader name. The icon is an inline SVG rather than a `hero-*` class,
+  so it renders in apps that don't vendor heroicons.
 - A choice field no longer requires an `options` list when it has a slot body
   rendering its own choices, or a `choices_from` source.
 
