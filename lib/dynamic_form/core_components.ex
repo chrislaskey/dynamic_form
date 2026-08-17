@@ -821,7 +821,7 @@ defmodule DynamicForm.CoreComponents do
     assigns = assign(assigns, :members_class, members_class(assigns.type))
 
     ~H"""
-    <div class="my-6 rounded-lg border border-gray-200 bg-white p-6">
+    <div>
       <h3 :if={@title} class="text-lg font-semibold text-gray-900 mb-4">
         <%= @title %>
       </h3>
