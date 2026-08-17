@@ -493,6 +493,31 @@ defmodule DynamicForm.Instance do
   end
 
   @doc """
+  Whether a definition's display text is blank: `nil`, `false`, or `""`.
+
+  Titles, labels, and headings accept all three to mean "render nothing", so a
+  template can compute one without special-casing the absent case:
+
+      <:group name="totals" title={@compact && gettext("Totals")} />
+  """
+  def blank?(value), do: value in [nil, false, ""]
+
+  @doc """
+  The text labelling a question, or `nil` when the definition asks for none.
+
+  A question with no `title` at all falls back to its capitalized name, so
+  `<:field type="text" name="email" />` still labels itself "Email". A title
+  the definition sets blank (`nil`, `false`, or `""`) means "no label", and
+  returns `nil` — callers render no label element, and no required marker,
+  since there would be nothing for the marker to sit beside.
+  """
+  def label_text(%Question{title: nil} = question), do: String.capitalize(question.name)
+
+  def label_text(%Question{title: title}) do
+    if blank?(title), do: nil, else: title
+  end
+
+  @doc """
   Returns a copy of the instance with all `:slot` fields removed.
 
   Slot-defined elements (see `DynamicForm.Instance.FromSlots`) carry their raw

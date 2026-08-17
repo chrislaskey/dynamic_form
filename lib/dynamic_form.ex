@@ -417,7 +417,12 @@ defmodule DynamicForm do
       doc: "Field name (required for question types; auto-generated for html/image/custom)"
     )
 
-    attr(:label, :string, doc: "Question title / image alt text")
+    attr(:label, :any,
+      doc:
+        "Question title / image alt text. Blank (nil, false, or \"\") renders no " <>
+          "label, and no required marker with it; omitting it falls back to the name"
+    )
+
     attr(:placeholder, :string)
     attr(:description, :string, doc: "Help text shown below the input")
     attr(:input_type, :string, doc: ~s|HTML input type for type="text" (email, number, ...)|)
@@ -491,7 +496,7 @@ defmodule DynamicForm do
 
   slot :group, doc: "Panel declarations referenced by <:field group=\"...\"> entries" do
     attr(:name, :string, required: true)
-    attr(:title, :string)
+    attr(:title, :any, doc: ~s|Panel heading; blank (nil, false, or "") renders none|)
 
     attr(:type, :string,
       doc:
@@ -514,11 +519,19 @@ defmodule DynamicForm do
       "Nested (repeating) form declarations referenced by <:field nested=\"...\"> entries — " <>
         "the declarative counterpart to the SurveyJS paneldynamic question" do
     attr(:name, :string, required: true, doc: "Data key: the value is a list of entry maps")
-    attr(:title, :string)
+
+    attr(:title, :any,
+      doc:
+        ~s|Section heading; blank (nil, false, or "") renders none, while omitting | <>
+          ~s|it falls back to the capitalized name|
+    )
+
     attr(:description, :string, doc: "Help text shown below the title")
 
-    attr(:entry_title, :string,
-      doc: ~s|Per-entry heading; "{panelIndex}" interpolates the 1-based entry number|
+    attr(:entry_title, :any,
+      doc:
+        ~s|Per-entry heading; "{panelIndex}" interpolates the 1-based entry number. | <>
+          ~s|Blank renders none|
     )
 
     attr(:entries, :integer,

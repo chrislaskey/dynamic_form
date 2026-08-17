@@ -31,6 +31,20 @@ Slot attrs are snake_case and map onto the SurveyJS-style `Instance` fields
 (`label` → `title`, `options` → `choices`, `visible_if` → `visibleIf`, ...).
 See the [Reference](reference.md) for every attribute.
 
+#### Suppressing a label
+
+Omitting `label` falls back to the capitalized field name, so a field is never
+silently unlabelled. To render *no* label, set it blank — `nil`, `false`, or
+`""` all work, so a template can decide without special-casing:
+
+```heex
+<:field type="text" name="street" label={@compact && gettext("Street")} required />
+```
+
+A blank label takes the required marker with it: an asterisk with nothing to
+sit beside is noise, so `required` still validates but renders no `*`. The same
+goes for `<:group title={...}>` and `<:nested title={...}>`.
+
 Question types collect input: `text` (with `input_type` pass-through for
 `email`, `number`, ...), `comment`, `dropdown`, `radiogroup`, `checkbox`,
 `boolean`, `rating`, `tagbox`, and `file`. Element types render content:

@@ -45,7 +45,7 @@ raise.
 |---|---|---|---|
 | `type` | string | all | Required. One of the question or element types below |
 | `name` | string | all | Field name. Required for question types; auto-generated for `html`/`image`/`custom` |
-| `label` | string | questions, `image` | Question title / image alt text (→ `title`) |
+| `label` | any | questions, `image` | Question title / image alt text (→ `title`). Blank (`nil`, `false`, `""`) renders no label and no required marker; omitting it falls back to the capitalized name |
 | `placeholder` | string | text inputs | Input placeholder |
 | `description` | string | questions | Help text shown below the input |
 | `input_type` | string | `text` | HTML input type pass-through (`email`, `number`, ...) |
@@ -83,7 +83,7 @@ Slot bodies: any question type accepts a body receiving its
 | Attribute | Type | Description |
 |---|---|---|
 | `name` | string | Required. Referenced by `<:field group="...">`; also the panel's name |
-| `title` | string | Panel title |
+| `title` | any | Panel heading. Blank (`nil`, `false`, `""`) renders none |
 | `type` | string | Layout: `"horizontal"` (default, members share a row and wrap) or `"vertical"`, or a type your components module defines (→ `groupType`) |
 | `visible_if` | string | Conditional visibility expression |
 | `enable_if` | string | Conditional enablement (disables all contained questions when false) |
@@ -98,8 +98,8 @@ fields join it with `<:field nested="...">`. See the
 | Attribute | Type | Description |
 |---|---|---|
 | `name` | string | Required. Data key — the value is a list of entry maps |
-| `title` / `description` | string | Section heading and help text, rendered above the entries with the add button opposite them. Ordinary strings, so `title={gettext("Age groups")}` works |
-| `entry_title` | string | Per-entry heading; `{panelIndex}` interpolates the 1-based number (→ `templateTitle`) |
+| `title` / `description` | any / string | Section heading and help text, rendered above the entries with the add button opposite them. Ordinary values, so `title={gettext("Age groups")}` works; a blank title (`nil`, `false`, `""`) renders no heading |
+| `entry_title` | any | Per-entry heading; `{panelIndex}` interpolates the 1-based number (→ `templateTitle`). Blank renders none |
 | `entries` | integer | Entries seeded on a fresh form (→ `panelCount`) |
 | `min_entries` / `max_entries` | integer | Count limits: buttons hide, and submit validates (→ `minPanelCount`/`maxPanelCount`) |
 | `add_text` / `remove_text` | string | Button labels (→ `addPanelText`/`removePanelText`). Remove is an icon button, so its label becomes the tooltip and screen-reader name |

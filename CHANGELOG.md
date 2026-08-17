@@ -45,6 +45,15 @@ All notable changes to this project are documented here. For releases before
 
 ### Changed
 
+- `label` and `title` accept a blank value — `nil`, `false`, or `""` — meaning
+  "render no label", so a template can compute one without special-casing
+  (`label={@compact && gettext("Street")}`). A blank label suppresses the
+  required marker with it: `required` still validates, but an asterisk with
+  nothing to sit beside isn't rendered. Applies to `<:field label>`,
+  `<:group title>`, `<:nested title>` and `<:nested entry_title>`, in data mode
+  as well as declarative. Omitting the attribute is unchanged and still falls
+  back to the capitalized field name; the attrs are typed `:any` rather than
+  `:string` to allow `false`.
 - A nested form renders as a section: its `title` (now an `<h3>`) and
   `description` on the left, its add button opposite them on the right rather
   than below the entries. The title no longer routes through the components

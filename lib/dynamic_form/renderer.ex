@@ -225,11 +225,13 @@ defmodule DynamicForm.Renderer do
     ~H"""
     <%= if @no_choices? do %>
       <div class="mb-4">
-        {Components.render(@components, :label, %{
-          inner_block: [
-            %{__slot__: :inner_block, inner_block: fn _changed, _arg -> @label end}
-          ]
-        })}
+        <%= if @label do %>
+          {Components.render(@components, :label, %{
+            inner_block: [
+              %{__slot__: :inner_block, inner_block: fn _changed, _arg -> @label end}
+            ]
+          })}
+        <% end %>
         <p class="mt-2 text-sm text-gray-500">{@question.noChoicesText}</p>
       </div>
     <% else %>
@@ -324,7 +326,9 @@ defmodule DynamicForm.Renderer do
 
     assigns = %{
       element: element,
-      title: element.title,
+      # nil rather than "" for a blank title: the group component renders no
+      # heading when it has none
+      title: if(Instance.blank?(element.title), do: nil, else: element.title),
       group_type: element.groupType || @default_group_type,
       # The effective state: a group inherits it from a disabled form or an
       # enclosing disabled group as well as from its own enableIf
@@ -394,12 +398,14 @@ defmodule DynamicForm.Renderer do
 
     ~H"""
     <div class="mb-4">
-      {Components.render(@components, :label, %{
-        for: @field.id,
-        inner_block: [
-          %{__slot__: :inner_block, inner_block: fn _changed, _arg -> @label end}
-        ]
-      })}
+      <%= if @label do %>
+        {Components.render(@components, :label, %{
+          for: @field.id,
+          inner_block: [
+            %{__slot__: :inner_block, inner_block: fn _changed, _arg -> @label end}
+          ]
+        })}
+      <% end %>
       {render_slot(@entry, @field)}
       <%= for msg <- @errors do %>
         {Components.render(@components, :error, %{
@@ -572,14 +578,7 @@ defmodule DynamicForm.Renderer do
     field_atom = String.to_atom(question.name)
 
     # For checkboxes, the label is displayed inline, so include description if present
-    label =
-      if question.description do
-        Phoenix.HTML.raw(
-          "#{question.title || String.capitalize(question.name)}<br><span class=\"text-gray-500\">#{question.description}</span>"
-        )
-      else
-        question.title || String.capitalize(question.name)
-      end
+    label = boolean_label(question)
 
     assigns = %{
       question: question,
@@ -793,7 +792,7 @@ defmodule DynamicForm.Renderer do
            button. --%>
       <div class="mt-6 flex items-start justify-between gap-3">
         <div class="min-w-0">
-          <h3 class="text-xl font-bold">{@label}</h3>
+          <h3 :if={@label} class="text-xl font-bold">{@label}</h3>
           <div :if={@question.description} class="text-gray-500">
             {@question.description}
           </div>
@@ -1056,9 +1055,10 @@ defmodule DynamicForm.Renderer do
   end
 
   defp entry_title(question, index) do
-    case question.templateTitle do
-      nil -> nil
-      title -> String.replace(title, "{panelIndex}", to_string(index + 1))
+    if Instance.blank?(question.templateTitle) do
+      nil
+    else
+      String.replace(question.templateTitle, "{panelIndex}", to_string(index + 1))
     end
   end
 
@@ -1079,14 +1079,39 @@ defmodule DynamicForm.Renderer do
     Instance.decode!(data)
   end
 
-  # Build label with required indicator
+  # A checkbox shows its label inline, with the description under it rather than
+  # below the control. A blank title drops both the text and the description,
+  # leaving a bare checkbox.
+  defp boolean_label(question) do
+    case Instance.label_text(question) do
+      nil ->
+        nil
+
+      text ->
+        if Instance.blank?(question.description) do
+          text
+        else
+          Phoenix.HTML.raw(
+            ~s(#{text}<br><span class="text-gray-500">#{question.description}</span>)
+          )
+        end
+    end
+  end
+
+  # The label text plus the required indicator. Returns nil when the definition
+  # asks for no label, which takes the indicator with it — a bare asterisk has
+  # nothing to mark.
   defp question_label(question) do
-    if question.isRequired do
-      Phoenix.HTML.raw(
-        "#{question.title || String.capitalize(question.name)} <span class=\"text-red-500\">*</span>"
-      )
-    else
-      question.title || String.capitalize(question.name)
+    case Instance.label_text(question) do
+      nil ->
+        nil
+
+      text ->
+        if question.isRequired do
+          Phoenix.HTML.raw(~s(#{text} <span class="text-red-500">*</span>))
+        else
+          text
+        end
     end
   end
 

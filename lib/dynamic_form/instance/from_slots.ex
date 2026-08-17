@@ -155,7 +155,7 @@ defmodule DynamicForm.Instance.FromSlots do
     %Instance.Element{
       name: group_def.name,
       type: "panel",
-      title: group_def[:title],
+      title: declared_text(group_def, :title),
       groupType: group_def[:type],
       visibleIf: group_def[:visible_if],
       enableIf: group_def[:enable_if],
@@ -167,10 +167,10 @@ defmodule DynamicForm.Instance.FromSlots do
     %Instance.Question{
       name: entry.name,
       type: "paneldynamic",
-      title: entry[:title],
+      title: declared_text(entry, :title),
       description: entry[:description],
       templateElements: template,
-      templateTitle: entry[:entry_title],
+      templateTitle: declared_text(entry, :entry_title),
       panelCount: entry[:entries],
       minPanelCount: entry[:min_entries],
       maxPanelCount: entry[:max_entries],
@@ -202,7 +202,7 @@ defmodule DynamicForm.Instance.FromSlots do
       name: entry.name,
       type: type,
       inputType: entry[:input_type],
-      title: entry[:label],
+      title: declared_text(entry, :label),
       placeholder: entry[:placeholder],
       description: entry[:description],
       defaultValue: entry[:default],
@@ -243,7 +243,7 @@ defmodule DynamicForm.Instance.FromSlots do
       "image" ->
         %{
           base
-          | title: entry[:label],
+          | title: declared_text(entry, :label),
             imageLink: entry[:src],
             imageWidth: entry[:width],
             imageHeight: entry[:height],
@@ -259,6 +259,18 @@ defmodule DynamicForm.Instance.FromSlots do
   # renderer uses its default rendering for the type.
   defp slot_ref(entry) do
     if entry[:inner_block], do: entry, else: nil
+  end
+
+  # Display text a slot declares, keeping "set to blank" distinguishable from
+  # "not set at all". HEEx omits the key entirely when the attribute is absent,
+  # so label={nil} and label={false} arrive as a present-but-blank value and
+  # become "" — meaning "render no label". An absent attribute stays nil, which
+  # the renderer fills in from the field name.
+  defp declared_text(entry, key) do
+    case Map.fetch(entry, key) do
+      {:ok, value} -> if Instance.blank?(value), do: "", else: value
+      :error -> nil
+    end
   end
 
   # Validators - flattened attrs plus the explicit :validators escape hatch

@@ -375,9 +375,10 @@ ordinary strings, so they can be translated at the call site:
 />
 ```
 
-The title falls back to the capitalized field name, and the description is
-omitted entirely when unset. The add button hides at `max_entries`, which
-leaves the header as heading-only.
+Omitting `title` falls back to the capitalized field name; setting it blank
+(`nil`, `false`, or `""`) renders no heading at all, which is the way to get a
+bare repeating list. The description is omitted when unset. The add button
+hides at `max_entries`, which leaves the header as heading-only.
 
 ## Styling the entry container
 
