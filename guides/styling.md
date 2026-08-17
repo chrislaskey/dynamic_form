@@ -67,7 +67,7 @@ falls back to the built-in when missing:
 | `label/1`, `error/1` | around custom-control slot bodies | no — built-in fallback |
 | `dynamic_form_group/1` | groups (panels) | no — built-in fallback |
 | `nested_entry/1` | the container around each repeating nested-form entry | no — built-in fallback |
-| `button/1` | the submit button | yes — delegates |
+| `button/1` | the submit button and a nested form's add button | yes — delegates |
 | `translate_error/1` | error messages via the app's Gettext | yes — delegates |
 
 Dispatch is deliberately per named function rather than "send everything to
@@ -97,7 +97,7 @@ defmodule MyAppWeb.FormComponents do
 
   def button(assigns) do
     ~H"""
-    <button type={@type} disabled={@disabled} class="btn btn-secondary btn-wide">
+    <button type={@type} disabled={@disabled} class="btn btn-secondary btn-wide" {@rest}>
       {render_slot(@inner_block)}
     </button>
     """
@@ -111,8 +111,13 @@ per-type extras (`options`, `prompt`, `multiple`, `rows`, `placeholder`,
 `disabled`); the radio and checkbox group components get `field`, `label`,
 `options`, `style`, `disabled`; `dynamic_form_group/1` gets `type`, `title`,
 `name`, `disabled`, and an `inner_block` slot; `button/1` gets `type`,
-`disabled`, and an `inner_block` slot. See `DynamicForm.Components` for the
-full contract.
+`disabled`, `rest`, and an `inner_block` slot. See `DynamicForm.Components`
+for the full contract.
+
+`button/1` renders both the submit button and a nested form's add button, and
+the add button's `phx-click` arrives in `rest` — so splat it
+(`<button {@rest}>`), as a Phoenix-generated button does. A button that drops
+globals looks right and does nothing when clicked.
 
 ### Custom group types
 

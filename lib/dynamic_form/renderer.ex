@@ -140,6 +140,7 @@ defmodule DynamicForm.Renderer do
           {Components.render(@components, :button, %{
             type: "submit",
             disabled: @disabled,
+            rest: %{},
             inner_block: submit_label_slot(@disabled, @submit_text)
           })}
         <% else %>
@@ -797,16 +798,25 @@ defmodule DynamicForm.Renderer do
             {@question.description}
           </div>
         </div>
-        <button
-          :if={@show_add?}
-          type="button"
-          phx-click="add_nested_entry"
-          phx-value-path={@path}
-          phx-target={@target}
-          class="btn btn-sm shrink-0"
-        >
-          {@question.addPanelText || "Add new"}
-        </button>
+        <div :if={@show_add?} class="shrink-0">
+          {Components.render(@components, :button, %{
+            type: "button",
+            # The button only renders when the form is editable — show_add?
+            # already accounts for the disabled state
+            disabled: false,
+            rest: %{
+              "phx-click" => "add_nested_entry",
+              "phx-value-path" => @path,
+              "phx-target" => @target
+            },
+            inner_block: [
+              %{
+                __slot__: :inner_block,
+                inner_block: fn _changed, _arg -> @question.addPanelText || "Add new" end
+              }
+            ]
+          })}
+        </div>
       </div>
       <%!-- Keeps the field present in params when every panel is removed --%>
       <input type="hidden" name={"#{@form.name}[#{@question.name}][__empty__]"} value="" />

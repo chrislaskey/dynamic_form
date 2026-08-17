@@ -20,9 +20,16 @@ defmodule DynamicForm.ComponentsTest do
       """
     end
 
+    # Mirrors a Phoenix-generated button/1: declares a global `rest` and
+    # splats it, so event attributes the renderer forwards survive
+    attr(:type, :string, default: nil)
+    attr(:disabled, :boolean, default: false)
+    attr(:rest, :global)
+    slot(:inner_block, required: true)
+
     def button(assigns) do
       ~H"""
-      <button data-custom-button type={@type} disabled={@disabled}>
+      <button data-custom-button type={@type} disabled={@disabled} {@rest}>
         {render_slot(@inner_block)}
       </button>
       """
@@ -247,6 +254,54 @@ defmodule DynamicForm.ComponentsTest do
 
       assert html =~ "text-lg font-semibold text-gray-900 mb-4"
       refute html =~ "data-custom-group"
+    end
+
+    test "a nested form's add button renders through button/1" do
+      instance = %Instance{
+        id: "add-button-test",
+        elements: [
+          %Instance.Question{
+            name: "addresses",
+            type: "paneldynamic",
+            title: "Addresses",
+            addPanelText: "Add address",
+            templateElements: [%Instance.Question{name: "street", type: "text"}]
+          }
+        ]
+      }
+
+      render = fn overrides ->
+        changeset = DynamicForm.Changeset.create_changeset(instance, %{})
+
+        render_component(
+          &DynamicForm.form/1,
+          Keyword.merge(
+            [
+              id: "add-button-test",
+              render_only: true,
+              instance: instance,
+              form: Phoenix.Component.to_form(changeset, as: "dynamic_form")
+            ],
+            overrides
+          )
+        )
+      end
+
+      # Delegated: the app's button renders it, still carrying the event
+      # attributes that make it work
+      html = render.(components: CustomComponents)
+
+      assert html =~ "data-custom-button"
+      assert html =~ ~s(phx-click="add_nested_entry")
+      assert html =~ ~s(phx-value-path="addresses")
+      assert html =~ "Add address"
+
+      # Fallback: the built-in button's classes, not a bare button
+      html = render.([])
+
+      refute html =~ "data-custom-button"
+      assert html =~ ~s(phx-click="add_nested_entry")
+      assert html =~ "btn"
     end
 
     test "a components module can define its own group type" do

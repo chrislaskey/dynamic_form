@@ -31,8 +31,13 @@ defmodule DynamicForm.Components do
   | `label/1`, `error/1` | around custom-control slot bodies | no (private in Phoenix 1.8) — built-in fallback |
   | `dynamic_form_group/1` | groups (panels); dispatches on `type` like `input/1` (receives `type`, `title`, `name`, `disabled`, `inner_block`) | no — built-in fallback |
   | `nested_entry/1` | the container around each repeating nested-form entry (receives `index`, `name`, and the entry contents as `inner_block`) | no — built-in fallback |
-  | `button/1` | the submit button | yes — delegates when exported |
+  | `button/1` | the submit button and a nested form's add button (receives `type`, `disabled`, `rest`, `inner_block`) | yes — delegates when exported |
   | `translate_error/1` | error messages (routes through the app's Gettext) | yes — delegates when exported |
+
+  A `button/1` must splat its global attributes — `<button {@rest}>` — the way
+  a Phoenix-generated one does. The nested-form add button carries its
+  `phx-click` in `rest`, so a button that drops globals renders fine and does
+  nothing when clicked.
 
   Delegation is intentionally NOT a blanket "send everything to `input/1`":
   a Phoenix-generated `input/1` ends in a catch-all clause, so an unknown
