@@ -779,108 +779,76 @@ defmodule DynamicForm.CoreComponents do
   # ============================================================================
 
   @doc """
-  Renders a group container with flexible layout options.
+  Renders the container around one group of form elements.
 
-  A group is a layout element that arranges multiple items (fields or elements)
-  in various configurations like horizontal, vertical, or grid layouts. Groups
-  are typically used within sections or at the form root level.
+  Groups (`panel` / `<:group>`) wrap their members in a card-like container
+  with padding, border, and rounded corners. A group can hold fields, nested
+  forms, and other groups.
 
-  ## Layout Options
+  `type` picks the layout, the same way `input/1` dispatches on its own
+  `type`. Two are built in:
 
-  - `"horizontal"` - Items arranged in a row (default)
-  - `"vertical"` - Items stacked vertically
-  - `"grid-2"` - 2-column grid (1 column on mobile)
-  - `"grid-3"` - 3-column grid (1 column on mobile)
-  - `"grid-4"` - 4-column grid (1 column on mobile)
+  - `"horizontal"` (default) — members share a row, wrapping when they run
+    out of width. Each member is sized by its content, so a `<:field>` slot
+    body can set an exact width (`w-64`) and the row honors it. Fractional
+    widths (`w-1/2`) do not work: a percentage against a content-sized parent
+    resolves as `auto`.
+  - `"vertical"` — members stack.
 
   ## Examples
 
-      <.group>
-        <.input field={@form[:first_name]} label="First Name" />
-        <.input field={@form[:last_name]} label="Last Name" />
-      </.group>
+      <.dynamic_form_group type="horizontal" title="Age range">
+        <.input field={@form[:min]} label="From" />
+        <.input field={@form[:max]} label="To" />
+      </.dynamic_form_group>
 
-      <.group title="Contact Information" layout="grid-2">
-        <.input field={@form[:email]} label="Email" />
-        <.input field={@form[:phone]} label="Phone" />
-      </.group>
-
-      <.group layout="vertical" class="mt-4">
-        <.input field={@form[:street]} label="Street" />
-        <.input field={@form[:city]} label="City" />
-      </.group>
+      <.dynamic_form_group type="vertical" title="Personal Information">
+        <.input field={@form[:name]} label="Name" />
+      </.dynamic_form_group>
   """
+  attr(:type, :string, default: "horizontal", doc: ~s|Layout: "horizontal" or "vertical"|)
   attr(:title, :string, default: nil, doc: "Optional group title")
+  attr(:name, :string, default: nil, doc: "The group's name in the definition")
 
-  attr(:layout, :string,
-    default: "horizontal",
-    doc: "Layout style: horizontal, vertical, grid-2, grid-3, grid-4"
+  attr(:disabled, :boolean,
+    default: false,
+    doc: "Whether the group's members are disabled (its own enable_if, or inherited)"
   )
 
-  attr(:class, :string, default: nil, doc: "Additional CSS classes")
   slot(:inner_block, required: true)
 
-  def group(assigns) do
-    layout_class =
-      case assigns.layout do
-        "horizontal" -> "flex flex-row gap-4"
-        "grid-2" -> "grid grid-cols-1 md:grid-cols-2 gap-4"
-        "grid-3" -> "grid grid-cols-1 md:grid-cols-3 gap-4"
-        "grid-4" -> "grid grid-cols-1 md:grid-cols-4 gap-4"
-        "vertical" -> "flex flex-col gap-4"
-        _ -> "flex flex-row gap-4"
-      end
-
-    assigns = assign(assigns, :layout_class, layout_class)
+  def dynamic_form_group(assigns) do
+    assigns = assign(assigns, :members_class, members_class(assigns.type))
 
     ~H"""
-    <div class={["mb-6", @class]}>
-      <h3 :if={@title} class="font-semibold text-gray-900 mb-4">
+    <div class="my-6 rounded-lg border border-gray-200 bg-white p-6">
+      <h3 :if={@title} class="text-lg font-semibold text-gray-900 mb-4">
         <%= @title %>
       </h3>
-      <div class={@layout_class}>
+      <div class={@members_class}>
         <%= render_slot(@inner_block) %>
       </div>
     </div>
     """
   end
 
-  @doc """
-  Renders a section container with optional title.
+  # `gap` owns the spacing between members, so the per-field bottom margin is
+  # reset — otherwise a row carries a stray margin under it. Members are never
+  # given `flex-1`: that would set `flex-basis: 0` and discard any width a
+  # field's own markup asks for.
+  defp members_class("horizontal"), do: "flex flex-wrap items-start gap-4 [&>*]:mb-0"
+  defp members_class("vertical"), do: "flex flex-col gap-4 [&>*]:mb-0"
 
-  A section is a visual grouping element that wraps content in a card-like
-  container with padding, border, and rounded corners. Sections can contain
-  fields, groups, and other elements (including nested sections).
+  defp members_class(type) do
+    raise ArgumentError, """
+    unknown group type #{inspect(type)}
 
-  ## Examples
+    DynamicForm.CoreComponents renders "horizontal" and "vertical". To add \
+    your own, define dynamic_form_group/1 in your components module — it then \
+    owns every group type, so end with a clause delegating the built-ins:
 
-      <.section>
-        <p>Content goes here</p>
-      </.section>
-
-      <.section title="Personal Information">
-        <.input field={@form[:name]} label="Name" />
-      </.section>
-
-      <.section title="Address" class="mt-8">
-        <.input field={@form[:street]} label="Street" />
-      </.section>
-  """
-  attr(:title, :string, default: nil, doc: "Optional section title")
-  attr(:class, :string, default: nil, doc: "Additional CSS classes")
-  slot(:inner_block, required: true)
-
-  def section(assigns) do
-    ~H"""
-    <div class={[
-      "my-6 rounded-lg border border-gray-200 bg-white p-6",
-      @class
-    ]}>
-      <h3 :if={@title} class="text-lg font-semibold text-gray-900 mb-4">
-        <%= @title %>
-      </h3>
-      <%= render_slot(@inner_block) %>
-    </div>
+        def dynamic_form_group(%{type: #{inspect(type)}} = assigns), do: ~H"..."
+        def dynamic_form_group(assigns), do: DynamicForm.CoreComponents.dynamic_form_group(assigns)
     """
   end
 

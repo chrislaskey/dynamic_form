@@ -330,7 +330,10 @@ defmodule DynamicForm.Instance do
     ## SurveyJS Element Types
 
     - `"html"` - HTML content (headings, paragraphs, dividers, etc.)
-    - `"panel"` - Container for grouping questions together
+    - `"panel"` - Container for grouping questions together. `groupType` picks
+      the layout: `"horizontal"` (default) or `"vertical"`, or a type the
+      application's components module defines
+
     - `"image"` - Display an image (`imageLink`, `imageWidth`, `imageHeight`, `imageFit`)
 
     ## Examples
@@ -382,6 +385,7 @@ defmodule DynamicForm.Instance do
       :name,
       :type,
       :title,
+      :groupType,
       :html,
       :elements,
       :visibleIf,
@@ -398,6 +402,7 @@ defmodule DynamicForm.Instance do
             name: String.t(),
             type: String.t(),
             title: String.t() | nil,
+            groupType: String.t() | nil,
             html: String.t() | nil,
             elements: [Question.t() | t()] | nil,
             visibleIf: String.t() | nil,
@@ -420,6 +425,7 @@ defmodule DynamicForm.Instance do
           type: element.type
         }
         |> maybe_put(:title, element.title)
+        |> maybe_put(:groupType, element.groupType)
         |> maybe_put(:html, element.html)
         |> maybe_put(:elements, element.elements)
         |> maybe_put(:visibleIf, element.visibleIf)

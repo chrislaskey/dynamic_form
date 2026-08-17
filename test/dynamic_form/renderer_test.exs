@@ -231,6 +231,54 @@ defmodule DynamicForm.RendererTest do
     end
   end
 
+  describe "group layout" do
+    defp group_with(attrs) do
+      instance_with([
+        struct!(
+          %Instance.Element{
+            name: "age_range",
+            type: "panel",
+            title: "Age range",
+            elements: [
+              %Instance.Question{name: "min", type: "text", title: "From"},
+              %Instance.Question{name: "max", type: "text", title: "To"}
+            ]
+          },
+          attrs
+        )
+      ])
+    end
+
+    test "members share a wrapping row by default" do
+      html = render_instance(group_with([]))
+
+      assert html =~ "flex flex-wrap items-start gap-4"
+    end
+
+    test "the members' own bottom margin is reset so gap owns the spacing" do
+      # Rendered escaped; the browser decodes it back to [&>*]:mb-0
+      assert render_instance(group_with([])) =~ "[&amp;&gt;*]:mb-0"
+    end
+
+    test ~s|groupType "vertical" stacks the members| do
+      html = render_instance(group_with(groupType: "vertical"))
+
+      assert html =~ "flex flex-col gap-4"
+      refute html =~ "flex-wrap"
+    end
+
+    test ~s|groupType "horizontal" is the same as the default| do
+      assert render_instance(group_with(groupType: "horizontal")) ==
+               render_instance(group_with([]))
+    end
+
+    test "an unknown groupType raises, naming the way to add one" do
+      assert_raise ArgumentError, ~r/unknown group type "cards".*components module/s, fn ->
+        render_instance(group_with(groupType: "cards"))
+      end
+    end
+  end
+
   describe "conditional logic" do
     test "hides questions whose visibleIf is not met" do
       instance =

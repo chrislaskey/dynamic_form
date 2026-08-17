@@ -46,6 +46,9 @@ defmodule DynamicForm.Renderer do
 
   alias DynamicForm.{Components, FieldTypes, Instance, NestedForms}
 
+  # A group with no groupType of its own lays its members out in a row
+  @default_group_type "horizontal"
+
   attr(:instance, :any,
     required: true,
     doc:
@@ -305,7 +308,6 @@ defmodule DynamicForm.Renderer do
 
   # Render panel elements (containers)
   defp render_panel_or_html(%Instance.Element{type: "panel"} = element, form, opts) do
-    title = element.title
     elements = element.elements || []
 
     # A disabled panel (enableIf false) disables every question inside it
@@ -321,7 +323,11 @@ defmodule DynamicForm.Renderer do
 
     assigns = %{
       element: element,
-      title: title,
+      title: element.title,
+      group_type: element.groupType || @default_group_type,
+      # The effective state: a group inherits it from a disabled form or an
+      # enclosing disabled group as well as from its own enableIf
+      disabled: Keyword.get(opts, :disabled, false),
       elements: visible_panel_elements,
       form: form,
       opts: opts,
@@ -329,8 +335,11 @@ defmodule DynamicForm.Renderer do
     }
 
     ~H"""
-    {Components.render(@components, :section, %{
+    {Components.render(@components, :dynamic_form_group, %{
+      type: @group_type,
+      name: @element.name,
       title: @title,
+      disabled: @disabled,
       inner_block: [
         %{
           __slot__: :inner_block,
@@ -349,18 +358,13 @@ defmodule DynamicForm.Renderer do
     ~H""
   end
 
-  # The contents of a panel, wrapped in a slot for the section component
+  # The contents of a panel, wrapped in a slot for the group component
   defp render_panel_elements(elements, form, opts) do
     assigns = %{elements: elements, form: form, opts: opts}
 
     ~H"""
-    <%= for item <- @elements do %>
-      <%= case item do %>
-        <% %Instance.Question{} = question -> %>
-          <%= render_question(question, @form, @opts) %>
-        <% %Instance.Element{} = nested_element -> %>
-          <%= render_panel_or_html(nested_element, @form, @opts) %>
-      <% end %>
+    <%= for element <- @elements do %>
+      <%= render_element(element, @form, @opts) %>
     <% end %>
     """
   end

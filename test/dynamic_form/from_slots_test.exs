@@ -276,6 +276,26 @@ defmodule DynamicForm.Instance.FromSlotsTest do
       assert Enum.map(panel.elements, & &1.name) == ["street", "city"]
     end
 
+    test "type maps to the panel's groupType" do
+      instance =
+        convert(
+          [field(type: "text", name: "min", group: "age_range")],
+          [group(name: "age_range", type: "vertical")]
+        )
+
+      assert [%Instance.Element{type: "panel", groupType: "vertical"}] = instance.elements
+    end
+
+    test "a group with no type leaves groupType unset, for the renderer's default" do
+      instance =
+        convert(
+          [field(type: "text", name: "min", group: "age_range")],
+          [group(name: "age_range")]
+        )
+
+      assert [%Instance.Element{groupType: nil}] = instance.elements
+    end
+
     test "grouped questions are included in the changeset" do
       instance =
         convert(

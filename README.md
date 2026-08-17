@@ -26,7 +26,8 @@ In declarative mode, everything is composed from slots:
   dropdown, radiogroup, checkbox, boolean, rating, tagbox, file uploads, plus
   html/image content blocks.
 - **`<:group>`** — collects fields into a titled panel, with its own
-  conditional visibility.
+  conditional visibility and layout (`type="horizontal"` puts its members on
+  one row, `"vertical"` stacks them).
 - **`<:nested>`** — declares a repeating child form (a contact's list of
   addresses); fields join it with `nested="name"` and the value becomes a
   list of maps, validated per entry.

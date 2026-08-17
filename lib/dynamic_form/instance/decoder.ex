@@ -140,6 +140,7 @@ defmodule DynamicForm.Instance.Decoder do
       name: Map.fetch!(data, "name"),
       type: Map.get(data, "type", "html"),
       title: Map.get(data, "title"),
+      groupType: Map.get(data, "groupType"),
       html: Map.get(data, "html"),
       elements: decode_elements(Map.get(data, "elements")),
       visibleIf: Map.get(data, "visibleIf"),

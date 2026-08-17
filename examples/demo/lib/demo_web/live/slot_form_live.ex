@@ -48,13 +48,16 @@ defmodule DemoWeb.SlotFormLive do
     <:field type="text" name="recipient" label="Recipient" required />
     <:field type="boolean" name="ship" label="Ship to a different address?" />
 
+    <%!-- type="horizontal" is the default: members share a row and wrap --%>
     <:group name="address" title="Shipping Address" visible_if="{ship} = true" />
     <:field group="address" type="text" name="street" label="Street" required />
     <:field group="address" type="text" name="city" label="City" required />
     <:field group="address" type="dropdown" name="state" label="State"
             options={["CO", "NY", "CA"]} />
 
-    <:field type="comment" name="delivery_notes" label="Delivery Notes" />
+    <:group name="delivery" title="Delivery" type="vertical" />
+    <:field group="delivery" type="comment" name="delivery_notes" label="Delivery Notes" />
+    <:field group="delivery" type="boolean" name="leave_at_door" label="Leave at the door" />
   </DynamicForm.form>
   """
 
@@ -338,7 +341,9 @@ defmodule DemoWeb.SlotFormLive do
           Fields with <code>group="address"</code>
           collect into a panel declared by <code>&lt;:group&gt;</code>. Toggle the checkbox to reveal it — the panel
           renders at the position of its first member field. Required fields inside
-          a hidden group are excluded from validation.
+          a hidden group are excluded from validation. The two panels below show
+          both layouts: Shipping Address takes the default <code>type="horizontal"</code>
+          (members share a row, wrapping when they run out of width), Delivery uses <code>type="vertical"</code>.
         </p>
 
         <.definition title="Template definition" code={@src_groups} />
@@ -359,7 +364,19 @@ defmodule DemoWeb.SlotFormLive do
               options={["CO", "NY", "CA"]}
             />
 
-            <:field type="comment" name="delivery_notes" label="Delivery Notes" />
+            <:group name="delivery" title="Delivery" type="vertical" />
+            <:field
+              group="delivery"
+              type="comment"
+              name="delivery_notes"
+              label="Delivery Notes"
+            />
+            <:field
+              group="delivery"
+              type="boolean"
+              name="leave_at_door"
+              label="Leave at the door"
+            />
           </DynamicForm.form>
         </div>
 

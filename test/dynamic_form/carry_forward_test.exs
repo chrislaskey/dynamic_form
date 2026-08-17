@@ -152,6 +152,42 @@ defmodule DynamicForm.CarryForwardTest do
       assert html =~ ~s(name="dynamic_form[programs][0][age_group_ids][]" value="ag-1")
     end
 
+    test "no_choices_text renders for a field inside a group" do
+      grouped = %Instance{
+        id: "tuition",
+        elements: [
+          %Instance.Question{
+            name: "age_groups",
+            type: "paneldynamic",
+            title: "Age groups",
+            templateElements: [
+              %Instance.Question{name: "min", type: "text", title: "Min"}
+            ]
+          },
+          %Instance.Element{
+            name: "assignments",
+            type: "panel",
+            title: "Assignments",
+            elements: [
+              %Instance.Question{
+                name: "age_group_ids",
+                type: "checkbox",
+                title: "Age groups served",
+                choicesFromQuestion: "age_groups",
+                choiceTextsFromQuestion: "min",
+                noChoicesText: "Add an age group above to assign it here."
+              }
+            ]
+          }
+        ]
+      }
+
+      html = grouped |> mount_component(%{"age_groups" => []}) |> render_form()
+
+      assert html =~ "Add an age group above to assign it here."
+      refute html =~ ~s(name="dynamic_form[age_group_ids][]")
+    end
+
     test "choice_value names a different field" do
       html =
         instance(choiceValuesFromQuestion: "min")

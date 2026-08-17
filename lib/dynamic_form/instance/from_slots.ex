@@ -156,6 +156,7 @@ defmodule DynamicForm.Instance.FromSlots do
       name: group_def.name,
       type: "panel",
       title: group_def[:title],
+      groupType: group_def[:type],
       visibleIf: group_def[:visible_if],
       enableIf: group_def[:enable_if],
       elements: members

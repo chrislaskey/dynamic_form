@@ -492,6 +492,13 @@ defmodule DynamicForm do
   slot :group, doc: "Panel declarations referenced by <:field group=\"...\"> entries" do
     attr(:name, :string, required: true)
     attr(:title, :string)
+
+    attr(:type, :string,
+      doc:
+        ~s|Layout: "horizontal" (default, members share a row and wrap) or | <>
+          ~s|"vertical", or a type your components module defines|
+    )
+
     attr(:visible_if, :string)
     attr(:enable_if, :string)
 

@@ -84,6 +84,7 @@ Slot bodies: any question type accepts a body receiving its
 |---|---|---|
 | `name` | string | Required. Referenced by `<:field group="...">`; also the panel's name |
 | `title` | string | Panel title |
+| `type` | string | Layout: `"horizontal"` (default, members share a row and wrap) or `"vertical"`, or a type your components module defines (→ `groupType`) |
 | `visible_if` | string | Conditional visibility expression |
 | `enable_if` | string | Conditional enablement (disables all contained questions when false) |
 | `nested` | string | Data scope this group lives in; every member field must declare the identical scope |
@@ -133,7 +134,7 @@ fields join it with `<:field nested="...">`. See the
 | Type | Renders as | Notes |
 |---|---|---|
 | `html` | Raw HTML or slot body | String attr goes through `Phoenix.HTML.raw/1`; slot bodies are escaped HEEx |
-| `panel` | Titled container | Declared via `<:group>` in declarative mode; nestable in data mode |
+| `panel` | Titled container | Declared via `<:group>` in declarative mode; nestable in data mode. `groupType` picks the layout: `"horizontal"` (default) or `"vertical"` |
 | `image` | `<img>` | `src` required |
 | `custom` | Slot body | Declarative-only; body receives the Phoenix form |
 
@@ -256,7 +257,7 @@ Functions the renderer dispatches through the `components` module
 | `input_radio_group/1` | radiogroup and rating questions | no — built-in fallback |
 | `input_checkbox_group/1` | multi-select checkbox groups | no — built-in fallback |
 | `label/1`, `error/1` | around custom-control slot bodies | no — built-in fallback |
-| `section/1` | panels | no — built-in fallback |
+| `dynamic_form_group/1` | groups (panels) | no — built-in fallback |
 | `nested_entry/1` | the container around each repeating nested-form entry | no — built-in fallback |
 | `button/1` | the submit button | yes — delegates |
 | `translate_error/1` | error messages via the app's Gettext | yes — delegates |

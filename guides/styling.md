@@ -65,7 +65,7 @@ falls back to the built-in when missing:
 | `input_radio_group/1` | radiogroup and rating questions | no — built-in fallback |
 | `input_checkbox_group/1` | multi-select checkbox groups | no — built-in fallback |
 | `label/1`, `error/1` | around custom-control slot bodies | no — built-in fallback |
-| `section/1` | panels | no — built-in fallback |
+| `dynamic_form_group/1` | groups (panels) | no — built-in fallback |
 | `nested_entry/1` | the container around each repeating nested-form entry | no — built-in fallback |
 | `button/1` | the submit button | yes — delegates |
 | `translate_error/1` | error messages via the app's Gettext | yes — delegates |
@@ -108,9 +108,45 @@ end
 The assigns each function receives match the built-in implementations in
 `DynamicForm.CoreComponents` — `input/1` gets `field`, `type`, `label`, and
 per-type extras (`options`, `prompt`, `multiple`, `rows`, `placeholder`,
-`disabled`); the group components get `field`, `label`, `options`, `style`,
-`disabled`; `button/1` gets `type`, `disabled`, and an `inner_block` slot.
-See `DynamicForm.Components` for the full contract.
+`disabled`); the radio and checkbox group components get `field`, `label`,
+`options`, `style`, `disabled`; `dynamic_form_group/1` gets `type`, `title`,
+`name`, `disabled`, and an `inner_block` slot; `button/1` gets `type`,
+`disabled`, and an `inner_block` slot. See `DynamicForm.Components` for the
+full contract.
+
+### Custom group types
+
+`dynamic_form_group/1` wraps each `<:group>`, and it dispatches on `type` the
+same way `input/1` dispatches on its own — so a layout the library doesn't
+ship is a clause in your module plus the name in the definition:
+
+```heex
+<:group name="plans" title="Plans" type="cards" />
+```
+
+```elixir
+def dynamic_form_group(%{type: "cards"} = assigns) do
+  ~H"""
+  <section class="grid grid-cols-3 gap-6">
+    <h3 class="col-span-3 text-lg font-medium">{@title}</h3>
+    {render_slot(@inner_block)}
+  </section>
+  """
+end
+
+def dynamic_form_group(assigns), do: DynamicForm.CoreComponents.dynamic_form_group(assigns)
+```
+
+That last clause matters. Fallback is per *function*, not per type, so once
+your module exports `dynamic_form_group/1` it owns every group in every form —
+including the built-in `"horizontal"` and `"vertical"`. Delegating in a
+catch-all keeps them working; omitting it raises `FunctionClauseError` the
+first time a group doesn't name your type.
+
+`name` is there so one clause can treat two groups differently without
+inventing a type per group, and `disabled` reflects the group's effective
+state — its own `enable_if`, or inherited from a disabled form or an
+enclosing group.
 
 ## Per-field custom markup
 

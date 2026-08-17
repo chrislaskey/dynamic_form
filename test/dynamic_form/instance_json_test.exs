@@ -71,6 +71,44 @@ defmodule DynamicForm.InstanceJsonTest do
       assert decoded.elements == instance.elements
     end
 
+    test "round-trips a group's layout type" do
+      instance = %Instance{
+        id: "group-form",
+        elements: [
+          %Instance.Element{
+            name: "age_range",
+            type: "panel",
+            title: "Age range",
+            groupType: "vertical",
+            elements: [%Instance.Question{name: "min", type: "text"}]
+          }
+        ]
+      }
+
+      json = Jason.encode!(instance)
+
+      assert json =~ ~s("groupType":"vertical")
+
+      [decoded] = json |> Instance.decode!() |> Map.get(:elements)
+
+      assert decoded.groupType == "vertical"
+    end
+
+    test "a group with no layout type of its own encodes without the key" do
+      instance = %Instance{
+        id: "group-form",
+        elements: [
+          %Instance.Element{
+            name: "age_range",
+            type: "panel",
+            elements: [%Instance.Question{name: "min", type: "text"}]
+          }
+        ]
+      }
+
+      refute Jason.encode!(instance) =~ "groupType"
+    end
+
     test "round-trips conditional and rating properties" do
       instance = %Instance{
         id: "props-form",

@@ -3,7 +3,7 @@
 All notable changes to this project are documented here. For releases before
 0.19.0, see the git history.
 
-## Unreleased
+## 0.22.0
 
 ### Added
 
@@ -26,10 +26,38 @@ All notable changes to this project are documented here. For releases before
   source: no such question in the definition, or a submission that carries no
   values for it (hidden by `visible_if`, say).
 
+### Added
+
+- `<:group type="...">` (`"groupType"` in JSON) picks a group's layout:
+  `"horizontal"` (default) puts its members on one row, wrapping as needed,
+  and `"vertical"` stacks them. Members are sized by their content rather
+  than split into equal columns, so a `<:field>` slot body can set an exact
+  width and the row honors it. Applications add their own types by defining
+  `dynamic_form_group/1` — it dispatches on `type` exactly like `input/1`.
+
+### Breaking
+
+- The components-module function wrapping a group is `dynamic_form_group/1`,
+  not `section/1`. It receives `type`, `title`, `name`, and `disabled`
+  alongside `inner_block`. As with `input/1`, a module that exports it owns
+  every group type, so end with a clause delegating to
+  `DynamicForm.CoreComponents.dynamic_form_group/1`.
+- Groups arrange their members on one row by default. Existing groups that
+  should keep stacking need `type="vertical"`.
+
 ### Changed
 
 - A choice field no longer requires an `options` list when it has a slot body
   rendering its own choices, or a `choices_from` source.
+
+### Fixed
+
+- Fields inside a `<:group>` render like fields anywhere else. The group's
+  contents took a shortcut past the wrapper every other field goes through,
+  so two things silently didn't work inside one: `no_choices_text` never
+  replaced an empty carried-forward control, and a read-only choice field
+  lost the hidden input carrying its value — so it was dropped on the next
+  change.
 
 ## 0.21.0
 

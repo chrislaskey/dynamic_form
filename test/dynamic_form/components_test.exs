@@ -8,7 +8,7 @@ defmodule DynamicForm.ComponentsTest do
 
   # A partial components module: owns input/1, button/1, and
   # translate_error/1; everything else (radio groups, labels, errors,
-  # sections) must fall back to the built-ins.
+  # groups) must fall back to the built-ins.
   defmodule CustomComponents do
     use Phoenix.Component
 
@@ -33,6 +33,25 @@ defmodule DynamicForm.ComponentsTest do
     def nested_entry(assigns) do
       ~H"""
       <div data-custom-nested-entry={@index} data-nested-name={@name}>
+        {render_slot(@inner_block)}
+      </div>
+      """
+    end
+
+    def dynamic_form_group(%{type: "cards"} = assigns) do
+      ~H"""
+      <div data-custom-cards={@name}>{render_slot(@inner_block)}</div>
+      """
+    end
+
+    def dynamic_form_group(assigns) do
+      ~H"""
+      <div
+        data-custom-group={@title}
+        data-group-name={@name}
+        data-group-type={@type}
+        data-group-disabled={to_string(@disabled)}
+      >
         {render_slot(@inner_block)}
       </div>
       """
@@ -180,6 +199,111 @@ defmodule DynamicForm.ComponentsTest do
 
       assert html =~ "mt-3 rounded-lg border border-gray-200 p-4"
       refute html =~ "data-custom-nested-entry"
+    end
+
+    test "dynamic_form_group wraps a group, keeping the members inside it" do
+      instance = %Instance{
+        id: "group-test",
+        elements: [
+          %Instance.Element{
+            name: "address",
+            type: "panel",
+            title: "Shipping Address",
+            elements: [
+              %Instance.Question{name: "street", type: "text", title: "Street"}
+            ]
+          }
+        ]
+      }
+
+      changeset = DynamicForm.Changeset.create_changeset(instance, %{})
+      form = Phoenix.Component.to_form(changeset, as: "dynamic_form")
+
+      render = fn overrides ->
+        render_component(
+          &DynamicForm.form/1,
+          Keyword.merge(
+            [id: "group-test", render_only: true, instance: instance, form: form],
+            overrides
+          )
+        )
+      end
+
+      # Delegated: the custom container replaces the built-in card, with the
+      # group's members rendered inside it
+      html = render.(components: CustomComponents)
+
+      assert html =~ ~s(data-custom-group="Shipping Address")
+      assert html =~ ~s(name="dynamic_form[street]")
+      refute html =~ "my-6 rounded-lg border border-gray-200 bg-white p-6"
+
+      # The group's identity and layout come through, so one override can
+      # treat two groups differently
+      assert html =~ ~s(data-group-name="address")
+      assert html =~ ~s(data-group-type="horizontal")
+
+      # Fallback: the built-in card renders the default classes
+      html = render.([])
+
+      assert html =~ "my-6 rounded-lg border border-gray-200 bg-white p-6"
+      refute html =~ "data-custom-group"
+    end
+
+    test "a components module can define its own group type" do
+      instance = %Instance{
+        id: "group-type-test",
+        elements: [
+          %Instance.Element{
+            name: "plans",
+            type: "panel",
+            groupType: "cards",
+            elements: [%Instance.Question{name: "plan", type: "text", title: "Plan"}]
+          }
+        ]
+      }
+
+      changeset = DynamicForm.Changeset.create_changeset(instance, %{})
+
+      html =
+        render_component(&DynamicForm.form/1,
+          id: "group-type-test",
+          render_only: true,
+          instance: instance,
+          form: Phoenix.Component.to_form(changeset, as: "dynamic_form"),
+          components: CustomComponents
+        )
+
+      assert html =~ ~s(data-custom-cards="plans")
+    end
+
+    test "a group disabled by enable_if reports it to the override" do
+      instance = %Instance{
+        id: "group-disabled-test",
+        elements: [
+          %Instance.Question{name: "toggle", type: "boolean", title: "Toggle"},
+          %Instance.Element{
+            name: "extras",
+            type: "panel",
+            enableIf: "{toggle} = true",
+            elements: [%Instance.Question{name: "note", type: "text", title: "Note"}]
+          }
+        ]
+      }
+
+      render = fn params ->
+        changeset = DynamicForm.Changeset.create_changeset(instance, params)
+
+        render_component(&DynamicForm.form/1,
+          id: "group-disabled-test",
+          render_only: true,
+          instance: instance,
+          form: Phoenix.Component.to_form(changeset, as: "dynamic_form"),
+          components: CustomComponents
+        )
+      end
+
+      assert render.(%{"toggle" => false}) =~ ~s(data-group-disabled="true")
+      refute render.(%{"toggle" => true}) =~ ~s(data-group-disabled="true")
     end
 
     test "the application config applies without a per-form attribute" do

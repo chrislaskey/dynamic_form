@@ -129,6 +129,7 @@ register their own types — see
 | Choice loading (`choicesByUrl`, lazy loading) | Provide choices in the definition |
 | `showOtherItem` / `showNoneItem` / `showSelectAllItem` | Choice extras |
 | Input masks | |
+| Element layout (`startWithNewLine`, `width`/`minWidth`/`maxWidth`, `gridLayoutColumns`/`colSpan`) | SurveyJS arranges rows per element — `startWithNewLine: false` joins the previous element's row. DynamicForm arranges per container instead: put the fields in a `panel` and set its `groupType`. A Creator export's layout settings are ignored, not honored |
 | Localization objects | Multi-locale strings (`{"default": ..., "de": ...}`) aren't decoded; error messages translate via [Gettext](usage.md#internationalization) instead |
 | SurveyJS themes and CSS customization | Styling is Tailwind via DynamicForm's components |
 
@@ -138,6 +139,10 @@ Beyond the SurveyJS format, definitions can carry:
 
 - **`metadata`** — per-question extension point: file upload configuration,
   `"style"` (`"horizontal"`/`"vertical"`) for radiogroup/checkbox layout.
+- **`groupType`** — on a `panel`: how it lays its members out, `"horizontal"`
+  (default) or `"vertical"`. SurveyJS has no panel-level layout property, so
+  this is ours; applications can add their own types — see
+  [Styling: custom group types](styling.md#custom-group-types).
 - **`generateIds`** — on by default for `paneldynamic`: every entry carries a
   stable `dynamic_form_id`, copied from the entry's `id` when the data came
   from a stored record. See

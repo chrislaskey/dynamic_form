@@ -101,6 +101,40 @@ field, so declaration order of the `<:group>` itself doesn't matter:
 Groups support `visible_if`/`enable_if` like fields. Nested panels
 (panel-in-panel) are currently a data-mode-only feature.
 
+#### Group layout
+
+`type` picks how a group arranges its members, the same way `<:field type=>`
+picks a control. Two ship with the library:
+
+```heex
+<:group name="age_range" title="Age range" />
+<:field group="age_range" type="text" name="min" label="From" />
+<:field group="age_range" type="text" name="max" label="To" />
+```
+
+`"horizontal"` is the default: members share a row and wrap when they run out
+of width. `type="vertical"` stacks them instead.
+
+Members are sized by their content rather than split into equal columns, so a
+`<:field>` slot body can ask for an exact width and the row honors it:
+
+```heex
+<:group name="address" title="Address" />
+<:field group="address" :let={field} type="text" name="street" label="Street">
+  <div class="w-96">
+    <input type="text" name={field.name} id={field.id} value={field.value} class="w-full input" />
+  </div>
+</:field>
+```
+
+Use exact widths (`w-96`, `w-64`), not fractions — a percentage width against
+a content-sized parent resolves as `auto`, so `w-1/2` renders at the input's
+natural width.
+
+To add your own layout, define `dynamic_form_group/1` in your components
+module and use its name — see
+[Styling: custom group types](styling.md#custom-group-types).
+
 ### Custom markup (slot bodies)
 
 A `<:field>` body customizes rendering at three tiers.
@@ -430,10 +464,10 @@ built-ins. A stock Phoenix 1.8 `CoreComponents` works out of the box — its
 `input/1` takes over text, email, number, textarea, select, and checkbox
 controls, `button/1` takes over the submit button, and `translate_error/1`
 routes error messages through your app's Gettext — while radio groups,
-checkbox groups, rating rows, panels, and the label/error pair around
+checkbox groups, rating rows, groups, and the label/error pair around
 custom-control slot bodies fall back to the built-ins unless your module
-defines them (`input_radio_group/1`, `input_checkbox_group/1`, `section/1`,
-`label/1`, `error/1`).
+defines them (`input_radio_group/1`, `input_checkbox_group/1`,
+`dynamic_form_group/1`, `label/1`, `error/1`).
 
 See `DynamicForm.Components` for the full contract and the assigns each
 function receives, and the [Styling guide](styling.md) for the complete
