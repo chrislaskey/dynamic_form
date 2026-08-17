@@ -353,7 +353,7 @@ in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:dynamic_form, "~> 0.22"}
+    {:dynamic_form, "~> 0.23"}
   ]
 end
 ```

@@ -296,6 +296,144 @@ defmodule DynamicForm.Instance.FromSlotsTest do
       assert [%Instance.Element{groupType: nil}] = instance.elements
     end
 
+    test "a group inside a group nests the panels" do
+      instance =
+        convert(
+          [
+            field(type: "text", name: "street", group: "address"),
+            field(type: "text", name: "state", group: "region")
+          ],
+          [
+            group(name: "address", title: "Address"),
+            group(name: "region", title: "Region", group: "address")
+          ]
+        )
+
+      assert [%Instance.Element{name: "address", type: "panel"} = address] = instance.elements
+      assert [street, region] = address.elements
+      assert street.name == "street"
+      assert %Instance.Element{name: "region", type: "panel"} = region
+      assert Enum.map(region.elements, & &1.name) == ["state"]
+    end
+
+    test "a nested group renders once, inside its parent only" do
+      instance =
+        convert(
+          [field(type: "text", name: "state", group: "region")],
+          [group(name: "address"), group(name: "region", group: "address")]
+        )
+
+      # The parent is the only top-level element — the child is not also
+      # emitted as a sibling
+      assert [%Instance.Element{name: "address"}] = instance.elements
+    end
+
+    test "a parent group anchors at its child group's first field" do
+      instance =
+        convert(
+          [
+            field(type: "text", name: "name"),
+            field(type: "text", name: "state", group: "region"),
+            field(type: "text", name: "street", group: "address")
+          ],
+          [group(name: "address"), group(name: "region", group: "address")]
+        )
+
+      # "address" has no field of its own before index 2, but its child group
+      # anchors at index 1, so the panel renders between name and nothing else
+      assert Enum.map(instance.elements, & &1.name) == ["name", "address"]
+
+      address = Enum.at(instance.elements, 1)
+      assert Enum.map(address.elements, & &1.name) == ["region", "street"]
+    end
+
+    test "a group nests three deep" do
+      instance =
+        convert(
+          [field(type: "text", name: "zip", group: "inner")],
+          [
+            group(name: "outer"),
+            group(name: "middle", group: "outer"),
+            group(name: "inner", group: "middle")
+          ]
+        )
+
+      assert [outer] = instance.elements
+      assert [middle] = outer.elements
+      assert [inner] = middle.elements
+      assert Enum.map(inner.elements, & &1.name) == ["zip"]
+    end
+
+    test "a memberless nested group emits nothing, and empties its parent" do
+      instance =
+        convert(
+          [field(type: "text", name: "name")],
+          [group(name: "address"), group(name: "region", group: "address")]
+        )
+
+      assert Enum.map(instance.elements, & &1.name) == ["name"]
+    end
+
+    test "a nested group must declare its parent's scope" do
+      assert_raise ArgumentError, ~r/must declare the group's nested scope/, fn ->
+        convert(
+          [field(type: "text", name: "start", nested: "milestones", group: "dates")],
+          [
+            group(name: "schedule", nested: "milestones"),
+            # Missing nested: "milestones" — a form-level panel inside an
+            # entry-scoped one
+            group(name: "dates", group: "schedule")
+          ],
+          %{nested: [nested(name: "milestones")]}
+        )
+      end
+    end
+
+    test "a group inside a group inside a nested form" do
+      instance =
+        convert(
+          [field(type: "text", name: "start", nested: "milestones", group: "dates")],
+          [
+            group(name: "schedule", nested: "milestones"),
+            group(name: "dates", nested: "milestones", group: "schedule")
+          ],
+          %{nested: [nested(name: "milestones")]}
+        )
+
+      assert [%Instance.Question{type: "paneldynamic"} = milestones] = instance.elements
+      assert [schedule] = milestones.templateElements
+      assert schedule.name == "schedule"
+      assert [dates] = schedule.elements
+      assert Enum.map(dates.elements, & &1.name) == ["start"]
+    end
+
+    test "a group referencing an undeclared group raises" do
+      assert_raise ArgumentError, ~r/<:group/, fn ->
+        convert(
+          [field(type: "text", name: "state", group: "region")],
+          [group(name: "region", group: "nope")]
+        )
+      end
+    end
+
+    test "cyclic group references raise instead of recursing forever" do
+      assert_raise ArgumentError, ~r/cyclic <:group> references/, fn ->
+        convert(
+          [field(type: "text", name: "state", group: "a")],
+          [group(name: "a", group: "b"), group(name: "b", group: "a")]
+        )
+      end
+    end
+
+    test "a group containing itself raises" do
+      assert_raise ArgumentError, ~r/cyclic <:group> references/, fn ->
+        convert(
+          [field(type: "text", name: "state", group: "a")],
+          [group(name: "a", group: "a")]
+        )
+      end
+    end
+
     test "grouped questions are included in the changeset" do
       instance =
         convert(

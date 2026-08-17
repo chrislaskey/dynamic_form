@@ -112,8 +112,31 @@ field, so declaration order of the `<:group>` itself doesn't matter:
 <:field group="address" type="text" name="city" label="City" required />
 ```
 
-Groups support `visible_if`/`enable_if` like fields. Nested panels
-(panel-in-panel) are currently a data-mode-only feature.
+Groups support `visible_if`/`enable_if` like fields.
+
+A group can sit inside another group by naming it, the same way a field names
+its group:
+
+```heex
+<:group name="address" title="Address" type="vertical" />
+<:group name="region" title="Region" group="address" />
+
+<:field group="address" type="text" name="street" label="Street" />
+<:field group="region" type="text" name="state" label="State" />
+<:field group="region" type="text" name="zip" label="Zip" />
+```
+
+Each level keeps its own `type`, so a stacked group can hold a row. Two rules
+worth knowing:
+
+- **Position comes from member fields, not declaration order.** Moving a
+  `<:group>` line changes nothing; a panel renders where its first member
+  field sits, and a parent inherits its earliest child's position.
+- **A nested group declares the same `nested` scope as its parent.** A
+  form-level group can't sit inside an entry-scoped one, and mismatches raise.
+
+Cyclic references (`a` inside `b` inside `a`), self-references, and groups
+naming an undeclared parent all raise at conversion time.
 
 #### Group layout
 

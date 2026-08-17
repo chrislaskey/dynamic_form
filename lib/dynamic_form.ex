@@ -507,6 +507,12 @@ defmodule DynamicForm do
     attr(:visible_if, :string)
     attr(:enable_if, :string)
 
+    attr(:group, :string,
+      doc:
+        "Place this group inside another <:group> panel. It renders at the position of " <>
+          "its own first member field, and must declare the same nested scope as its parent"
+    )
+
     attr(:nested, :string,
       doc:
         "Data scope this group lives in. A group inside a nested form declares it here, " <>

@@ -87,6 +87,7 @@ Slot bodies: any question type accepts a body receiving its
 | `type` | string | Layout: `"horizontal"` (default, members share a row and wrap) or `"vertical"`, or a type your components module defines (→ `groupType`) |
 | `visible_if` | string | Conditional visibility expression |
 | `enable_if` | string | Conditional enablement (disables all contained questions when false) |
+| `group` | string | Place this group inside another `<:group>` panel; it must declare the same `nested` scope as that parent |
 | `nested` | string | Data scope this group lives in; every member field must declare the identical scope |
 
 ## `<:nested>` attributes
@@ -134,7 +135,7 @@ fields join it with `<:field nested="...">`. See the
 | Type | Renders as | Notes |
 |---|---|---|
 | `html` | Raw HTML or slot body | String attr goes through `Phoenix.HTML.raw/1`; slot bodies are escaped HEEx |
-| `panel` | Titled container | Declared via `<:group>` in declarative mode; nestable in data mode. `groupType` picks the layout: `"horizontal"` (default) or `"vertical"` |
+| `panel` | Titled container | Declared via `<:group>` in declarative mode; nestable in both modes. `groupType` picks the layout: `"horizontal"` (default) or `"vertical"` |
 | `image` | `<img>` | `src` required |
 | `custom` | Slot body | Declarative-only; body receives the Phoenix form |
 

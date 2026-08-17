@@ -3,6 +3,19 @@
 All notable changes to this project are documented here. For releases before
 0.19.0, see the git history.
 
+## 0.23.0
+
+### Added
+
+- A `<:group>` can sit inside another `<:group>`, by naming it the same way a
+  field names its group — panel-in-panel is no longer data-mode only. Each
+  level keeps its own `type`, so a stacked group can hold a row. A parent
+  renders at the position of its earliest member, including one contributed by
+  a child group, and a nested group must declare the same `nested` scope as
+  its parent so a form-level panel can't sit inside an entry-scoped one.
+  Cyclic references, self-references, and groups naming an undeclared parent
+  raise at conversion time.
+
 ## 0.22.0
 
 ### Added

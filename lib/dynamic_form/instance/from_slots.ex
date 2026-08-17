@@ -23,7 +23,9 @@ defmodule DynamicForm.Instance.FromSlots do
       maps for anything the flattened attrs can't express.
     * A field with `group="name"` is collected into a `panel` element declared
       by a `<:group name="name">` entry. The panel is emitted at the position
-      of its first member field.
+      of its first member field. A `<:group>` can itself declare `group=` to
+      sit inside another panel, and a parent takes the position of its
+      earliest member — including one contributed by a child group.
     * A field with `nested="name"` is collected into the `templateElements`
       of a `paneldynamic` question declared by a `<:nested name="name">`
       entry. `nested` declares the field's *data scope* (its value lives
@@ -50,7 +52,8 @@ defmodule DynamicForm.Instance.FromSlots do
   definitions: missing names, duplicate names within a scope, unknown types,
   choice questions without options, `custom` fields without a body,
   references to undeclared groups or nested forms, group/member nested-scope
-  mismatches, nested forms with no members, and cyclic nested references.
+  mismatches, nested forms with no members, and cyclic `<:nested>` or
+  `<:group>` references.
   """
 
   alias DynamicForm.Instance
@@ -107,8 +110,10 @@ defmodule DynamicForm.Instance.FromSlots do
         build_nested(entry, slots, custom_types)
       end
 
+    # `group == nil` filters out groups that are members of another group —
+    # they are emitted by their parent, not here
     group_items =
-      for entry <- slots.groups, entry[:nested] == scope do
+      for entry <- slots.groups, entry[:nested] == scope, entry[:group] == nil do
         build_group(entry, slots, custom_types)
       end
       |> Enum.reject(&is_nil/1)
@@ -125,9 +130,12 @@ defmodule DynamicForm.Instance.FromSlots do
     {anchor, nested_question(entry, template)}
   end
 
-  # A group's members are the fields (and nested declarations) referencing
-  # it; scope agreement is already validated, so membership needs no scope
-  # filter. Memberless groups emit nothing.
+  # A group's members are the fields, nested declarations, and groups
+  # referencing it; scope agreement is already validated, so membership needs
+  # no scope filter. A member group contributes its own anchor, so a group
+  # holding only another group still renders at that group's first field.
+  # Memberless groups emit nothing — which cascades: a group whose only member
+  # is an empty group is empty too.
   defp build_group(entry, slots, custom_types) do
     field_members =
       for {field, index} <- slots.fields, field[:group] == entry.name do
@@ -139,7 +147,13 @@ defmodule DynamicForm.Instance.FromSlots do
         build_nested(nested, slots, custom_types)
       end
 
-    case Enum.sort_by(field_members ++ nested_members, &elem(&1, 0)) do
+    group_members =
+      for group <- slots.groups, group[:group] == entry.name do
+        build_group(group, slots, custom_types)
+      end
+      |> Enum.reject(&is_nil/1)
+
+    case Enum.sort_by(field_members ++ nested_members ++ group_members, &elem(&1, 0)) do
       [] ->
         nil
 
@@ -353,7 +367,7 @@ defmodule DynamicForm.Instance.FromSlots do
     Enum.each(fields, &validate_field!(&1, custom_types))
     validate_refs!(fields, groups, nesteds)
     validate_scope_agreement!(fields, groups, nesteds)
-    validate_cycles!(nesteds)
+    validate_cycles!(nesteds, groups)
     validate_unique_names!(fields, groups, nesteds)
     validate_nested_members!(fields, nesteds)
     validate_carry_forward!(fields, nesteds)
@@ -632,7 +646,10 @@ defmodule DynamicForm.Instance.FromSlots do
       validate_ref!(entry, "<:field", :nested, nested_names)
     end)
 
-    Enum.each(groups, &validate_ref!(&1, "<:group", :nested, nested_names))
+    Enum.each(groups, fn entry ->
+      validate_ref!(entry, "<:group", :nested, nested_names)
+      validate_ref!(entry, "<:group", :group, group_names)
+    end)
 
     Enum.each(nesteds, fn entry ->
       validate_ref!(entry, "<:nested", :group, group_names)
@@ -656,7 +673,10 @@ defmodule DynamicForm.Instance.FromSlots do
   defp validate_scope_agreement!(fields, groups, nesteds) do
     group_defs = Map.new(groups, &{&1.name, &1})
 
-    for entry <- fields ++ nesteds, group_name = entry[:group] do
+    # Groups are checked alongside fields and nested forms: a group inside
+    # another group lives in the parent's scope, so it must declare the same
+    # one. Otherwise a form-level panel could sit inside an entry-scoped one.
+    for entry <- fields ++ nesteds ++ groups, group_name = entry[:group] do
       group_scope = Map.fetch!(group_defs, group_name)[:nested]
       member_scope = entry[:nested]
 
@@ -674,25 +694,37 @@ defmodule DynamicForm.Instance.FromSlots do
   defp describe_scope(nil), do: "no nested scope"
   defp describe_scope(scope), do: "nested scope \"#{scope}\""
 
-  # Nested declarations reference their parent scope by name; the reference
-  # graph must be acyclic (and a nested form cannot contain itself).
-  defp validate_cycles!(nesteds) do
-    parents = Map.new(nesteds, &{&1.name, &1[:nested]})
+  # Nested and group declarations reference their parent by name; both
+  # reference graphs must be acyclic, and neither can contain itself.
+  # Unchecked, a cycle recurses forever while building the elements.
+  defp validate_cycles!(nesteds, groups) do
+    walk_all!(nesteds, :nested, "<:nested>")
+    walk_all!(groups, :group, "<:group>")
+  end
 
-    Enum.each(nesteds, fn nested ->
-      walk_parents!(nested.name, parents[nested.name], parents, [nested.name])
+  defp walk_all!(declarations, attr, kind) do
+    parents = Map.new(declarations, &{&1.name, &1[attr]})
+
+    Enum.each(declarations, fn declaration ->
+      walk_parents!(
+        declaration.name,
+        parents[declaration.name],
+        parents,
+        [declaration.name],
+        kind
+      )
     end)
   end
 
-  defp walk_parents!(_start, nil, _parents, _path), do: :ok
+  defp walk_parents!(_start, nil, _parents, _path, _kind), do: :ok
 
-  defp walk_parents!(start, start, _parents, path) do
+  defp walk_parents!(start, start, _parents, path, kind) do
     raise ArgumentError,
-          "cyclic <:nested> references: #{Enum.join(Enum.reverse([start | path]), " -> ")}"
+          "cyclic #{kind} references: #{Enum.join(Enum.reverse([start | path]), " -> ")}"
   end
 
-  defp walk_parents!(start, current, parents, path) do
-    walk_parents!(start, parents[current], parents, [current | path])
+  defp walk_parents!(start, current, parents, path, kind) do
+    walk_parents!(start, parents[current], parents, [current | path], kind)
   end
 
   # Field and <:nested> names are data keys, unique per scope. A group's
