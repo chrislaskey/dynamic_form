@@ -171,6 +171,7 @@ defmodule DemoWeb.NestedFormLive do
                 <:nested
                   name="milestones"
                   title="Milestones"
+                  description="The phases this project ships in. Each one gets its own schedule below."
                   entry_title="Milestone {panelIndex}"
                   entries={1}
                   min_entries={1}
@@ -267,7 +268,9 @@ defmodule DemoWeb.NestedFormLive do
     <DynamicForm.form id="nested-slot-form" components={DemoWeb.FormComponents} submit_text="Save Project">
       <:field type="text" name="project" label="Project name" required />
 
-      <:nested name="milestones" title="Milestones" entry_title="Milestone {panelIndex}"
+      <:nested name="milestones" title="Milestones"
+               description="The phases this project ships in. Each one gets its own schedule below."
+               entry_title="Milestone {panelIndex}"
                entries={1} min_entries={1} add_text="Add milestone" remove_text="Remove milestone" />
       <:field nested="milestones" type="text" name="title" label="Title" required />
       <:field :let={field} nested="milestones" type="text" name="effort"

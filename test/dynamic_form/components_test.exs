@@ -235,17 +235,17 @@ defmodule DynamicForm.ComponentsTest do
 
       assert html =~ ~s(data-custom-group="Shipping Address")
       assert html =~ ~s(name="dynamic_form[street]")
-      refute html =~ "my-6 rounded-lg border border-gray-200 bg-white p-6"
+      refute html =~ "text-lg font-semibold text-gray-900 mb-4"
 
       # The group's identity and layout come through, so one override can
       # treat two groups differently
       assert html =~ ~s(data-group-name="address")
       assert html =~ ~s(data-group-type="horizontal")
 
-      # Fallback: the built-in card renders the default classes
+      # Fallback: the built-in renders its own heading and member layout
       html = render.([])
 
-      assert html =~ "my-6 rounded-lg border border-gray-200 bg-white p-6"
+      assert html =~ "text-lg font-semibold text-gray-900 mb-4"
       refute html =~ "data-custom-group"
     end
 

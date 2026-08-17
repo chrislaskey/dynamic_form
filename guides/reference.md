@@ -98,7 +98,7 @@ fields join it with `<:field nested="...">`. See the
 | Attribute | Type | Description |
 |---|---|---|
 | `name` | string | Required. Data key — the value is a list of entry maps |
-| `title` / `description` | string | Heading and help text |
+| `title` / `description` | string | Section heading and help text, rendered above the entries with the add button opposite them. Ordinary strings, so `title={gettext("Age groups")}` works |
 | `entry_title` | string | Per-entry heading; `{panelIndex}` interpolates the 1-based number (→ `templateTitle`) |
 | `entries` | integer | Entries seeded on a fresh form (→ `panelCount`) |
 | `min_entries` / `max_entries` | integer | Count limits: buttons hide, and submit validates (→ `minPanelCount`/`maxPanelCount`) |

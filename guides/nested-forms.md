@@ -360,6 +360,25 @@ for editing, the source entries must return with the same ids** — persist
 Otherwise every reference is orphaned, and pruning deletes it on the first
 change.
 
+## The section header
+
+A nested form renders as a section: `title` and `description` on the left, the
+add button opposite them on the right, then the entries below. Both are
+ordinary strings, so they can be translated at the call site:
+
+```heex
+<:nested
+  name="age_groups"
+  title={gettext("Age groups")}
+  description={gettext("The age bands you sort children into.")}
+  entry_title={gettext("Group {panelIndex}")}
+/>
+```
+
+The title falls back to the capitalized field name, and the description is
+omitted entirely when unset. The add button hides at `max_entries`, which
+leaves the header as heading-only.
+
 ## Styling the entry container
 
 Each repeating entry renders inside the `nested_entry/1` component — a

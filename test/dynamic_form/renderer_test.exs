@@ -432,6 +432,63 @@ defmodule DynamicForm.RendererTest do
       refute html =~ ~s(phx-click="remove_nested_entry")
     end
 
+    test "the title and description head the section, with add on the right" do
+      html =
+        render_instance(
+          instance_with([
+            addresses_question(
+              description: "Every address we have on file.",
+              addPanelText: "Add address"
+            )
+          ]),
+          %{"addresses" => [%{"street" => "x"}]}
+        )
+
+      assert html =~ ~s(<div class="mt-6 flex items-start justify-between gap-3">)
+      assert html =~ ~s(<h3 class="text-xl font-bold">Addresses</h3>)
+      assert html =~ ~s(<div class="text-gray-500">)
+      assert html =~ "Every address we have on file."
+      # The add button sits in that header row, not below the entries
+      [_before_header, after_header] =
+        String.split(html, ~s(<div class="mt-6 flex items-start justify-between gap-3">))
+
+      [in_header, _rest] =
+        String.split(after_header, ~s(name="dynamic_form[addresses][0][street]"))
+
+      assert in_header =~ ~s(phx-click="add_nested_entry")
+      assert in_header =~ "Add address"
+    end
+
+    test "the description is omitted when the nested form has none" do
+      html =
+        render_instance(
+          instance_with([addresses_question([])]),
+          %{"addresses" => [%{"street" => "x"}]}
+        )
+
+      assert html =~ ~s(<h3 class="text-xl font-bold">Addresses</h3>)
+      refute html =~ ~s(<div class="text-gray-500">)
+    end
+
+    test "a title and description computed at runtime render as given" do
+      # What title={gettext("Addresses")} passes: an ordinary runtime string
+      translated = fn text -> String.upcase(text) end
+
+      html =
+        render_instance(
+          instance_with([
+            addresses_question(
+              title: translated.("Addresses"),
+              description: translated.("All of them")
+            )
+          ]),
+          %{"addresses" => [%{"street" => "x"}]}
+        )
+
+      assert html =~ ~s(<h3 class="text-xl font-bold">ADDRESSES</h3>)
+      assert html =~ "ALL OF THEM"
+    end
+
     test "an entry lays its fields and its remove button out in two columns" do
       html =
         render_instance(

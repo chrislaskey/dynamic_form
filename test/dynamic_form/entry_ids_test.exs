@@ -170,6 +170,32 @@ defmodule DynamicForm.EntryIdsTest do
 
       assert ids(socket) == seeded
     end
+
+    test "a title and description computed per render don't count as a change" do
+      # What title={gettext("Staff")} does: the value is recomputed on every
+      # parent render. Equal strings compare equal, so the form does not reset.
+      translate = fn text -> String.trim(" " <> text <> " ") end
+
+      assigns = fn ->
+        %{
+          id: "school",
+          instance:
+            instance(title: translate.("Staff"), description: translate.("Everyone on payroll")),
+          data: %{"staff" => [%{"name" => "Ada"}]}
+        }
+      end
+
+      {:ok, socket} = RendererLive.update(assigns.(), %Phoenix.LiveView.Socket{})
+      [id] = ids(socket)
+
+      socket =
+        validate(socket, %{"staff" => %{"0" => %{"dynamic_form_id" => id, "name" => "Ada L"}}})
+
+      {:ok, socket} = RendererLive.update(assigns.(), socket)
+
+      assert ids(socket) == [id]
+      assert [%{name: "Ada L"}] = entries(socket)
+    end
   end
 
   describe "nested inside another nested form" do

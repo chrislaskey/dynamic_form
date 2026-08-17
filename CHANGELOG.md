@@ -45,6 +45,11 @@ All notable changes to this project are documented here. For releases before
 
 ### Changed
 
+- A nested form renders as a section: its `title` (now an `<h3>`) and
+  `description` on the left, its add button opposite them on the right rather
+  than below the entries. The title no longer routes through the components
+  module's `label/1` — a repeating section is a heading, not a label for a
+  single input.
 - A nested-form entry is laid out in two columns: its title and child fields
   on the left, its remove control on the right, top-aligned with the first
   field. The control is a trash icon rather than a text button, and its

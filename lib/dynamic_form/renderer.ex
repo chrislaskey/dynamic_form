@@ -787,15 +787,27 @@ defmodule DynamicForm.Renderer do
 
     ~H"""
     <div class="mb-4">
-      {Components.render(@components, :label, %{
-        for: "#{@form.id}_#{@question.name}",
-        inner_block: [
-          %{__slot__: :inner_block, inner_block: fn _changed, _arg -> @label end}
-        ]
-      })}
-      <%= if @question.description do %>
-        <p class="mt-2 text-sm text-gray-500"><%= @question.description %></p>
-      <% end %>
+      <%!-- Section header: the title and description on the left, the add
+           button on the right. A long title wraps rather than squashing the
+           button. --%>
+      <div class="mt-6 flex items-start justify-between gap-3">
+        <div class="min-w-0">
+          <h3 class="text-xl font-bold">{@label}</h3>
+          <div :if={@question.description} class="text-gray-500">
+            {@question.description}
+          </div>
+        </div>
+        <button
+          :if={@show_add?}
+          type="button"
+          phx-click="add_nested_entry"
+          phx-value-path={@path}
+          phx-target={@target}
+          class="btn btn-sm shrink-0"
+        >
+          {@question.addPanelText || "Add new"}
+        </button>
+      </div>
       <%!-- Keeps the field present in params when every panel is removed --%>
       <input type="hidden" name={"#{@form.name}[#{@question.name}][__empty__]"} value="" />
       <p :if={@children == []} class="mt-2 text-sm italic text-gray-500">
@@ -832,17 +844,6 @@ defmodule DynamicForm.Renderer do
           inner_block: [%{__slot__: :inner_block, inner_block: fn _changed, _arg -> msg end}]
         })}
       <% end %>
-      <div :if={@show_add?} class="mt-3">
-        <button
-          type="button"
-          phx-click="add_nested_entry"
-          phx-value-path={@path}
-          phx-target={@target}
-          class="btn btn-sm"
-        >
-          {@question.addPanelText || "Add new"}
-        </button>
-      </div>
     </div>
     """
   end
