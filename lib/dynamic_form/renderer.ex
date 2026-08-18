@@ -971,6 +971,14 @@ defmodule DynamicForm.Renderer do
         id: "#{parent_form.id}_#{question.name}_#{index}"
       )
 
+    # The entry's position, for a slot body to read as `form.index`. Set
+    # directly because to_form/2 maps only :as, :id, :action, and :errors onto
+    # struct fields — anything else lands in the form's options. This is the
+    # same field Phoenix's own inputs_for/1 fills in for a collection, and it
+    # is zero-based like the rest of Phoenix; the `{panelIndex}` placeholder is
+    # one-based for SurveyJS compatibility.
+    child_form = %{child_form | index: index}
+
     context =
       parent_form
       |> get_form_params()

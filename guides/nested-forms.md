@@ -119,13 +119,13 @@ change):
 <:field nested="addresses" group="geo" type="text" name="city" />
 ```
 
-Composition works in every direction except group-in-group (an existing
-declarative-mode limitation):
+Composition works in every direction:
 
 | Composition | Spelling |
 |---|---|
 | Field in a nested form | `<:field nested="addresses">` |
 | Group inside a nested form | `<:group nested="addresses">` + members declare both |
+| Group inside a group | `<:group name="geo" group="section">` |
 | Nested form inside a group | `<:nested group="section">` |
 | Nested form inside a nested form | `<:nested name="phones" nested="contacts">` |
 
@@ -234,6 +234,40 @@ their own ids, that happens for free — the id is copied, not generated.
 
 Set `generate_ids={false}` (`"generateIds": false` in data mode) on a nested
 form that doesn't need identity, and no field is added to its entries.
+
+## Entry position
+
+Two ways to reach an entry's number, and they differ in base because they come
+from different worlds:
+
+**In a definition string**, `{panelIndex}` interpolates the **1-based** number —
+SurveyJS's placeholder, so it matches what a SurveyJS definition expects:
+
+```heex
+<:nested name="age_groups" title="Age groups" entry_title="Group {panelIndex}" />
+```
+
+**In a slot body**, the entry's form carries its **0-based** position in
+`index`, the same field Phoenix's own `inputs_for` populates for a collection:
+
+```heex
+<:field :let={form} nested="age_groups" type="custom" name="position">
+  <div class="text-sm text-gray-500">Group {form.index + 1}</div>
+</:field>
+```
+
+A control body reaches it through the field's form:
+
+```heex
+<:field :let={field} nested="age_groups" type="text" name="min" label="From">
+  <input name={field.name} value={field.value} data-row={field.form.index} />
+</:field>
+```
+
+`index` is `nil` on the form-level form — only entry forms have a position.
+Note that it shifts when entries are added or removed, so it is a display
+value, not an identity: use [`dynamic_form_id`](#entry-ids) for anything that
+needs to keep pointing at the same entry.
 
 ## Choices from another nested form
 
@@ -428,5 +462,5 @@ seeded entry.
 - Matrix types (`matrixdynamic`) are not yet implemented — they share this
   feature's data shape and validation machinery and are a natural
   follow-up.
-- Declarative mode: group-in-group remains unsupported, and `<:nested>`
-  declaration names are globally unique (see Naming above).
+- Declarative mode: `<:group>` and `<:nested>` declaration names are
+  globally unique (see Naming above).

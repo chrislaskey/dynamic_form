@@ -88,6 +88,68 @@ defmodule DynamicForm.SlotRenderingTest do
       assert html =~ "CUSTOM name=dynamic_form[addresses][0][street] value=110 Main St"
       assert html =~ "CUSTOM name=dynamic_form[addresses][1][street] value=13 Dearborn"
     end
+
+    test "a custom element's body reads the entry's position as form.index" do
+      entry =
+        slot_entry(%{type: "custom", name: "position"}, fn _, form ->
+          "POSITION index=#{inspect(form.index)} number=#{form.index + 1}"
+        end)
+
+      html =
+        render_instance(
+          instance_with([
+            %Instance.Question{
+              name: "addresses",
+              type: "paneldynamic",
+              templateElements: [%Instance.Element{name: "position", type: "custom", slot: entry}]
+            }
+          ]),
+          %{"addresses" => [%{}, %{}, %{}]}
+        )
+
+      # Zero-based, like Phoenix's own inputs_for; {panelIndex} is one-based
+      assert html =~ "POSITION index=0 number=1"
+      assert html =~ "POSITION index=1 number=2"
+      assert html =~ "POSITION index=2 number=3"
+    end
+
+    test "a control body reads it through field.form.index" do
+      entry =
+        slot_entry(%{type: "text", name: "street"}, fn _, field ->
+          "ROW #{field.form.index}"
+        end)
+
+      html =
+        render_instance(
+          instance_with([
+            %Instance.Question{
+              name: "addresses",
+              type: "paneldynamic",
+              templateElements: [
+                %Instance.Question{name: "street", type: "text", slot: entry}
+              ]
+            }
+          ]),
+          %{"addresses" => [%{"street" => "a"}, %{"street" => "b"}]}
+        )
+
+      assert html =~ "ROW 0"
+      assert html =~ "ROW 1"
+    end
+
+    test "the form-level form has no index" do
+      entry =
+        slot_entry(%{type: "custom", name: "position"}, fn _, form ->
+          "TOP index=#{inspect(form.index)}"
+        end)
+
+      html =
+        render_instance(
+          instance_with([%Instance.Element{name: "position", type: "custom", slot: entry}])
+        )
+
+      assert html =~ "TOP index=nil"
+    end
   end
 
   describe "questions with slot bodies (tier 2)" do

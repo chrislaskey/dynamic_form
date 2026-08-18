@@ -7,6 +7,12 @@ All notable changes to this project are documented here. For releases before
 
 ### Added
 
+- Nested form entries carry their position in the form's `index` field, so a
+  slot body can display it: `{form.index + 1}` in a `type="custom"` body, or
+  `field.form.index` in a control body. Zero-based, matching the field
+  Phoenix's own `inputs_for` populates for a collection — the `{panelIndex}`
+  placeholder stays one-based for SurveyJS compatibility. `nil` on the
+  form-level form, since only entries have a position.
 - A `<:group>` can sit inside another `<:group>`, by naming it the same way a
   field names its group — panel-in-panel is no longer data-mode only. Each
   level keeps its own `type`, so a stacked group can hold a row. A parent
