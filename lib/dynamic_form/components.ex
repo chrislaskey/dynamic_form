@@ -25,14 +25,20 @@ defmodule DynamicForm.Components do
 
   | Function | Renders | Phoenix-generated CoreComponents? |
   |---|---|---|
-  | `input/1` | text, email, number, textarea, select, checkbox controls (receives `field`, `type`, `label`, and per-type extras like `options`/`prompt`/`multiple`) | yes — works out of the box |
+  | `input/1` | text, email, number, textarea, select, checkbox controls (receives `field`, `type`, `label`, `required`, `required_label`, and per-type extras like `options`/`prompt`/`multiple`) | yes — works out of the box |
   | `input_radio_group/1` | radiogroup and rating questions | no — built-in fallback |
   | `input_checkbox_group/1` | multi-select checkbox groups | no — built-in fallback |
-  | `label/1`, `error/1` | around custom-control slot bodies | no (private in Phoenix 1.8) — built-in fallback |
+  | `label/1`, `error/1` | around custom-control slot bodies (`label/1` receives `required` and `required_label`) | no (private in Phoenix 1.8) — built-in fallback |
   | `dynamic_form_group/1` | groups (panels); dispatches on `type` like `input/1` (receives `type`, `title`, `name`, `disabled`, `inner_block`) | no — built-in fallback |
   | `nested_entry/1` | the container around each repeating nested-form entry (receives `index`, `name`, and the entry contents as `inner_block`) | no — built-in fallback |
   | `button/1` | the submit button and a nested form's add button (receives `type`, `disabled`, `rest`, `inner_block`) | yes — delegates when exported |
   | `translate_error/1` | error messages (routes through the app's Gettext) | yes — delegates when exported |
+
+  `label` is plain text — a required field's mark arrives separately as
+  `required` and `required_label`, so a component decides where it renders.
+  `required_label` is already resolved: a string, or `nil`/`false` when the
+  definition suppresses it. See
+  [Styling: the required mark](styling.md#the-required-mark).
 
   A `button/1` must splat its global attributes — `<button {@rest}>` — the way
   a Phoenix-generated one does. The nested-form add button carries its

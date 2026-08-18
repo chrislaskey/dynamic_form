@@ -5,7 +5,33 @@ All notable changes to this project are documented here. For releases before
 
 ## 0.23.0
 
+### Breaking
+
+- A required field's mark is no longer composed into its label. `label` now
+  arrives at a components module as plain text, and the mark comes alongside
+  it as two new assigns, `required` and `required_label`, for the component to
+  render where it likes. `input/1`, `input_radio_group/1`,
+  `input_checkbox_group/1`, and `label/1` all receive both. **A custom
+  components module keeps rendering, but silently stops showing marks until it
+  renders them** — nothing raises. See
+  [Styling: the required mark](styling.md#the-required-mark).
+- `required` now renders the HTML `required` attribute on the control, so the
+  browser enforces it alongside the server. A field left empty is blocked by
+  the browser before `phx-submit` fires, which means `on_submit` does not run
+  and no server-rendered errors appear for that attempt. Checkbox *groups* are
+  excluded: `required` on each box would demand every option rather than one.
+
 ### Added
+
+- `required_label` on `<:field>` and `<:nested>` sets the mark beside a required
+  label — `"(required)"` instead of
+  `"*"`, say. Blank (`nil`, `false`, or `""`) shows no mark while the field
+  stays required on both client and server; unset gives `"*"`. SurveyJS spells
+  the same idea `requiredMark` and sets it once per survey, so reading it per
+  question is our extension — that name is accepted as a decoding alias and
+  appears nowhere else.
+- A required checkbox now shows a mark beside its inline label; it never did
+  before.
 
 - Nested form entries carry their position in the form's `index` field, so a
   slot body can display it: `{form.index + 1}` in a `type="custom"` body, or

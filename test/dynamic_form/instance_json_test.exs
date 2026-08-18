@@ -109,6 +109,37 @@ defmodule DynamicForm.InstanceJsonTest do
       refute Jason.encode!(instance) =~ "groupType"
     end
 
+    test "round-trips requiredLabel, and decodes SurveyJS's requiredMark" do
+      instance = %Instance{
+        id: "req",
+        elements: [
+          %Instance.Question{
+            name: "email",
+            type: "text",
+            isRequired: true,
+            requiredLabel: "(req)"
+          }
+        ]
+      }
+
+      json = Jason.encode!(instance)
+      assert json =~ ~S|"requiredLabel":"(req)"|
+
+      [decoded] = json |> Instance.decode!() |> Map.get(:elements)
+      assert decoded.requiredLabel == "(req)"
+
+      # SurveyJS spells the same property requiredMark
+      [from_surveyjs] =
+        %{
+          "id" => "req",
+          "elements" => [%{"type" => "text", "name" => "email", "requiredMark" => "(req)"}]
+        }
+        |> Instance.decode!()
+        |> Map.get(:elements)
+
+      assert from_surveyjs.requiredLabel == "(req)"
+    end
+
     test "round-trips conditional and rating properties" do
       instance = %Instance{
         id: "props-form",

@@ -219,7 +219,9 @@ defmodule DynamicForm.Renderer do
       opts: opts,
       no_choices?: no_choices?(question, opts),
       components: Keyword.get(opts, :components),
-      label: question_label(question)
+      label: question_label(question),
+      required: !!question.isRequired,
+      required_label: Instance.required_label_text(question)
     }
 
     ~H"""
@@ -227,6 +229,8 @@ defmodule DynamicForm.Renderer do
       <div class="mb-4">
         <%= if @label do %>
           {Components.render(@components, :label, %{
+            required: @required,
+            required_label: @required_label,
             inner_block: [
               %{__slot__: :inner_block, inner_block: fn _changed, _arg -> @label end}
             ]
@@ -392,6 +396,8 @@ defmodule DynamicForm.Renderer do
       field: put_form_data(field, Keyword.get(opts, :form_data)),
       entry: entry,
       label: question_label(question),
+      required: !!question.isRequired,
+      required_label: Instance.required_label_text(question),
       errors: Enum.map(errors, &Components.translate_error(components, &1)),
       components: components
     }
@@ -401,6 +407,8 @@ defmodule DynamicForm.Renderer do
       <%= if @label do %>
         {Components.render(@components, :label, %{
           for: @field.id,
+          required: @required,
+          required_label: @required_label,
           inner_block: [
             %{__slot__: :inner_block, inner_block: fn _changed, _arg -> @label end}
           ]
@@ -436,6 +444,8 @@ defmodule DynamicForm.Renderer do
       disabled: disabled,
       readonly: !disabled && !!question.readOnly,
       label: label,
+      required: !!question.isRequired,
+      required_label: Instance.required_label_text(question),
       input_type: input_type,
       components: Keyword.get(opts, :components)
     }
@@ -446,6 +456,8 @@ defmodule DynamicForm.Renderer do
         field: @form[@field_atom],
         type: @input_type,
         label: @label,
+        required: @required,
+        required_label: @required_label,
         placeholder: @question.placeholder,
         disabled: @disabled,
         readonly: @readonly
@@ -471,6 +483,8 @@ defmodule DynamicForm.Renderer do
       disabled: disabled,
       readonly: !disabled && !!question.readOnly,
       label: label,
+      required: !!question.isRequired,
+      required_label: Instance.required_label_text(question),
       components: Keyword.get(opts, :components)
     }
 
@@ -480,6 +494,8 @@ defmodule DynamicForm.Renderer do
         field: @form[@field_atom],
         type: "textarea",
         label: @label,
+        required: @required,
+        required_label: @required_label,
         placeholder: @question.placeholder,
         disabled: @disabled,
         readonly: @readonly,
@@ -507,6 +523,8 @@ defmodule DynamicForm.Renderer do
       disabled: disabled,
       choices: choices,
       label: label,
+      required: !!question.isRequired,
+      required_label: Instance.required_label_text(question),
       components: Keyword.get(opts, :components)
     }
 
@@ -516,6 +534,8 @@ defmodule DynamicForm.Renderer do
         field: @form[@field_atom],
         type: "select",
         label: @label,
+        required: @required,
+        required_label: @required_label,
         options: @choices,
         prompt: "Select an option...",
         disabled: @disabled
@@ -552,6 +572,8 @@ defmodule DynamicForm.Renderer do
       disabled: disabled,
       choices: choices,
       label: label,
+      required: !!question.isRequired,
+      required_label: Instance.required_label_text(question),
       style: style,
       components: Keyword.get(opts, :components)
     }
@@ -561,6 +583,8 @@ defmodule DynamicForm.Renderer do
       {Components.render(@components, :input_radio_group, %{
         field: @form[@field_atom],
         label: @label,
+        required: @required,
+        required_label: @required_label,
         options: @choices,
         style: @style,
         disabled: @disabled
@@ -586,6 +610,8 @@ defmodule DynamicForm.Renderer do
       field_atom: field_atom,
       disabled: disabled,
       label: label,
+      required: !!question.isRequired,
+      required_label: Instance.required_label_text(question),
       components: Keyword.get(opts, :components)
     }
 
@@ -595,6 +621,8 @@ defmodule DynamicForm.Renderer do
         field: @form[@field_atom],
         type: "checkbox",
         label: @label,
+        required: @required,
+        required_label: @required_label,
         disabled: @disabled
       })}
     </div>
@@ -649,6 +677,8 @@ defmodule DynamicForm.Renderer do
       disabled: disabled,
       choices: choices,
       label: label,
+      required: !!question.isRequired,
+      required_label: Instance.required_label_text(question),
       style: style,
       components: Keyword.get(opts, :components)
     }
@@ -658,6 +688,8 @@ defmodule DynamicForm.Renderer do
       {Components.render(@components, :input_checkbox_group, %{
         field: @form[@field_atom],
         label: @label,
+        required: @required,
+        required_label: @required_label,
         options: @choices,
         style: @style,
         disabled: @disabled
@@ -683,6 +715,8 @@ defmodule DynamicForm.Renderer do
       disabled: disabled,
       choices: choices,
       label: label,
+      required: !!question.isRequired,
+      required_label: Instance.required_label_text(question),
       components: Keyword.get(opts, :components)
     }
 
@@ -692,6 +726,8 @@ defmodule DynamicForm.Renderer do
         field: @form[@field_atom],
         type: "select",
         label: @label,
+        required: @required,
+        required_label: @required_label,
         options: @choices,
         multiple: true,
         disabled: @disabled
@@ -726,6 +762,8 @@ defmodule DynamicForm.Renderer do
       disabled: disabled,
       choices: choices,
       label: label,
+      required: !!question.isRequired,
+      required_label: Instance.required_label_text(question),
       components: Keyword.get(opts, :components)
     }
 
@@ -734,6 +772,8 @@ defmodule DynamicForm.Renderer do
       {Components.render(@components, :input_radio_group, %{
         field: @form[@field_atom],
         label: @label,
+        required: @required,
+        required_label: @required_label,
         options: @choices,
         style: :horizontal,
         disabled: @disabled
@@ -772,6 +812,8 @@ defmodule DynamicForm.Renderer do
       children: children,
       disabled: disabled,
       label: question_label(question),
+      required: !!question.isRequired,
+      required_label: Instance.required_label_text(question),
       errors: nested_form_errors(form[String.to_atom(question.name)], components),
       components: components,
       opts: if(disabled, do: Keyword.put(opts, :disabled, true), else: opts),
@@ -792,7 +834,12 @@ defmodule DynamicForm.Renderer do
            button. --%>
       <div class="mt-6 flex items-start justify-between gap-3">
         <div class="min-w-0">
-          <h3 :if={@label} class="text-xl font-bold">{@label}</h3>
+          <h3 :if={@label} class="text-xl font-bold">
+            {@label}<span
+              :if={@required && @required_label}
+              class="ml-0.5 text-red-500"
+            >{@required_label}</span>
+          </h3>
           <div :if={@question.description} class="text-gray-500">
             {@question.description}
           </div>
@@ -940,6 +987,8 @@ defmodule DynamicForm.Renderer do
       disabled: disabled,
       choices: resolve_choices(question, opts),
       label: question_label(question),
+      required: !!question.isRequired,
+      required_label: Instance.required_label_text(question),
       components: Keyword.get(opts, :components)
     }
 
@@ -949,6 +998,8 @@ defmodule DynamicForm.Renderer do
         field: @form[@field_atom],
         type: @question.type,
         label: @label,
+        required: @required,
+        required_label: @required_label,
         options: @choices,
         placeholder: @question.placeholder,
         disabled: @disabled
@@ -1110,22 +1161,10 @@ defmodule DynamicForm.Renderer do
     end
   end
 
-  # The label text plus the required indicator. Returns nil when the definition
-  # asks for no label, which takes the indicator with it — a bare asterisk has
-  # nothing to mark.
-  defp question_label(question) do
-    case Instance.label_text(question) do
-      nil ->
-        nil
-
-      text ->
-        if question.isRequired do
-          {:safe, [escaped(text), ~s( <span class="text-red-500">*</span>)]}
-        else
-          text
-        end
-    end
-  end
+  # The label text alone. Whoever renders it also renders the required mark,
+  # from the `required` and `required_label` assigns — a mark belongs beside a
+  # label, so a question with none shows none.
+  defp question_label(question), do: Instance.label_text(question)
 
   # Definition text is escaped before being combined with the library's own
   # markup: a title or description can come from stored JSON, so it is data,

@@ -327,7 +327,7 @@ defmodule DynamicForm.CoreComponents do
   """
   attr(:id, :any, default: nil)
   attr(:name, :any)
-  attr(:label, :string, default: nil)
+  attr(:label, :any, default: nil)
   attr(:value, :any)
 
   attr(:type, :string,
@@ -341,6 +341,13 @@ defmodule DynamicForm.CoreComponents do
   )
 
   attr(:errors, :list, default: [])
+  attr(:required, :boolean, default: false, doc: "whether the field is required")
+
+  attr(:required_label, :any,
+    default: "*",
+    doc: ~s|mark shown beside the label of a required field; nil or false shows none|
+  )
+
   attr(:checked, :boolean, doc: "the checked flag for checkbox inputs")
   attr(:prompt, :string, default: nil, doc: "the prompt for select inputs")
   attr(:options, :list, doc: "the options to pass to Phoenix.HTML.Form.options_for_select/2")
@@ -351,7 +358,7 @@ defmodule DynamicForm.CoreComponents do
 
   attr(:rest, :global,
     include: ~w(accept autocomplete capture cols disabled form list max maxlength min minlength
-                multiple pattern placeholder readonly required rows size step)
+                multiple pattern placeholder readonly rows size step)
   )
 
   def input(%{field: %Phoenix.HTML.FormField{} = field} = assigns) do
@@ -394,9 +401,10 @@ defmodule DynamicForm.CoreComponents do
             name={@name}
             value="true"
             checked={@checked}
+            required={@required}
             class={@class || "checkbox checkbox-sm"}
             {@rest}
-          />{@label}
+          />{@label}<.required_mark required={@required} required_label={@required_label} />
         </span>
       </label>
       <.error :for={msg <- @errors}>{msg}</.error>
@@ -408,12 +416,15 @@ defmodule DynamicForm.CoreComponents do
     ~H"""
     <div class="fieldset mb-2">
       <label for={@id}>
-        <span :if={@label} class="label mb-1">{@label}</span>
+        <span :if={@label} class="label mb-1">
+          {@label}<.required_mark required={@required} required_label={@required_label} />
+        </span>
         <select
           id={@id}
           name={@name}
           class={[@class || "w-full select", @errors != [] && (@error_class || "select-error")]}
           multiple={@multiple}
+          required={@required}
           {@rest}
         >
           <option :if={@prompt} value="">{@prompt}</option>
@@ -429,7 +440,9 @@ defmodule DynamicForm.CoreComponents do
     ~H"""
     <div class="fieldset mb-2">
       <label for={@id}>
-        <span :if={@label} class="label mb-1">{@label}</span>
+        <span :if={@label} class="label mb-1">
+          {@label}<.required_mark required={@required} required_label={@required_label} />
+        </span>
         <textarea
           id={@id}
           name={@name}
@@ -437,6 +450,7 @@ defmodule DynamicForm.CoreComponents do
             @class || "w-full textarea",
             @errors != [] && (@error_class || "textarea-error")
           ]}
+          required={@required}
           {@rest}
         >{Phoenix.HTML.Form.normalize_value("textarea", @value)}</textarea>
       </label>
@@ -454,7 +468,9 @@ defmodule DynamicForm.CoreComponents do
     ~H"""
     <div class="fieldset mb-2">
       <label for={@id}>
-        <span :if={@label} class="label mb-1">{@label}</span>
+        <span :if={@label} class="label mb-1">
+          {@label}<.required_mark required={@required} required_label={@required_label} />
+        </span>
         <input
           type={@type}
           name={@name}
@@ -464,6 +480,7 @@ defmodule DynamicForm.CoreComponents do
             @class || "w-full input",
             @errors != [] && (@error_class || "input-error")
           ]}
+          required={@required}
           {@rest}
         />
       </label>
@@ -476,12 +493,17 @@ defmodule DynamicForm.CoreComponents do
   Renders a label.
   """
   attr(:for, :string, default: nil)
+  attr(:required, :boolean, default: false)
+  attr(:required_label, :any, default: "*")
   slot(:inner_block, required: true)
 
   def label(assigns) do
     ~H"""
     <label for={@for} class="label mb-1">
-      {render_slot(@inner_block)}
+      {render_slot(@inner_block)}<.required_mark
+        required={@required}
+        required_label={@required_label}
+      />
     </label>
     """
   end
@@ -779,6 +801,22 @@ defmodule DynamicForm.CoreComponents do
   # ============================================================================
 
   @doc """
+  Renders the mark beside a required field's label.
+
+  Renders nothing unless the field is required and a mark is set, so a field
+  with no label — or one that suppresses the mark with `required_label={false}`
+  — shows nothing while still being required server-side.
+  """
+  attr(:required, :boolean, default: false)
+  attr(:required_label, :any, default: "*")
+
+  def required_mark(assigns) do
+    ~H"""
+    <span :if={@required && @required_label} class="ml-0.5 text-red-500">{@required_label}</span>
+    """
+  end
+
+  @doc """
   Renders the container around one group of form elements.
 
   Groups (`panel` / `<:group>`) wrap their members in a card-like container
@@ -922,10 +960,17 @@ defmodule DynamicForm.CoreComponents do
   """
   attr(:id, :any, default: nil)
   attr(:name, :any)
-  attr(:label, :string, default: nil)
+  attr(:label, :any, default: nil)
   attr(:value, :any)
   attr(:field, Phoenix.HTML.FormField)
   attr(:errors, :list, default: [])
+  attr(:required, :boolean, default: false, doc: "whether the field is required")
+
+  attr(:required_label, :any,
+    default: "*",
+    doc: ~s|mark shown beside the label of a required field; nil or false shows none|
+  )
+
   attr(:options, :list, required: true, doc: "List of {label, value} tuples for radio options")
   attr(:style, :atom, default: :vertical, doc: "Layout style: :vertical or :horizontal")
   attr(:rest, :global, include: ~w(disabled))
@@ -944,7 +989,9 @@ defmodule DynamicForm.CoreComponents do
   def input_radio_group(assigns) do
     ~H"""
     <div class="fieldset mb-2">
-      <span :if={@label} class="label mb-1">{@label}</span>
+      <span :if={@label} class="label mb-1">
+          {@label}<.required_mark required={@required} required_label={@required_label} />
+        </span>
       <div class={[
         "flex gap-4",
         @style == :vertical && "flex-col",
@@ -958,6 +1005,7 @@ defmodule DynamicForm.CoreComponents do
               name={@name}
               value={value}
               checked={to_string(@value) == to_string(value)}
+              required={@required}
               class="radio radio-sm"
               {@rest}
             />
@@ -988,10 +1036,17 @@ defmodule DynamicForm.CoreComponents do
   """
   attr(:id, :any, default: nil)
   attr(:name, :any)
-  attr(:label, :string, default: nil)
+  attr(:label, :any, default: nil)
   attr(:value, :any)
   attr(:field, Phoenix.HTML.FormField)
   attr(:errors, :list, default: [])
+  attr(:required, :boolean, default: false, doc: "whether the field is required")
+
+  attr(:required_label, :any,
+    default: "*",
+    doc: ~s|mark shown beside the label of a required field; nil or false shows none|
+  )
+
   attr(:options, :list, required: true, doc: "List of {label, value} tuples for checkbox options")
   attr(:style, :atom, default: :vertical, doc: "Layout style: :vertical or :horizontal")
   attr(:rest, :global, include: ~w(disabled))
@@ -1012,7 +1067,9 @@ defmodule DynamicForm.CoreComponents do
 
     ~H"""
     <div class="fieldset mb-2">
-      <span :if={@label} class="label mb-1">{@label}</span>
+      <span :if={@label} class="label mb-1">
+          {@label}<.required_mark required={@required} required_label={@required_label} />
+        </span>
       <input type="hidden" name={@name} value="" disabled={@rest[:disabled]} />
       <div class={[
         "flex gap-4",

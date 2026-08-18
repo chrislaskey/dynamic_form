@@ -177,6 +177,7 @@ defmodule DynamicForm.Instance do
       :choices,
       :validators,
       :isRequired,
+      :requiredLabel,
       :requiredIf,
       :readOnly,
       :enableIf,
@@ -220,6 +221,7 @@ defmodule DynamicForm.Instance do
             choices: list() | nil,
             validators: [Validator.t()] | nil,
             isRequired: boolean() | nil,
+            requiredLabel: String.t() | nil,
             requiredIf: String.t() | nil,
             readOnly: boolean() | nil,
             enableIf: String.t() | nil,
@@ -269,6 +271,7 @@ defmodule DynamicForm.Instance do
         |> maybe_put(:choices, encode_choices(question.choices))
         |> maybe_put(:validators, question.validators)
         |> maybe_put(:isRequired, question.isRequired)
+        |> maybe_put(:requiredLabel, question.requiredLabel)
         |> maybe_put(:requiredIf, question.requiredIf)
         |> maybe_put(:readOnly, question.readOnly)
         |> maybe_put(:enableIf, question.enableIf)
@@ -515,6 +518,19 @@ defmodule DynamicForm.Instance do
 
   def label_text(%Question{title: title}) do
     if blank?(title), do: nil, else: title
+  end
+
+  @doc """
+  The mark shown beside a required question's label, or `nil` for none.
+
+  A question that sets no `requiredLabel` uses `"*"`. One that sets it blank
+  (`nil`, `false`, or `""`) suppresses the mark while staying required, and any
+  other value replaces it — `"(required)"`, say.
+  """
+  def required_label_text(%Question{requiredLabel: nil}), do: "*"
+
+  def required_label_text(%Question{requiredLabel: label}) do
+    if blank?(label), do: nil, else: label
   end
 
   @doc """

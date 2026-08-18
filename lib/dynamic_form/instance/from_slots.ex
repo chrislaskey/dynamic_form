@@ -199,6 +199,7 @@ defmodule DynamicForm.Instance.FromSlots do
       defaultPanelValue: entry[:default_entry],
       generateIds: entry[:generate_ids],
       isRequired: entry[:required],
+      requiredLabel: declared_text(entry, :required_label),
       visibleIf: entry[:visible_if],
       enableIf: entry[:enable_if]
     }
@@ -228,6 +229,7 @@ defmodule DynamicForm.Instance.FromSlots do
       noChoicesText: entry[:no_choices_text],
       validators: build_validators(entry),
       isRequired: entry[:required],
+      requiredLabel: declared_text(entry, :required_label),
       requiredIf: entry[:required_if],
       readOnly: entry[:read_only],
       enableIf: entry[:enable_if],

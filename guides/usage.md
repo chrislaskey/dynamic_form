@@ -41,9 +41,28 @@ silently unlabelled. To render *no* label, set it blank — `nil`, `false`, or
 <:field type="text" name="street" label={@compact && gettext("Street")} required />
 ```
 
-A blank label takes the required marker with it: an asterisk with nothing to
-sit beside is noise, so `required` still validates but renders no `*`. The same
+A blank label takes the required mark with it: an asterisk with nothing to sit
+beside is noise, so `required` still validates but renders no `*`. The same
 goes for `<:group title={...}>` and `<:nested title={...}>`.
+
+#### The required mark
+
+`required` does two things beyond validation: it renders the HTML `required`
+attribute on the control, so the browser enforces it too, and it puts a mark
+beside the label. `required_label` changes that mark:
+
+```heex
+<:field type="text" name="email" label="Email" required required_label="(required)" />
+<:field type="text" name="phone" label="Phone" required required_label={false} />
+```
+
+Blank — `nil`, `false`, or `""` — shows no mark while the field stays required
+on both the client and the server. Unset gives `"*"`.
+
+Both `required` and `required_label` reach your components module as assigns, so
+a custom `input/1` decides how to render them; the label itself is plain text
+with no markup composed into it. See
+[Styling: the required mark](styling.md#the-required-mark).
 
 Question types collect input: `text` (with `input_type` pass-through for
 `email`, `number`, ...), `comment`, `dropdown`, `radiogroup`, `checkbox`,

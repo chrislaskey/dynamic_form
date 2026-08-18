@@ -56,7 +56,8 @@ raise.
 | `choice_value` | string | choice types | Value for each carried choice (→ `choiceValuesFromQuestion`; default: the entry's `dynamic_form_id`). Nested sources only |
 | `choices_mode` | string | choice types | Carrying forward from another choice field: `"all"` (default), `"selected"`, `"unselected"` (→ `choicesFromQuestionMode`) |
 | `no_choices_text` | string | choice types | Shown in place of the control while a carried-forward source has no entries (→ `noChoicesText`) |
-| `required` | boolean | questions | Required field (→ `isRequired`) |
+| `required` | boolean | questions | Required field (→ `isRequired`). Renders the HTML `required` attribute on the control, plus a mark beside the label |
+| `required_label` | any | questions | The mark beside a required label (default `"*"`); blank (`nil`, `false`, `""`) shows none while the field stays required (→ `requiredLabel`) |
 | `required_if` | string | questions | Conditional requirement expression (→ `requiredIf`) |
 | `visible_if` | string | all | Conditional visibility expression (→ `visibleIf`) |
 | `enable_if` | string | all | Conditional enablement expression (→ `enableIf`) |
@@ -111,6 +112,7 @@ fields join it with `<:field nested="...">`. See the
 | `default` | list | Initial value: list of entry maps (→ `defaultValue`) |
 | `default_entry` | map | Values seeded into each newly added entry (→ `defaultPanelValue`) |
 | `required` | boolean | At least one entry required (→ `isRequired`) |
+| `required_label` | any | Mark beside the section heading when required (default `"*"`); blank shows none (→ `requiredLabel`) |
 | `visible_if` / `enable_if` | string | Conditional expressions |
 | `nested` | string | Place this nested form inside another `<:nested>` form |
 | `group` | string | Place this nested form inside a `<:group>` panel |

@@ -101,16 +101,18 @@ defmodule DynamicForm.DirectUpload do
 
   @impl true
   def render(assigns) do
+    assigns =
+      assigns
+      |> assign(:label, DynamicForm.Instance.label_text(assigns.field))
+      |> assign(:required_label, DynamicForm.Instance.required_label_text(assigns.field))
+
     ~H"""
     <div class="mb-4">
-      <label
-        :if={label = DynamicForm.Instance.label_text(@field)}
-        class="block text-sm font-medium leading-6 text-zinc-900"
-      >
-        <%= label %>
-        <%= if @field.isRequired do %>
-          <span class="text-red-500">*</span>
-        <% end %>
+      <label :if={@label} class="block text-sm font-medium leading-6 text-zinc-900">
+        {@label}<span
+          :if={@field.isRequired && @required_label}
+          class="ml-0.5 text-red-500"
+        >{@required_label}</span>
       </label>
 
       <%= if @field.description do %>

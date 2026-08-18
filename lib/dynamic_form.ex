@@ -464,6 +464,13 @@ defmodule DynamicForm do
     )
 
     attr(:required, :boolean)
+
+    attr(:required_label, :any,
+      doc:
+        ~s|Mark shown beside a required field's label (default "*"). Blank (nil, | <>
+          ~s|false, or "") shows none while the field stays required|
+    )
+
     attr(:required_if, :string, doc: "SurveyJS expression, e.g. \"{other} notempty\"")
     attr(:visible_if, :string, doc: "SurveyJS expression, e.g. \"{subject} = 'support'\"")
     attr(:enable_if, :string, doc: "SurveyJS expression; disabled when false")
@@ -569,6 +576,11 @@ defmodule DynamicForm do
     attr(:default, :list, doc: "Initial value: a list of entry maps (edit-mode style seeding)")
     attr(:default_entry, :map, doc: "Values seeded into each newly added entry")
     attr(:required, :boolean, doc: "At least one entry is required")
+
+    attr(:required_label, :any,
+      doc: ~s|Mark beside the section heading when required (default "*"); blank shows none|
+    )
+
     attr(:visible_if, :string)
     attr(:enable_if, :string)
 

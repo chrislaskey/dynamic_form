@@ -69,6 +69,20 @@ defmodule DynamicForm.Instance.FromSlotsTest do
       assert question.slot == nil
     end
 
+    test "required_label keeps blank distinct from unset" do
+      [unset, custom, suppressed] =
+        convert([
+          field(type: "text", name: "a", required: true),
+          field(type: "text", name: "b", required: true, required_label: "(required)"),
+          field(type: "text", name: "c", required: true, required_label: false)
+        ]).elements
+
+      assert unset.requiredLabel == nil
+      assert custom.requiredLabel == "(required)"
+      # Explicitly blank, so the mark is suppressed rather than defaulted
+      assert suppressed.requiredLabel == ""
+    end
+
     test "preserves template order across mixed types" do
       instance =
         convert([

@@ -62,14 +62,14 @@ defmodule DynamicForm.BlankLabelsTest do
     test "a required field with a blank label shows no required marker", %{html: html} do
       # All five fields are required, but only the two with a label to mark get
       # a marker: "Given", and "Omitted" via the field-name fallback
-      markers = html |> String.split(~s(<span class="text-red-500">*</span>)) |> length()
+      markers = html |> String.split(~s(<span class="ml-0.5 text-red-500">*</span>)) |> length()
 
       assert markers - 1 == 2
     end
 
     test "the label given as a string still renders, marker and all", %{html: html} do
       assert html =~ "Given"
-      assert html =~ ~s(<span class="text-red-500">*</span>)
+      assert html =~ ~s(<span class="ml-0.5 text-red-500">*</span>)
     end
 
     test "omitting the attribute still falls back to the field name", %{html: html} do
@@ -141,7 +141,7 @@ defmodule DynamicForm.BlankLabelsTest do
         )
 
       refute html =~ "Email"
-      refute html =~ ~s(<span class="text-red-500">*</span>)
+      refute html =~ ~s(<span class="ml-0.5 text-red-500">*</span>)
       # The label element is absent, not rendered empty
       refute html =~ ~s(<span class="label mb-1">)
       assert html =~ ~s(name="dynamic_form[email]")
@@ -164,7 +164,7 @@ defmodule DynamicForm.BlankLabelsTest do
         )
 
       assert html =~ "Email"
-      assert html =~ ~s(<span class="text-red-500">*</span>)
+      assert html =~ ~s(<span class="ml-0.5 text-red-500">*</span>)
     end
 
     test "a blank label on a checkbox drops its inline description too" do

@@ -139,6 +139,12 @@ Beyond the SurveyJS format, definitions can carry:
 
 - **`metadata`** — per-question extension point: file upload configuration,
   `"style"` (`"horizontal"`/`"vertical"`) for radiogroup/checkbox layout.
+- **`requiredLabel`** — the mark beside a required question's label,
+  defaulting to `"*"`; blank (`null`, `false`, `""`) shows none while the
+  question stays required. SurveyJS's `requiredMark` is accepted as an alias on
+  decoding, but it is a *survey*-level property there, so reading it per
+  question is ours. See
+  [Styling: the required mark](styling.md#the-required-mark).
 - **`groupType`** — on a `panel`: how it lays its members out, `"horizontal"`
   (default) or `"vertical"`. SurveyJS has no panel-level layout property, so
   this is ours; applications can add their own types — see

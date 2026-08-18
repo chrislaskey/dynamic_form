@@ -94,6 +94,8 @@ defmodule DynamicForm.Instance.Decoder do
       choices: decode_choices(Map.get(data, "choices")),
       validators: decode_validators(Map.get(data, "validators")),
       isRequired: Map.get(data, "isRequired"),
+      # `requiredMark` is SurveyJS's name for the same property
+      requiredLabel: Map.get(data, "requiredLabel") || Map.get(data, "requiredMark"),
       requiredIf: Map.get(data, "requiredIf"),
       readOnly: Map.get(data, "readOnly"),
       enableIf: Map.get(data, "enableIf"),

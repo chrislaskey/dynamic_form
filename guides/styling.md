@@ -119,6 +119,34 @@ the add button's `phx-click` arrives in `rest` — so splat it
 (`<button {@rest}>`), as a Phoenix-generated button does. A button that drops
 globals looks right and does nothing when clicked.
 
+### The required mark
+
+`label` is plain text. A required field's mark arrives separately, as
+`required` and `required_label`, so your component decides where and how it
+renders:
+
+```elixir
+def input(assigns) do
+  ~H"""
+  <label>
+    {@label}<span :if={@required && @required_label} class="text-error">{@required_label}</span>
+    <input type={@type} name={@field.name} value={@field.value} required={@required} />
+  </label>
+  """
+end
+```
+
+`required_label` is already resolved: a string to render, or `nil`/`false` when
+the definition suppresses it. `required` is `true` whenever the field is
+required, whether or not a mark shows — so pass it to the control if you want
+the browser to enforce it. `input/1`, `input_radio_group/1`,
+`input_checkbox_group/1`, and `label/1` all receive both.
+
+The built-ins render `<span class="ml-0.5 text-red-500">` after the label text,
+and put the HTML `required` attribute on text, textarea, select, radio, and
+single-checkbox controls — but not on a checkbox *group*, where it would demand
+every option rather than one.
+
 ### Custom group types
 
 `dynamic_form_group/1` wraps each `<:group>`, and it dispatches on `type` the

@@ -202,7 +202,7 @@ defmodule DynamicForm.RendererTest do
 
       refute html =~ "<script>"
       assert html =~ "&lt;script&gt;"
-      assert html =~ ~s(<span class="text-red-500">*</span>)
+      assert html =~ ~s(<span class="ml-0.5 text-red-500">*</span>)
     end
 
     test "a checkbox escapes both its title and its inline description" do
@@ -249,7 +249,7 @@ defmodule DynamicForm.RendererTest do
         )
 
       assert html =~ "<em>optional</em>"
-      assert html =~ ~s(<span class="text-red-500">*</span>)
+      assert html =~ ~s(<span class="ml-0.5 text-red-500">*</span>)
     end
   end
 
@@ -516,7 +516,8 @@ defmodule DynamicForm.RendererTest do
         )
 
       assert html =~ ~s(<div class="mt-6 flex items-start justify-between gap-3">)
-      assert html =~ ~s(<h3 class="text-xl font-bold">Addresses</h3>)
+      assert html =~ ~s(<h3 class="text-xl font-bold">)
+      assert html =~ "Addresses"
       assert html =~ ~s(<div class="text-gray-500">)
       assert html =~ "Every address we have on file."
       # The add button sits in that header row, not below the entries
@@ -537,7 +538,8 @@ defmodule DynamicForm.RendererTest do
           %{"addresses" => [%{"street" => "x"}]}
         )
 
-      assert html =~ ~s(<h3 class="text-xl font-bold">Addresses</h3>)
+      assert html =~ ~s(<h3 class="text-xl font-bold">)
+      assert html =~ "Addresses"
       refute html =~ ~s(<div class="text-gray-500">)
     end
 
@@ -556,7 +558,8 @@ defmodule DynamicForm.RendererTest do
           %{"addresses" => [%{"street" => "x"}]}
         )
 
-      assert html =~ ~s(<h3 class="text-xl font-bold">ADDRESSES</h3>)
+      assert html =~ ~s(<h3 class="text-xl font-bold">)
+      assert html =~ "ADDRESSES"
       assert html =~ "ALL OF THEM"
     end
 
