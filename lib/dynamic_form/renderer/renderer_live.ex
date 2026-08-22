@@ -116,6 +116,30 @@ defmodule DynamicForm.RendererLive do
   Note: The form ID is automatically generated as `"\#{id}-form"`, so if your component
   ID is "my-form", the form element ID will be "my-form-form".
 
+  #### Usage with Renderer (Functional Component)
+
+  When using `DynamicForm.Renderer.render/1`:
+
+  1. Set `hide_submit={true}` and provide a custom `form_id`
+  2. Use `DynamicForm.submit_button/1` with that `form_id`
+
+  Example:
+
+      # External submit button
+      <DynamicForm.submit_button form="my-form">
+        Save
+      </DynamicForm.submit_button>
+
+      # Renderer with custom form_id
+      <DynamicForm.Renderer.render
+        instance={@form_instance}
+        form={@form}
+        form_id="my-form"
+        hide_submit={true}
+        phx_submit="submit"
+        phx_change="validate"
+      />
+
   ## Lifecycle callbacks: `on_change` and `on_submit`
 
   Both hooks mirror the form's `phx-change`/`phx-submit` events. Each is a
