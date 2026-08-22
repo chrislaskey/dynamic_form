@@ -57,7 +57,7 @@ defmodule DynamicForm do
       def handle_info({:dynamic_form, :success, payload}, socket) do
         {:ok, record} = Context.create(payload.data)
 
-        {:noreply, push_navigate(socket, to: ~p"/records/#{record.id}")}
+        {:noreply, push_navigate(socket, to: ~p"/success")}
       end
 
   It is also possible to receive `:change` and `:submit` events too. The
