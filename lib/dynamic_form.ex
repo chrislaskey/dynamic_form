@@ -41,13 +41,62 @@ defmodule DynamicForm do
   submission. Exactly one of the `instance` attribute, the `json` attribute,
   or `<:field>` slots must be provided.
 
+  ## Messages
+
+  When a user changes a value or submits the form, the library validates the
+  changes with it's own internal state and then sends messages to the parent
+  LiveView or LiveComponent.
+
+  The messages are in the format of `{:dynamic_form, event, payload}`.
+
+  By default, the form will only send the `:success` event. Which only occurs
+  when the user submits a form with no validation errors.
+
+      <DynamicForm.form id="signup">
+
+      def handle_info({:dynamic_form, :success, payload}, socket) do
+        {:ok, record} = Context.create(payload.data)
+
+        {:noreply, push_navigate(socket, to: ~p"/records/#{record.id}")}
+      end
+
+  It is also possible to receive `:change` and `:submit` events too. The
+  `send_messages_on` attribute can be used to define a list of events to
+  receive:
+
+      <DynamicForm.form id="signup" send_message_on={[:change, :success]}>
+
+      def handle_info({:dynamic_form, :change, payload}, socket) do
+        # ...
+      end
+
+      def handle_info({:dynamic_form, :success, payload}, socket) do
+        # ...
+      end
+
+  When using `:change` and `:submit` the form data may be invalid. The
+  `DynamicForm.Payload.valid?/1` helper is available to check valid state.
+
+  Note: The `:change` event can also be paired with the `change_debounce_in_ms`
+  to add a debounce filter to the change events sent. Without it, every change
+  will send a message.
+
+  See `DynamicForm.RendererLive` and `DynamicForm.Payload` for the full details. 
+
   ## Lifecycle callbacks
 
-  Two optional validation hooks mirror the form's `phx-change`/`phx-submit`
-  events. Each is a 1-arity function receiving a `DynamicForm.Payload` and
-  returning it, transformed or untouched. Reject a submission with
-  `DynamicForm.Payload.add_error/4`; side effects belong in the parent's
-  `handle_info/2`:
+  Receiving messages is the standard way to work with data coming from
+  DynamicForm. Most form flows do not require any additional changes
+  to the form's lifecycle - the library defaults are sufficient.
+
+  For some more complex form flows, it's useful to be able to hook into
+  the internal lifecycle events that happen within the library.
+
+  In those cases, there are two optional validation hooks mirror the form's
+  `phx-change`/`phx-submit` events. Each is a 1-arity function receiving a
+  `DynamicForm.Payload` and returning it, transformed or untouched. Reject a
+  submission with `DynamicForm.Payload.add_error/4`; side effects belong in the
+  parent's `handle_info/2`:
 
     * `on_change` — runs after the built-in validations on every change (and
       during the submit validation pass). Keep it cheap — it runs per
@@ -64,30 +113,9 @@ defmodule DynamicForm do
   once the user pauses. The built-in validations still render on every
   change, and submitting always runs the callback inline:
 
-      <DynamicForm.form id="signup" on_change={&Accounts.check_availability/1}
-                        change_debounce_in_ms={300}>
+      <DynamicForm.form id="signup" on_change={&Accounts.check_availability/1} change_debounce_in_ms={300}>
         <:field type="text" name="username" label="Username" required />
       </DynamicForm.form>
-
-  ## Messages
-
-  The parent LiveView is messaged as `{:dynamic_form, event, payload}`.
-  `send_message_on` picks the events — any of `[:success, :change,
-  :submit]`, defaulting to `[:success]`:
-
-      <DynamicForm.form id="signup" send_message_on={[:success, :change]}>
-
-      def handle_info({:dynamic_form, :change, payload}, socket) do
-        {:noreply, assign(socket, :preview, payload.data)}
-      end
-
-  `:change` and `:submit` payloads are routinely invalid — check
-  `DynamicForm.Payload.valid?/1` before acting on them. Pair `:change` with
-  `change_debounce_in_ms` to keep a message (and a parent re-render) off
-  every keystroke. Define `on_success` — a 1-arity function receiving the
-  payload — to replace the `:success` message with custom behavior. See
-  `DynamicForm.RendererLive` and `DynamicForm.Payload` for the full
-  contracts.
 
   ## Declarative mode
 
@@ -154,11 +182,18 @@ defmodule DynamicForm do
 
   ## Render-only mode
 
-  For full control over the form lifecycle, `render_only` renders the markup
-  only — no LiveComponent, no managed state. Events are emitted without a
-  `phx-target`, so they land in the parent LiveView's `handle_event/3`
-  exactly like an idiomatic `<form phx-change="validate" phx-submit="submit">`,
-  and the parent owns the form state, passing its `Phoenix.HTML.Form` in:
+  The DynamicForm library can also be used as a pure renderer. In this setup,
+  the form is rendered as a functional component on the page. The standard
+  `phx-change` and `phx-submit` event handlers get sent directly to the parent
+  LiveView as-is. That means no LiveComponent or managed state. In other words,
+  no validation or type casting, no changeset or error management.
+
+  To enable this mode, add the `render_only` attribute.
+
+  Events are emitted without a `phx-target`, so they land in the parent
+  LiveView's `handle_event/3` exactly like an idiomatic `<form
+  phx-change="validate" phx-submit="submit">`, and the parent owns the form
+  state, passing its `Phoenix.HTML.Form` in:
 
       <DynamicForm.form id="signup" render_only form={@form}>
         <:field type="text" name="name" label="Name" required />
@@ -178,10 +213,11 @@ defmodule DynamicForm do
   visibility — while the parent's changeset drives the data. Override the
   event names with `phx_change` and `phx_submit`.
 
-  Lifecycle attributes (`on_change`, `change_debounce_in_ms`, `on_submit`,
+  Note: Lifecycle attributes (`on_change`, `change_debounce_in_ms`, `on_submit`,
   `on_success`, `send_message_on`, `data`, `form_name`,
-  `validation_summary`) have no meaning without the managed lifecycle and
-  raise. File upload questions require the stateful component and raise.
+  `validation_summary`) have no meaning in the `render_only` mode and
+  will raise an exception. File upload questions require the stateful component
+  and also raise.
   """
   attr(:id, :string,
     required: true,
