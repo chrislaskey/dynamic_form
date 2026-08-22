@@ -2,7 +2,7 @@ defmodule DynamicForm.Components.ContentElements do
   @moduledoc """
   Rendering for non-question elements: `html` and `image` content blocks,
   fully custom slot elements, and `panel` containers (whose members render
-  back through `DynamicForm.Renderer`).
+  back through `DynamicForm.Renderer.Component`).
 
   Internal module — not part of the public API.
   """
@@ -12,7 +12,7 @@ defmodule DynamicForm.Components.ContentElements do
   alias DynamicForm.Components
   alias DynamicForm.Helpers
   alias DynamicForm.Instance
-  alias DynamicForm.Renderer
+  alias DynamicForm.Renderer.Component
   alias DynamicForm.Visibility
 
   # A group with no groupType of its own lays its members out in a row
@@ -134,7 +134,7 @@ defmodule DynamicForm.Components.ContentElements do
 
     ~H"""
     <%= for element <- @elements do %>
-      <%= Renderer.render_element(element, @form, @opts) %>
+      <%= Component.render_element(element, @form, @opts) %>
     <% end %>
     """
   end

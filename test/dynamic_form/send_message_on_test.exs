@@ -5,7 +5,7 @@ defmodule DynamicForm.SendMessageOnTest do
 
   alias DynamicForm.Instance
   alias DynamicForm.Payload
-  alias DynamicForm.RendererLive
+  alias DynamicForm.Renderer
 
   @instance %Instance{
     id: "signup",
@@ -37,20 +37,21 @@ defmodule DynamicForm.SendMessageOnTest do
       |> Keyword.merge(overrides)
       |> Map.new()
 
-    {:ok, socket} = RendererLive.update(assigns, %Phoenix.LiveView.Socket{})
+    {:ok, socket} = Renderer.LiveComponent.update(assigns, %Phoenix.LiveView.Socket{})
 
     socket
   end
 
   defp validate(socket, params) do
     {:noreply, socket} =
-      RendererLive.handle_event("validate", %{"dynamic_form" => params}, socket)
+      Renderer.LiveComponent.handle_event("validate", %{"dynamic_form" => params}, socket)
 
     socket
   end
 
   defp submit(socket, params) do
-    {:noreply, socket} = RendererLive.handle_event("submit", %{"dynamic_form" => params}, socket)
+    {:noreply, socket} =
+      Renderer.LiveComponent.handle_event("submit", %{"dynamic_form" => params}, socket)
 
     socket
   end
@@ -106,12 +107,12 @@ defmodule DynamicForm.SendMessageOnTest do
         mount_component(id: "contacts", instance: @nested_instance, send_message_on: [:change])
 
       {:noreply, socket} =
-        RendererLive.handle_event("add_nested_entry", %{"path" => "phones"}, socket)
+        Renderer.LiveComponent.handle_event("add_nested_entry", %{"path" => "phones"}, socket)
 
       assert_received {:dynamic_form, :change, %Payload{data: %{phones: [_entry]}}}
 
       {:noreply, _socket} =
-        RendererLive.handle_event(
+        Renderer.LiveComponent.handle_event(
           "remove_nested_entry",
           %{"path" => "phones", "index" => "0"},
           socket
@@ -128,8 +129,8 @@ defmodule DynamicForm.SendMessageOnTest do
 
       assert received_events() == []
 
-      assert_receive {:phoenix, :send_update, {{RendererLive, "signup"}, assigns}}
-      {:ok, _socket} = RendererLive.update(assigns, socket)
+      assert_receive {:phoenix, :send_update, {{Renderer.LiveComponent, "signup"}, assigns}}
+      {:ok, _socket} = Renderer.LiveComponent.update(assigns, socket)
 
       assert_received {:dynamic_form, :change, %Payload{data: %{username: "ada"}}}
       assert received_events() == []

@@ -361,7 +361,7 @@ The unified entry point. Requires exactly one of the `instance` attribute
 />
 ```
 
-Internally it wraps `DynamicForm.RendererLive`, a LiveComponent that manages
+Internally it wraps `DynamicForm.Renderer.LiveComponent`, a LiveComponent that manages
 the changeset, validation on change, and submission. Using the LiveComponent
 directly with `<.live_component>` is equivalent.
 
@@ -495,7 +495,7 @@ meaning without the managed lifecycle and raise, and file upload questions
 require the stateful component.
 
 The Render Only section of the `/slot-forms` demo page shows the complete
-pattern. `DynamicForm.Renderer.render/1` is the underlying function
+pattern. `DynamicForm.Renderer.Component.render/1` is the underlying function
 component if you need to drive it directly.
 
 ### Custom components

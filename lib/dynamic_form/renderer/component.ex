@@ -1,13 +1,13 @@
-defmodule DynamicForm.Renderer do
+defmodule DynamicForm.Renderer.Component do
   @moduledoc """
-  A pure functional component that renders dynamic forms using SurveyJS-compatible format.
+  A pure functional form component
 
   This component renders the form HTML based on a DynamicForm.Instance configuration.
   Use this for advanced cases where you want custom state management.
 
   ## Example
 
-      <DynamicForm.Renderer.render
+      <DynamicForm.Renderer.Component.render
         instance={@form_instance}
         form={@form}
         submit_text="Submit Form"
@@ -26,7 +26,7 @@ defmodule DynamicForm.Renderer do
   ### Example
 
       # Form without submit button
-      <DynamicForm.Renderer.render
+      <DynamicForm.Renderer.Component.render
         instance={@form_instance}
         form={@form}
         form_id="my-form"
@@ -640,8 +640,8 @@ defmodule DynamicForm.Renderer do
   #
   # The add/remove buttons emit "add_nested_entry"/"remove_nested_entry" events carrying a
   # dot-separated `path` (e.g. "addresses" or "contacts.0.phones" when
-  # nested). DynamicForm.RendererLive handles these automatically; standalone
-  # Renderer users must handle them in their own LiveView.
+  # nested). DynamicForm.Renderer.LiveComponent handles these automatically; standalone
+  # Renderer.Component users must handle them in their own LiveView.
   defp render_question(%Instance.Question{type: "paneldynamic"} = question, form, opts) do
     NestedEntries.nested_form(question, form, opts, question_disabled?(question, form, opts))
   end

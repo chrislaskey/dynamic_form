@@ -14,7 +14,7 @@ The DynamicForm library enables users to build forms dynamically through a visua
 
 1. **WYSIWYG Form Builder** - Visual interface for creating forms
 2. **DynamicForm.Instance** - Configuration struct that defines form structure
-3. **Dynamic Form Renderer** - Renders forms using Phoenix CoreComponents and Ecto changesets
+3. **Dynamic Form Renderer.Component** - Renders forms using Phoenix CoreComponents and Ecto changesets
 
 ## Articles / References
 
@@ -31,7 +31,7 @@ DynamicForm
 ├── Behaviour (defines callbacks for implementers)
 ├── Instance (configuration struct)
 ├── Builder (WYSIWYG LiveView component)
-├── Renderer (form rendering component)
+├── Renderer.Component (form rendering component)
 ├── Changeset (utilities for dynamic changeset creation)
 └── Validation (custom validation types)
 ```
@@ -369,19 +369,19 @@ end
 └─────────────────┴───────────────────────────────────────┘
 ```
 
-## Dynamic Form Renderer
+## Dynamic Form Renderer.Component
 
 The renderer provides two components for maximum flexibility:
 
-1. **DynamicForm.Renderer** - A functional component for advanced use cases
-2. **DynamicForm.RendererLive** - A LiveComponent wrapper for common scenarios
+1. **DynamicForm.Renderer.Component** - A functional component for advanced use cases
+2. **DynamicForm.Renderer.LiveComponent** - A LiveComponent wrapper for common scenarios
 
-### DynamicForm.Renderer (Functional Component)
+### DynamicForm.Renderer.Component (Functional Component)
 
 A pure functional component that renders the form HTML. Use this for advanced cases where you want custom state management:
 
 ```elixir
-defmodule DynamicForm.Renderer do
+defmodule DynamicForm.Renderer.Component do
   use Phoenix.Component
   import LftWeb.CoreComponents
   
@@ -542,15 +542,15 @@ defmodule DynamicForm.Renderer do
 end
 ```
 
-### DynamicForm.RendererLive (LiveComponent)
+### DynamicForm.Renderer.LiveComponent (LiveComponent)
 
 A LiveComponent wrapper that handles form state management and backend submission automatically. Use this for most common scenarios:
 
 ```elixir
-defmodule DynamicForm.RendererLive do
+defmodule DynamicForm.Renderer.LiveComponent do
   use Phoenix.LiveComponent
   import LftWeb.CoreComponents
-  alias DynamicForm.Renderer
+  alias DynamicForm.Renderer.Component
   
   # Props
   attr :id, :string, required: true
@@ -579,7 +579,7 @@ defmodule DynamicForm.RendererLive do
   def render(assigns) do
     ~H"""
     <div>
-      <Renderer.render
+      <Renderer.Component.render
         instance={@instance}
         form={@form}
         submit_text={@submit_text}
@@ -877,7 +877,7 @@ defmodule MyAppWeb.SurveyResponseLive do
     </.header>
     
     <.live_component
-      module={DynamicForm.RendererLive}
+      module={DynamicForm.Renderer.LiveComponent}
       id="survey-form"
       instance={@form_config}
       params={@form_params}
@@ -1021,7 +1021,7 @@ defmodule MyAppWeb.AdvancedSurveyLive do
       <% end %>
       
       <!-- Use functional component with custom events -->
-      <DynamicForm.Renderer.render
+      <DynamicForm.Renderer.Component.render
         instance={filter_fields_for_step(@form_config, @step)}
         form={@form}
         submit_text={get_submit_text(@step, @total_steps)}

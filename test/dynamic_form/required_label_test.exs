@@ -12,7 +12,7 @@ defmodule DynamicForm.RequiredLabelTest do
   defp render_instance(instance, params \\ %{}) do
     changeset = Changeset.create_changeset(instance, params)
 
-    render_component(&Renderer.render/1,
+    render_component(&Renderer.Component.render/1,
       instance: instance,
       form: Phoenix.Component.to_form(changeset, as: "dynamic_form"),
       submit_text: "Submit",

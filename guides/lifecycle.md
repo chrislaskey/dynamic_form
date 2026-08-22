@@ -324,7 +324,7 @@ end
 ```
 
 This works because `on_success` is called synchronously inside
-`RendererLive.handle_event("submit", ...)`, and all LiveComponents share
+`Renderer.LiveComponent.handle_event("submit", ...)`, and all LiveComponents share
 their parent LiveView's process — so `send_update/2` (which targets
 `self()`) delivers the message to the right place. After the event handler
 completes, your component's `update/2` fires with the event assigns.
@@ -361,7 +361,7 @@ callback signatures and the payload fields in table form.
 
 ## Architecture
 
-`DynamicForm.form/1` (via `DynamicForm.RendererLive`) owns the full cycle
+`DynamicForm.form/1` (via `DynamicForm.Renderer.LiveComponent`) owns the full cycle
 internally:
 
 ```

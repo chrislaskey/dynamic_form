@@ -78,7 +78,7 @@ defmodule DynamicForm.DirectUpload do
     # Get existing uploaded files from form data
     uploaded_files = Phoenix.HTML.Form.input_value(assigns.form, field_atom) || []
 
-    # Get upload config from parent (RendererLive)
+    # Get upload config from parent (Renderer.LiveComponent)
     uploads = Map.get(assigns, :uploads, %{})
     upload_config = Map.get(uploads, upload_name)
 
@@ -251,7 +251,7 @@ defmodule DynamicForm.DirectUpload do
 
     # Send update to parent component
     if socket.assigns[:parent_id] do
-      send_update(DynamicForm.RendererLive,
+      send_update(DynamicForm.Renderer.LiveComponent,
         id: socket.assigns.parent_id,
         action: :delete_file,
         field_name: socket.assigns.field.name,
@@ -265,7 +265,7 @@ defmodule DynamicForm.DirectUpload do
   def handle_event("cancel-upload", %{"ref" => ref}, socket) do
     # Send update to parent component
     if socket.assigns[:parent_id] do
-      send_update(DynamicForm.RendererLive,
+      send_update(DynamicForm.Renderer.LiveComponent,
         id: socket.assigns.parent_id,
         action: :cancel_upload,
         upload_name: socket.assigns.upload_name,

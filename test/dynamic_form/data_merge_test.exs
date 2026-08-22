@@ -2,7 +2,7 @@ defmodule DynamicForm.DataMergeTest do
   use ExUnit.Case, async: true
 
   alias DynamicForm.Instance
-  alias DynamicForm.RendererLive
+  alias DynamicForm.Renderer
 
   # A section the user can hide, plus a question disabled by the same switch.
   @instance %Instance{
@@ -37,7 +37,7 @@ defmodule DynamicForm.DataMergeTest do
 
   defp mount_component(data \\ @data, instance \\ @instance) do
     {:ok, socket} =
-      RendererLive.update(
+      Renderer.LiveComponent.update(
         %{id: "tuition", instance: instance, data: data},
         %Phoenix.LiveView.Socket{}
       )
@@ -47,7 +47,7 @@ defmodule DynamicForm.DataMergeTest do
 
   defp validate(socket, params) do
     {:noreply, socket} =
-      RendererLive.handle_event("validate", %{"dynamic_form" => params}, socket)
+      Renderer.LiveComponent.handle_event("validate", %{"dynamic_form" => params}, socket)
 
     socket
   end
@@ -120,7 +120,7 @@ defmodule DynamicForm.DataMergeTest do
       socket = mount_component() |> validate(%{"notes" => "edited note"})
 
       {:ok, socket} =
-        RendererLive.update(
+        Renderer.LiveComponent.update(
           %{
             id: "tuition",
             instance: @instance,

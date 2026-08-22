@@ -4,7 +4,7 @@ defmodule DynamicForm.ChangeDebounceTest do
   import Phoenix.LiveViewTest
 
   alias DynamicForm.Instance
-  alias DynamicForm.RendererLive
+  alias DynamicForm.Renderer
 
   @instance %Instance{
     id: "signup",
@@ -23,20 +23,21 @@ defmodule DynamicForm.ChangeDebounceTest do
       |> Keyword.merge(overrides)
       |> Map.new()
 
-    {:ok, socket} = RendererLive.update(assigns, %Phoenix.LiveView.Socket{})
+    {:ok, socket} = Renderer.LiveComponent.update(assigns, %Phoenix.LiveView.Socket{})
 
     socket
   end
 
   defp validate(socket, params) do
     {:noreply, socket} =
-      RendererLive.handle_event("validate", %{"dynamic_form" => params}, socket)
+      Renderer.LiveComponent.handle_event("validate", %{"dynamic_form" => params}, socket)
 
     socket
   end
 
   defp submit(socket, params) do
-    {:noreply, socket} = RendererLive.handle_event("submit", %{"dynamic_form" => params}, socket)
+    {:noreply, socket} =
+      Renderer.LiveComponent.handle_event("submit", %{"dynamic_form" => params}, socket)
 
     socket
   end
@@ -45,9 +46,9 @@ defmodule DynamicForm.ChangeDebounceTest do
   # fires: `send_update_after/3` messages the process, which routes the
   # assigns into the component's `update/2`.
   defp deliver_scheduled_run(socket) do
-    assert_receive {:phoenix, :send_update, {{RendererLive, "signup"}, assigns}}
+    assert_receive {:phoenix, :send_update, {{Renderer.LiveComponent, "signup"}, assigns}}
 
-    {:ok, socket} = RendererLive.update(assigns, socket)
+    {:ok, socket} = Renderer.LiveComponent.update(assigns, socket)
 
     socket
   end
@@ -224,7 +225,7 @@ defmodule DynamicForm.ChangeDebounceTest do
 
       # A parent re-render with different initial data rebuilds the form.
       {:ok, socket} =
-        RendererLive.update(
+        Renderer.LiveComponent.update(
           %{id: "signup", instance: @instance, data: %{"username" => "seeded"}},
           socket
         )
@@ -279,8 +280,8 @@ defmodule DynamicForm.ChangeDebounceTest do
   # Deliver every scheduled run sitting in the mailbox, in order.
   defp drain_scheduled_runs(socket) do
     receive do
-      {:phoenix, :send_update, {{RendererLive, "signup"}, assigns}} ->
-        {:ok, socket} = RendererLive.update(assigns, socket)
+      {:phoenix, :send_update, {{Renderer.LiveComponent, "signup"}, assigns}} ->
+        {:ok, socket} = Renderer.LiveComponent.update(assigns, socket)
         drain_scheduled_runs(socket)
     after
       100 -> socket

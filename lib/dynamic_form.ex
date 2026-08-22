@@ -31,13 +31,13 @@ defmodule DynamicForm do
 
   import Phoenix.Component, except: [form: 1]
 
-  defdelegate submit_button(assigns), to: DynamicForm.RendererLive
+  defdelegate submit_button(assigns), to: DynamicForm.Renderer.LiveComponent
 
   @doc """
   Renders a dynamic form from an instance, a SurveyJS-compatible JSON string,
   or `<:field>` slots (declarative mode).
 
-  Wraps `DynamicForm.RendererLive`, which manages form state, validation, and
+  Wraps `DynamicForm.Renderer.LiveComponent`, which manages form state, validation, and
   submission. Exactly one of the `instance` attribute, the `json` attribute,
   or `<:field>` slots must be provided.
 
@@ -81,7 +81,7 @@ defmodule DynamicForm do
   to add a debounce filter to the change events sent. Without it, every change
   will send a message.
 
-  See `DynamicForm.RendererLive` and `DynamicForm.Payload` for the full details. 
+  See `DynamicForm.Renderer.LiveComponent` and `DynamicForm.Payload` for the full details. 
 
   ## Lifecycle callbacks
 
@@ -526,7 +526,7 @@ defmodule DynamicForm do
       |> assign(:phx_submit, assigns.phx_submit || "submit")
 
     ~H"""
-    <DynamicForm.Renderer.render
+    <DynamicForm.Renderer.Component.render
       instance={@resolved_instance}
       form={@form}
       phx_change={@phx_change}
@@ -547,7 +547,7 @@ defmodule DynamicForm do
 
     ~H"""
     <.live_component
-      module={DynamicForm.RendererLive}
+      module={DynamicForm.Renderer.LiveComponent}
       id={@id}
       instance={@resolved_instance}
       on_change={@on_change}

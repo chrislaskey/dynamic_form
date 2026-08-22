@@ -7,7 +7,7 @@ defmodule DemoWeb.SlotFormLive do
   - Groups rendered as panels via `<:group>` + `group="..."`
   - Custom markup tiers: html slot bodies, custom controls with `:let={field}`,
     and fully custom elements with `:let={form}`
-  - Input preservation across parent re-renders (the RendererLive
+  - Input preservation across parent re-renders (the Renderer.LiveComponent
     definition-equality guard)
   - Render-only mode: the definition drives presentation while this LiveView
     owns the changeset and handles the events
@@ -278,7 +278,7 @@ defmodule DemoWeb.SlotFormLive do
             Type into any form below, then click this button. The parent LiveView
             re-renders (the count appears inside a slot body in form 3), but your
             in-progress input should survive thanks to the definition-equality
-            guard in <code>RendererLive</code>.
+            guard in <code>Renderer.LiveComponent</code>.
           </p>
           <button
             phx-click="bump_render_count"
@@ -465,7 +465,7 @@ defmodule DemoWeb.SlotFormLive do
 
         <.definition
           title="Template definition"
-          subtitle="The instance itself is shown on the Renderer and Component pages"
+          subtitle="The instance itself is shown on the Renderer.Component and Component pages"
           code={@src_data}
         />
 

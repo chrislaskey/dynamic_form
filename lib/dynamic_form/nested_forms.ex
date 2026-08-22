@@ -65,7 +65,7 @@ defmodule DynamicForm.NestedForms do
   value for that field get an error (message: `keyDuplicationError`).
 
   Both validation (`DynamicForm.Changeset.create_changeset/3`) and rendering
-  (`DynamicForm.Renderer`) call this with the parent's raw params, so the
+  (`DynamicForm.Renderer.Component`) call this with the parent's raw params, so the
   changesets — and their errors — are identical in both places.
 
   `parent_params` is the parent changeset's params map; the entry list is

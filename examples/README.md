@@ -17,9 +17,9 @@ lists every demo:
 - `/slot-forms` — declarative `<DynamicForm.form>` definitions: `<:field>`
   slots, `<:group>` panels, custom markup (slot bodies), data mode through
   the same component, and an input-preservation test across parent re-renders
-- `/form-test-component` — `DynamicForm.RendererLive` usage modes and
+- `/form-test-component` — `DynamicForm.Renderer.LiveComponent` usage modes and
   external submit buttons
-- `/form-test` — the stateless `DynamicForm.Renderer` with manual state
+- `/form-test` — the stateless `DynamicForm.Renderer.Component` with manual state
   management
 - `/render` — create vs edit mode
 - `/showcase-form` — every question type, including file uploads (a stub JS

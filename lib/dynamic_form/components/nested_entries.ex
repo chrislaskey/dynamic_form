@@ -14,7 +14,7 @@ defmodule DynamicForm.Components.NestedEntries do
   alias DynamicForm.Instance
   alias DynamicForm.Instance.Elements
   alias DynamicForm.NestedForms
-  alias DynamicForm.Renderer
+  alias DynamicForm.Renderer.Component
   alias DynamicForm.Visibility
 
   @doc """
@@ -240,7 +240,7 @@ defmodule DynamicForm.Components.NestedEntries do
       value={@entry_id}
     />
     <%= for element <- @elements do %>
-      <%= Renderer.render_element(element, @form, @opts) %>
+      <%= Component.render_element(element, @form, @opts) %>
     <% end %>
     """
   end

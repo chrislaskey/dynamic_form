@@ -127,7 +127,7 @@ defmodule DynamicForm.Instance do
     but immutable.
 
     **Important**: Read-only HTML fields are not submitted by browsers. The
-    `DynamicForm.RendererLive` component automatically preserves read-only field
+    `DynamicForm.Renderer.LiveComponent` component automatically preserves read-only field
     values by merging the initial params with form submissions.
 
     ### Example

@@ -4,11 +4,11 @@ defmodule DynamicForm.ReadOnlyTest do
   import Phoenix.LiveViewTest
 
   alias DynamicForm.Instance
-  alias DynamicForm.RendererLive
+  alias DynamicForm.Renderer
 
   defp mount_component(instance, data) do
     {:ok, socket} =
-      RendererLive.update(
+      Renderer.LiveComponent.update(
         %{id: "form", instance: instance, data: data},
         %Phoenix.LiveView.Socket{}
       )
@@ -18,7 +18,7 @@ defmodule DynamicForm.ReadOnlyTest do
 
   defp validate(socket, params) do
     {:noreply, socket} =
-      RendererLive.handle_event("validate", %{"dynamic_form" => params}, socket)
+      Renderer.LiveComponent.handle_event("validate", %{"dynamic_form" => params}, socket)
 
     socket
   end
@@ -130,7 +130,7 @@ defmodule DynamicForm.ReadOnlyTest do
     end
 
     defp render_grouped(params) do
-      render_component(&DynamicForm.Renderer.render/1,
+      render_component(&DynamicForm.Renderer.Component.render/1,
         instance: @grouped,
         form:
           @grouped
@@ -176,7 +176,7 @@ defmodule DynamicForm.ReadOnlyTest do
 
     test "an enable_if disabled question stays excluded" do
       html =
-        render_component(&DynamicForm.Renderer.render/1,
+        render_component(&DynamicForm.Renderer.Component.render/1,
           instance: @top,
           form:
             @top

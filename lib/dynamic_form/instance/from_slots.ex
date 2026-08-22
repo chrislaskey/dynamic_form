@@ -34,7 +34,7 @@ defmodule DynamicForm.Instance.FromSlots do
       inside a nested form declares the same `nested` scope on its own
       declaration. See the Nested Forms guide.
     * An entry with a slot body keeps the raw slot entry in the struct's
-      `:slot` field so `DynamicForm.Renderer` can `render_slot/2` it. Bodies
+      `:slot` field so `DynamicForm.Renderer.Component` can `render_slot/2` it. Bodies
       are in-memory only — they are dropped when the instance is JSON-encoded.
 
   ## Naming and scoping

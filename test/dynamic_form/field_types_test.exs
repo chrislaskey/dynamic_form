@@ -138,7 +138,7 @@ defmodule DynamicForm.FieldTypesTest do
       changeset = Changeset.create_changeset(instance, %{}, custom_field_types: field_types)
       form = Phoenix.Component.to_form(changeset, as: "dynamic_form")
 
-      render_component(&DynamicForm.Renderer.render/1,
+      render_component(&DynamicForm.Renderer.Component.render/1,
         instance: instance,
         form: form,
         components: FieldComponents,

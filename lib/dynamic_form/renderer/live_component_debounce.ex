@@ -1,6 +1,6 @@
-defmodule DynamicForm.RendererLive.Debounce do
+defmodule DynamicForm.Renderer.LiveComponent.Debounce do
   @moduledoc """
-  Timer and token mechanics for debouncing `DynamicForm.RendererLive`'s
+  Timer and token mechanics for debouncing `DynamicForm.Renderer.LiveComponent`'s
   change pass (`change_debounce_in_ms`).
 
   LiveComponents have no `handle_info/2`, so a scheduled run arrives back
@@ -47,7 +47,7 @@ defmodule DynamicForm.RendererLive.Debounce do
 
     timer =
       send_update_after(
-        DynamicForm.RendererLive,
+        DynamicForm.Renderer.LiveComponent,
         [id: socket.assigns.id, action: :run_change, token: token],
         interval
       )

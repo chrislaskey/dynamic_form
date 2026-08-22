@@ -42,7 +42,7 @@ Exactly one of `instance`, `json`, or `<:field>` slots must be provided.
 `data`, `form_name`, `validation_summary`) and file upload questions — both
 raise.
 
-`DynamicForm.RendererLive` (used directly via `<.live_component>`) accepts
+`DynamicForm.Renderer.LiveComponent` (used directly via `<.live_component>`) accepts
 `id`, `instance`, and the same optional attributes from `data` down.
 
 ## `<:field>` attributes

@@ -56,7 +56,7 @@ code runs:
 
 ```
 JSON / stored map ──▶ Instance.Decoder ────┐
-                                            ├──▶ %Instance{} ──▶ RendererLive ──▶ Renderer
+                                            ├──▶ %Instance{} ──▶ Renderer.LiveComponent ──▶ Renderer.Component
 <:field> slots ─────▶ Instance.FromSlots ──┘
 ```
 
@@ -71,7 +71,7 @@ JSON / stored map ──▶ Instance.Decoder ────┐
   renderer can call `render_slot/2`. The `:slot` field is dropped from JSON
   encoding, and `Instance.strip_slots/1` removes it for definition-only
   comparison.
-- **Update guard**: `RendererLive.update/2` fires on every parent re-render
+- **Update guard**: `Renderer.LiveComponent.update/2` fires on every parent re-render
   that touches its inputs and used to rebuild the changeset each time —
   wiping in-progress user input. It now skips re-initialization when the
   slot-stripped instance, initial params, and form name are unchanged, while
@@ -109,15 +109,15 @@ Validation:
 
 Rendering:
 
-- `DynamicForm.Renderer` — the form shell, element dispatch
+- `DynamicForm.Renderer.Component` — the form shell, element dispatch
   (`render_element/3`), and the per-question-type controls.
-- `DynamicForm.RendererLive` — the stateful LiveComponent: lifecycle, events,
-  callbacks, and messages. `RendererLive.Debounce` holds the change-pass
+- `DynamicForm.Renderer.LiveComponent` — the stateful LiveComponent: lifecycle, events,
+  callbacks, and messages. `Renderer.LiveComponent.Debounce` holds the change-pass
   timer/token mechanics.
 - `Components.NestedEntries` / `Components.ContentElements` /
   `Components.ValidationSummary` — the paneldynamic sections, non-question
   elements, and error summary; they recurse back through
-  `Renderer.render_element/3`.
+  `Renderer.Component.render_element/3`.
 - `DynamicForm.CoreComponents` — the built-in UI components;
   `DynamicForm.Components` resolves per-function overrides from an app's own
   components module.

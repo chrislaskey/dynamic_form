@@ -110,7 +110,7 @@ defmodule DemoWeb.ComponentFormLive do
           <h3 class="text-sm font-semibold text-indigo-900 mb-2">Key Insight</h3>
           <p class="text-sm text-indigo-700">
             <code class="bg-indigo-100 px-1 py-0.5 rounded text-xs">on_success</code>
-            is called synchronously inside <code class="bg-indigo-100 px-1 py-0.5 rounded text-xs">RendererLive.handle_event("submit", ...)</code>.
+            is called synchronously inside <code class="bg-indigo-100 px-1 py-0.5 rounded text-xs">Renderer.LiveComponent.handle_event("submit", ...)</code>.
             Since all LiveComponents share their parent LiveView's process,
             <code class="bg-indigo-100 px-1 py-0.5 rounded text-xs">send_update/2</code>
             targets the right process automatically.

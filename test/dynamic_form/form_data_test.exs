@@ -62,7 +62,7 @@ defmodule DynamicForm.FormDataTest do
     changeset = Changeset.create_changeset(instance(), params)
     form = Phoenix.Component.to_form(changeset, as: "dynamic_form")
 
-    render_component(&Renderer.render/1,
+    render_component(&Renderer.Component.render/1,
       instance: instance(),
       form: form,
       submit_text: "Submit",

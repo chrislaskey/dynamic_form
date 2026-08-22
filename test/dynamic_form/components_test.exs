@@ -399,7 +399,7 @@ defmodule DynamicForm.ComponentsTest do
       form = Phoenix.Component.to_form(changeset, as: "dynamic_form")
 
       html =
-        render_component(&DynamicForm.Renderer.render/1,
+        render_component(&DynamicForm.Renderer.Component.render/1,
           instance: %Instance{
             id: "slot-test",
             elements: [

@@ -1,4 +1,4 @@
-defmodule DynamicForm.RendererLive do
+defmodule DynamicForm.Renderer.LiveComponent do
   @moduledoc """
   A LiveComponent version of the DynamicForm renderer with automatic state management.
 
@@ -51,7 +51,7 @@ defmodule DynamicForm.RendererLive do
   submission — the parent performs the side effect:
 
       <.live_component
-        module={DynamicForm.RendererLive}
+        module={DynamicForm.Renderer.LiveComponent}
         id="contact-form"
         instance={@form_instance}
       />
@@ -67,7 +67,7 @@ defmodule DynamicForm.RendererLive do
   (a differently-shaped message, a PubSub broadcast, or nothing at all):
 
       <.live_component
-        module={DynamicForm.RendererLive}
+        module={DynamicForm.Renderer.LiveComponent}
         id="contact-form"
         instance={@form_instance}
         on_success={fn payload -> send(self(), {:contact_saved, payload.data}) end}
@@ -78,7 +78,7 @@ defmodule DynamicForm.RendererLive do
   Pre-populate the form with existing data:
 
       <.live_component
-        module={DynamicForm.RendererLive}
+        module={DynamicForm.Renderer.LiveComponent}
         id="user-profile"
         instance={@form_instance}
         data={%{"name" => "John", "email" => "john@example.com"}}
@@ -100,14 +100,14 @@ defmodule DynamicForm.RendererLive do
   ### External Submit Button
 
   You can place a submit button outside the form element by using the `hide_submit`
-  option and `DynamicForm.RendererLive.submit_button/1`:
+  option and `DynamicForm.Renderer.LiveComponent.submit_button/1`:
 
-      <DynamicForm.RendererLive.submit_button form="my-form-form">
+      <DynamicForm.Renderer.LiveComponent.submit_button form="my-form-form">
         Save Changes
-      </DynamicForm.RendererLive.submit_button>
+      </DynamicForm.Renderer.LiveComponent.submit_button>
 
       <.live_component
-        module={DynamicForm.RendererLive}
+        module={DynamicForm.Renderer.LiveComponent}
         id="my-form"
         instance={@form_instance}
         hide_submit={true}
@@ -115,30 +115,6 @@ defmodule DynamicForm.RendererLive do
 
   Note: The form ID is automatically generated as `"\#{id}-form"`, so if your component
   ID is "my-form", the form element ID will be "my-form-form".
-
-  #### Usage with Renderer (Functional Component)
-
-  When using `DynamicForm.Renderer.render/1`:
-
-  1. Set `hide_submit={true}` and provide a custom `form_id`
-  2. Use `DynamicForm.submit_button/1` with that `form_id`
-
-  Example:
-
-      # External submit button
-      <DynamicForm.submit_button form="my-form">
-        Save
-      </DynamicForm.submit_button>
-
-      # Renderer with custom form_id
-      <DynamicForm.Renderer.render
-        instance={@form_instance}
-        form={@form}
-        form_id="my-form"
-        hide_submit={true}
-        phx_submit="submit"
-        phx_change="validate"
-      />
 
   ## Lifecycle callbacks: `on_change` and `on_submit`
 
@@ -159,7 +135,7 @@ defmodule DynamicForm.RendererLive do
   into one complete error list:
 
       <.live_component
-        module={DynamicForm.RendererLive}
+        module={DynamicForm.Renderer.LiveComponent}
         id="contact-form"
         instance={@form_instance}
         on_submit={&MyApp.Contacts.verify/1}
@@ -182,7 +158,7 @@ defmodule DynamicForm.RendererLive do
   firing on every change.
 
       <.live_component
-        module={DynamicForm.RendererLive}
+        module={DynamicForm.Renderer.LiveComponent}
         id="signup-form"
         instance={@form_instance}
         on_change={&MyApp.Accounts.check_availability/1}
@@ -247,8 +223,8 @@ defmodule DynamicForm.RendererLive do
   alias DynamicForm.Instance.Elements
   alias DynamicForm.NestedForms
   alias DynamicForm.Payload
-  alias DynamicForm.Renderer
-  alias DynamicForm.RendererLive.Debounce
+  alias DynamicForm.Renderer.Component
+  alias DynamicForm.Renderer.LiveComponent.Debounce
 
   @message_events [:success, :change, :submit]
 
@@ -400,7 +376,7 @@ defmodule DynamicForm.RendererLive do
           instance={@instance}
         />
       <% end %>
-      <Renderer.render
+      <Component.render
         instance={@instance}
         form={@form}
         submit_text={@submit_text}
@@ -721,19 +697,19 @@ defmodule DynamicForm.RendererLive do
   This allows the submit button to be placed anywhere on the page, not just
   inside the form element.
 
-  When using with `DynamicForm.RendererLive`, the form ID is automatically
+  When using with `DynamicForm.Renderer.LiveComponent`, the form ID is automatically
   generated as `"\#{component_id}-form"`. For example, if your LiveComponent
   has `id="my-form"`, the form element ID will be `"my-form-form"`.
 
   ## Examples
 
       # LiveComponent with external submit button
-      <DynamicForm.RendererLive.submit_button form="contact-form-form">
+      <DynamicForm.Renderer.LiveComponent.submit_button form="contact-form-form">
         Submit Contact Form
-      </DynamicForm.RendererLive.submit_button>
+      </DynamicForm.Renderer.LiveComponent.submit_button>
 
       <.live_component
-        module={DynamicForm.RendererLive}
+        module={DynamicForm.Renderer.LiveComponent}
         id="contact-form"
         instance={@form_instance}
         hide_submit={true}
@@ -742,15 +718,15 @@ defmodule DynamicForm.RendererLive do
       # In a modal footer
       <.modal id="edit-modal">
         <.live_component
-          module={DynamicForm.RendererLive}
+          module={DynamicForm.Renderer.LiveComponent}
           id="user-profile"
           instance={@form_instance}
           hide_submit={true}
         />
         <:actions>
-          <DynamicForm.RendererLive.submit_button form="user-profile-form">
+          <DynamicForm.Renderer.LiveComponent.submit_button form="user-profile-form">
             Save Profile
-          </DynamicForm.RendererLive.submit_button>
+          </DynamicForm.Renderer.LiveComponent.submit_button>
         </:actions>
       </.modal>
 

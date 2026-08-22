@@ -4,7 +4,7 @@ defmodule DynamicForm.CarryForwardTest do
   import Phoenix.LiveViewTest
 
   alias DynamicForm.Instance
-  alias DynamicForm.RendererLive
+  alias DynamicForm.Renderer
 
   # Two nested forms: age groups, and programs that each pick which age
   # groups they serve — the motivating shape for carry forward.
@@ -48,7 +48,7 @@ defmodule DynamicForm.CarryForwardTest do
 
   defp mount_component(instance, data) do
     {:ok, socket} =
-      RendererLive.update(
+      Renderer.LiveComponent.update(
         %{id: "tuition", instance: instance, data: data},
         %Phoenix.LiveView.Socket{}
       )
@@ -57,7 +57,7 @@ defmodule DynamicForm.CarryForwardTest do
   end
 
   defp render_form(socket) do
-    render_component(&DynamicForm.Renderer.render/1,
+    render_component(&DynamicForm.Renderer.Component.render/1,
       instance: socket.assigns.instance,
       form: socket.assigns.form,
       submit_text: "Submit",
@@ -75,7 +75,7 @@ defmodule DynamicForm.CarryForwardTest do
 
   defp validate(socket, params) do
     {:noreply, socket} =
-      RendererLive.handle_event("validate", %{"dynamic_form" => params}, socket)
+      Renderer.LiveComponent.handle_event("validate", %{"dynamic_form" => params}, socket)
 
     socket
   end
@@ -323,7 +323,7 @@ defmodule DynamicForm.CarryForwardTest do
   describe "other rendering paths" do
     test "render-only mode resolves once the parent seeds entry ids" do
       # The parent owns the changeset in render-only mode, so the seeding
-      # RendererLive normally does is the parent's job — otherwise entries
+      # Renderer.LiveComponent normally does is the parent's job — otherwise entries
       # have no dynamic_form_id and the default value resolves to nothing.
       instance = instance()
       questions = DynamicForm.Changeset.get_questions(instance.elements)
@@ -335,7 +335,7 @@ defmodule DynamicForm.CarryForwardTest do
         |> Phoenix.Component.to_form(as: "dynamic_form")
 
       html =
-        render_component(&DynamicForm.Renderer.render/1,
+        render_component(&DynamicForm.Renderer.Component.render/1,
           instance: instance(),
           form: form,
           submit_text: "Submit",
@@ -367,7 +367,7 @@ defmodule DynamicForm.CarryForwardTest do
 
     test "labels update on every change, not on the debounce interval" do
       {:ok, socket} =
-        RendererLive.update(
+        Renderer.LiveComponent.update(
           %{
             id: "tuition",
             instance: instance(),

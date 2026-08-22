@@ -5,7 +5,7 @@ defmodule DynamicForm.EntryIdsTest do
 
   alias DynamicForm.Instance
   alias DynamicForm.NestedForms
-  alias DynamicForm.RendererLive
+  alias DynamicForm.Renderer
 
   defp instance(overrides \\ []) do
     question =
@@ -24,7 +24,7 @@ defmodule DynamicForm.EntryIdsTest do
 
   defp mount_component(instance, data \\ %{}) do
     {:ok, socket} =
-      RendererLive.update(
+      Renderer.LiveComponent.update(
         %{id: "school", instance: instance, data: data},
         %Phoenix.LiveView.Socket{}
       )
@@ -34,7 +34,7 @@ defmodule DynamicForm.EntryIdsTest do
 
   defp validate(socket, params) do
     {:noreply, socket} =
-      RendererLive.handle_event("validate", %{"dynamic_form" => params}, socket)
+      Renderer.LiveComponent.handle_event("validate", %{"dynamic_form" => params}, socket)
 
     socket
   end
@@ -108,7 +108,7 @@ defmodule DynamicForm.EntryIdsTest do
       socket = mount_component(instance(), %{"staff" => [%{"id" => 42, "name" => "Ada"}]})
 
       html =
-        render_component(&DynamicForm.Renderer.render/1,
+        render_component(&DynamicForm.Renderer.Component.render/1,
           instance: socket.assigns.instance,
           form: socket.assigns.form,
           submit_text: "Submit",
@@ -131,7 +131,7 @@ defmodule DynamicForm.EntryIdsTest do
       socket = mount_component(instance())
 
       {:noreply, socket} =
-        RendererLive.handle_event("add_nested_entry", %{"path" => "staff"}, socket)
+        Renderer.LiveComponent.handle_event("add_nested_entry", %{"path" => "staff"}, socket)
 
       assert [id] = ids(socket)
       assert is_binary(id)
@@ -150,13 +150,13 @@ defmodule DynamicForm.EntryIdsTest do
     test "an unchanged re-render keeps the id and in-progress input" do
       assigns = %{id: "school", instance: instance(), data: %{"staff" => [%{"name" => "Ada"}]}}
 
-      {:ok, socket} = RendererLive.update(assigns, %Phoenix.LiveView.Socket{})
+      {:ok, socket} = Renderer.LiveComponent.update(assigns, %Phoenix.LiveView.Socket{})
       [id] = ids(socket)
 
       socket =
         validate(socket, %{"staff" => %{"0" => %{"dynamic_form_id" => id, "name" => "Ada L"}}})
 
-      {:ok, socket} = RendererLive.update(assigns, socket)
+      {:ok, socket} = Renderer.LiveComponent.update(assigns, socket)
 
       assert ids(socket) == [id]
       assert [%{name: "Ada L"}] = entries(socket)
@@ -165,10 +165,10 @@ defmodule DynamicForm.EntryIdsTest do
     test "an unchanged re-render keeps a seeded entry's id" do
       assigns = %{id: "school", instance: instance(panelCount: 2)}
 
-      {:ok, socket} = RendererLive.update(assigns, %Phoenix.LiveView.Socket{})
+      {:ok, socket} = Renderer.LiveComponent.update(assigns, %Phoenix.LiveView.Socket{})
       seeded = ids(socket)
 
-      {:ok, socket} = RendererLive.update(assigns, socket)
+      {:ok, socket} = Renderer.LiveComponent.update(assigns, socket)
 
       assert ids(socket) == seeded
     end
@@ -187,13 +187,13 @@ defmodule DynamicForm.EntryIdsTest do
         }
       end
 
-      {:ok, socket} = RendererLive.update(assigns.(), %Phoenix.LiveView.Socket{})
+      {:ok, socket} = Renderer.LiveComponent.update(assigns.(), %Phoenix.LiveView.Socket{})
       [id] = ids(socket)
 
       socket =
         validate(socket, %{"staff" => %{"0" => %{"dynamic_form_id" => id, "name" => "Ada L"}}})
 
-      {:ok, socket} = RendererLive.update(assigns.(), socket)
+      {:ok, socket} = Renderer.LiveComponent.update(assigns.(), socket)
 
       assert ids(socket) == [id]
       assert [%{name: "Ada L"}] = entries(socket)
@@ -240,7 +240,7 @@ defmodule DynamicForm.EntryIdsTest do
       socket = mount_component(instance(), %{"staff" => [%{"id" => 42, "name" => "Ada"}]})
 
       {:noreply, _socket} =
-        RendererLive.handle_event(
+        Renderer.LiveComponent.handle_event(
           "submit",
           %{
             "dynamic_form" => %{
