@@ -81,7 +81,7 @@ defmodule DynamicForm.Instance.FromSlots do
     Validator.validate!(fields, groups, nesteds, custom_types)
 
     slots = %{fields: Enum.with_index(fields), groups: groups, nesteds: nesteds}
-    {elements, _anchor} = build_scope(nil, slots, custom_types)
+    {elements, _anchor} = create_scope(nil, slots, custom_types)
 
     %Instance{
       id: assigns.id,
@@ -96,7 +96,7 @@ defmodule DynamicForm.Instance.FromSlots do
   # field's position in the flat <:field> list — and siblings sort by anchor,
   # so ungrouped fields keep their template order and containers render at
   # the position of their first member. Returns {elements, scope_anchor}.
-  defp build_scope(scope, slots, custom_types) do
+  defp create_scope(scope, slots, custom_types) do
     field_items =
       for {entry, index} <- slots.fields, entry[:nested] == scope, entry[:group] == nil do
         {index, to_struct(entry, index, custom_types)}
@@ -104,14 +104,14 @@ defmodule DynamicForm.Instance.FromSlots do
 
     nested_items =
       for entry <- slots.nesteds, entry[:nested] == scope, entry[:group] == nil do
-        build_nested(entry, slots, custom_types)
+        create_nested(entry, slots, custom_types)
       end
 
     # `group == nil` filters out groups that are members of another group —
     # they are emitted by their parent, not here
     group_items =
       for entry <- slots.groups, entry[:nested] == scope, entry[:group] == nil do
-        build_group(entry, slots, custom_types)
+        create_group(entry, slots, custom_types)
       end
       |> Enum.reject(&is_nil/1)
 
@@ -122,8 +122,8 @@ defmodule DynamicForm.Instance.FromSlots do
 
   # A nested declaration becomes a paneldynamic question; its scope's
   # elements become the template. Anchored at its first member field.
-  defp build_nested(entry, slots, custom_types) do
-    {template, anchor} = build_scope(entry.name, slots, custom_types)
+  defp create_nested(entry, slots, custom_types) do
+    {template, anchor} = create_scope(entry.name, slots, custom_types)
     {anchor, nested_question(entry, template)}
   end
 
@@ -133,7 +133,7 @@ defmodule DynamicForm.Instance.FromSlots do
   # holding only another group still renders at that group's first field.
   # Memberless groups emit nothing — which cascades: a group whose only member
   # is an empty group is empty too.
-  defp build_group(entry, slots, custom_types) do
+  defp create_group(entry, slots, custom_types) do
     field_members =
       for {field, index} <- slots.fields, field[:group] == entry.name do
         {index, to_struct(field, index, custom_types)}
@@ -141,12 +141,12 @@ defmodule DynamicForm.Instance.FromSlots do
 
     nested_members =
       for nested <- slots.nesteds, nested[:group] == entry.name do
-        build_nested(nested, slots, custom_types)
+        create_nested(nested, slots, custom_types)
       end
 
     group_members =
       for group <- slots.groups, group[:group] == entry.name do
-        build_group(group, slots, custom_types)
+        create_group(group, slots, custom_types)
       end
       |> Enum.reject(&is_nil/1)
 
@@ -155,14 +155,14 @@ defmodule DynamicForm.Instance.FromSlots do
         nil
 
       [{anchor, _} | _] = members ->
-        {anchor, build_panel(entry, Enum.map(members, &elem(&1, 1)))}
+        {anchor, create_panel(entry, Enum.map(members, &elem(&1, 1)))}
     end
   end
 
   defp scope_anchor([]), do: nil
   defp scope_anchor([{anchor, _} | _]), do: anchor
 
-  defp build_panel(group_def, members) do
+  defp create_panel(group_def, members) do
     %Instance.Element{
       name: group_def.name,
       type: "panel",
@@ -224,7 +224,7 @@ defmodule DynamicForm.Instance.FromSlots do
       choiceTextsFromQuestion: entry[:choice_text],
       choicesFromQuestionMode: entry[:choices_mode],
       noChoicesText: entry[:no_choices_text],
-      validators: build_validators(entry),
+      validators: create_validators(entry),
       isRequired: entry[:required],
       requiredLabel: declared_text(entry, :required_label),
       requiredIf: entry[:required_if],
@@ -288,7 +288,7 @@ defmodule DynamicForm.Instance.FromSlots do
 
   # Validators - flattened attrs plus the explicit :validators escape hatch
 
-  defp build_validators(entry) do
+  defp create_validators(entry) do
     explicit =
       entry |> Map.get(:validators, nil) |> List.wrap() |> Enum.map(&normalize_validator/1)
 
@@ -306,7 +306,7 @@ defmodule DynamicForm.Instance.FromSlots do
 
   defp normalize_validator(map) when is_map(map) do
     %Instance.Validator{
-      type: fetch_validator_type!(map),
+      type: get_validator_type!(map),
       minLength: map[:minLength] || map[:min_length],
       maxLength: map[:maxLength] || map[:max_length],
       minValue: map[:minValue] || map[:min_value],
@@ -322,7 +322,7 @@ defmodule DynamicForm.Instance.FromSlots do
             "struct or a map with a :type key, got: #{inspect(other)}"
   end
 
-  defp fetch_validator_type!(map) do
+  defp get_validator_type!(map) do
     map[:type] ||
       raise(ArgumentError, "validator map is missing a :type key: #{inspect(map)}")
   end

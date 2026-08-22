@@ -20,7 +20,7 @@ defmodule DynamicForm.Components.NestedEntries do
     components = Keyword.get(opts, :components)
 
     children =
-      NestedForms.entry_changesets(question, form.source.params || %{},
+      NestedForms.list_entry_changesets(question, form.source.params || %{},
         custom_field_types: Keyword.get(opts, :custom_field_types)
       )
 

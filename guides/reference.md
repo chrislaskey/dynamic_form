@@ -3,6 +3,12 @@
 Quick lookup tables. For narrative documentation see the
 [Usage guide](usage.md).
 
+**Note:**: the Public API is what is referenced below. There may be additional
+functions marked as public within modules. These are for internal use and are
+subject to change. If you find yourself needing to use one of these functions,
+please open a GitHub issue so we can explore if there's a better solution or
+a way to surface it as a stable public function moving forward.
+
 ## `DynamicForm.form/1` attributes
 
 | Attribute | Type | Default | Description |

@@ -50,7 +50,7 @@ defmodule DynamicForm.Changeset do
   def create_changeset(%Instance{} = instance, params \\ %{}, opts \\ []) do
     field_types = FieldTypes.resolve(Keyword.get(opts, :custom_field_types))
     questions = Elements.list_questions(instance.elements)
-    types = build_types_map(questions, field_types)
+    types = create_types_map(questions, field_types)
     visibility_params = Keyword.get(opts, :visibility_params) || params
     required_fields = get_required_fields(questions, visibility_params)
 
@@ -115,10 +115,10 @@ defmodule DynamicForm.Changeset do
       ...>   %DynamicForm.Instance.Question{name: "email", type: "text"},
       ...>   %DynamicForm.Instance.Question{name: "age", type: "text", inputType: "number"}
       ...> ]
-      iex> DynamicForm.Changeset.build_types_map(questions)
+      iex> DynamicForm.Changeset.create_types_map(questions)
       %{email: :string, age: :decimal}
   """
-  def build_types_map(questions, field_types \\ %{}) when is_list(questions) do
+  def create_types_map(questions, field_types \\ %{}) when is_list(questions) do
     Enum.reduce(questions, %{}, fn question, acc ->
       # Convert question name to atom for Ecto
       field_atom = String.to_atom(question.name)

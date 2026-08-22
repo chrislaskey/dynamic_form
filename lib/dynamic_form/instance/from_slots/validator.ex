@@ -165,12 +165,12 @@ defmodule DynamicForm.Instance.FromSlots.Validator do
   end
 
   defp validate_field!(entry, custom_types) do
-    type = fetch_type!(entry, custom_types)
+    type = get_type!(entry, custom_types)
     validate_question_name!(type, entry, custom_types)
     validate_type_requirements!(type, entry)
   end
 
-  defp fetch_type!(entry, custom_types) do
+  defp get_type!(entry, custom_types) do
     type = entry[:type]
 
     cond do

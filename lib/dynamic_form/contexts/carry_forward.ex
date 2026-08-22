@@ -88,7 +88,7 @@ defmodule DynamicForm.CarryForward do
 
       value ->
         value
-        |> NestedForms.entries()
+        |> NestedForms.list_entries()
         |> Enum.with_index()
         |> Enum.flat_map(&carried_choice(&1, question))
     end
@@ -240,7 +240,7 @@ defmodule DynamicForm.CarryForward do
     entries =
       params
       |> Map.get(question.choicesFromQuestion)
-      |> NestedForms.entries()
+      |> NestedForms.list_entries()
 
     values =
       entries

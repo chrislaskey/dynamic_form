@@ -3,6 +3,20 @@
 All notable changes to this project are documented here. For releases before
 0.19.0, see the git history.
 
+## 0.24.0
+
+### Internal refactor
+
+Undocumented public functions are internal (see the new Conventions section
+in the Development guide) and several were renamed or moved with no
+deprecation path:
+
+- `NestedForms.entries/1` → `NestedForms.list_entries/1`
+- `NestedForms.entry_changesets/3` → `NestedForms.list_entry_changesets/3`
+- `Changeset.build_types_map/2` → `Changeset.create_types_map/2`
+- `Instance.decode!/1` now also accepts an already-decoded `%Instance{}`
+  (pass-through)
+
 ## 0.23.0
 
 ### Breaking

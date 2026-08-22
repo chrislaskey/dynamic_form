@@ -629,7 +629,7 @@ defmodule DynamicForm.Renderer do
   # Render a paneldynamic question: a repeating group of templateElements the
   # user can add and remove. Each entry renders as its own namespaced
   # sub-form (name: form[question][index][field]) backed by a child changeset
-  # built by DynamicForm.NestedForms.entry_changesets/3 — the same function the
+  # built by DynamicForm.NestedForms.list_entry_changesets/3 — the same function the
   # validation path uses, so rendered errors always match validation.
   #
   # The add/remove buttons emit "add_nested_entry"/"remove_nested_entry" events carrying a
@@ -760,7 +760,7 @@ defmodule DynamicForm.Renderer do
 
     assigns = %{
       name: if(type in ~w(checkbox tagbox), do: "#{field.name}[]", else: field.name),
-      values: readonly_values(field.value),
+      values: list_readonly_values(field.value),
       disabled: question_unavailable?(question, form, opts)
     }
 
@@ -771,7 +771,7 @@ defmodule DynamicForm.Renderer do
 
   defp readonly_value_inputs(_question, _form, _opts), do: nil
 
-  defp readonly_values(nil), do: []
-  defp readonly_values(values) when is_list(values), do: Enum.map(values, &to_string/1)
-  defp readonly_values(value), do: [to_string(value)]
+  defp list_readonly_values(nil), do: []
+  defp list_readonly_values(values) when is_list(values), do: Enum.map(values, &to_string/1)
+  defp list_readonly_values(value), do: [to_string(value)]
 end

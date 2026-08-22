@@ -1,5 +1,22 @@
 # Development
 
+## Code conventions
+
+- **Public API s what the USAGE and REFERENCE guides document.** Every other
+  function — public or private — is internal and subject to change without
+  notice. Cross-module calls justify a public function; they don't make it
+  part of the API.
+- **Function names use generic verbs**: `list_*` returns a collection,
+  `get_*` returns one thing or `nil`, `create_*`/`update_*`/`delete_*` for
+  the matching actions, predicates end in `?`. No
+  `fetch_`/`find_`/`build_`/`retrieve_` synonyms for the same idea
+  (`resolve_*` is reserved for the Components/FieldTypes override-resolution
+  pattern). HEEx function components are named after the thing they render,
+  not with CRUD verbs.
+- `blank?` is the empty-value predicate everywhere; its exact semantics stay
+  local to each module (e.g. `Instance.blank?/1` also treats `false` as
+  blank, for labels).
+
 ## Demo app
 
 The `/examples` directory contains a full Phoenix demo app exercising every
@@ -30,7 +47,7 @@ definition above the rendered form, and the "Input Preservation Test" button
 re-renders the parent LiveView to verify in-progress input survives (see the
 update guard below).
 
-## Architecture notes
+## Architecture overview
 
 Both definition modes converge on `DynamicForm.Instance` before any stateful
 code runs:
@@ -60,6 +77,54 @@ JSON / stored map ──▶ Instance.Decoder ────┐
 - The design rationale for the declarative mode lives in
   `heex_form_definition_exploration.md` (UX options) and
   `heex_form_backend_implementation.md` (backend options) at the repo root.
+
+## Module map
+
+Definition (building and querying an `%Instance{}`):
+
+- `DynamicForm.Instance` — the structs (`Question`, `Element`, `Validator`)
+  and their JSON encoding.
+- `Instance.Decoder` — untrusted external data (JSON, string-keyed maps) →
+  `%Instance{}`.
+- `Instance.FromSlots` — slot entries → `%Instance{}`;
+  `Instance.FromSlots.Validator` raises on definition mistakes and owns the
+  slot type vocabulary.
+- `Instance.Elements` — queries over the element tree (`list_questions/1`,
+  `get_question/2`, `get_question_by_path/2`, ...). One scope rule
+  everywhere: static panels are transparent, `templateElements` are their
+  own scope.
+
+Validation:
+
+- `DynamicForm.Changeset` — instance + params → Ecto changeset.
+- `DynamicForm.NestedForms` — entry machinery for `paneldynamic` questions:
+  normalizing, seeding, entry changesets, entry-list validation.
+- `DynamicForm.Visibility` — the SurveyJS conditional expression engine
+  (`visibleIf`/`enableIf`/`requiredIf`) plus element filtering.
+- `DynamicForm.CarryForward` (`contexts/`) — choices carried from another
+  question: `resolve_choices/2` at render time, `prune_values/4` at cast time.
+
+Rendering:
+
+- `DynamicForm.Renderer` — the form shell, element dispatch
+  (`render_element/3`), and the per-question-type controls.
+- `DynamicForm.RendererLive` — the stateful LiveComponent: lifecycle, events,
+  callbacks, and messages. `RendererLive.Debounce` holds the change-pass
+  timer/token mechanics.
+- `Components.NestedEntries` / `Components.ContentElements` /
+  `Components.ValidationSummary` — the paneldynamic sections, non-question
+  elements, and error summary; they recurse back through
+  `Renderer.render_element/3`.
+- `DynamicForm.CoreComponents` — the built-in UI components;
+  `DynamicForm.Components` resolves per-function overrides from an app's own
+  components module.
+- `DynamicForm.DirectUpload` — the upload UI component and `sign/2`
+  behaviour; `DirectUpload.Uploads` wires LiveView uploads per file question.
+
+Generic plumbing lives in `DynamicForm.Helpers.*` (`Helpers.Map`,
+`Helpers.Form`) — mechanics only, no knowledge of questions or instances.
+Domain logic goes in domain modules (under `contexts/` when it has no better
+home).
 
 ## Testing
 

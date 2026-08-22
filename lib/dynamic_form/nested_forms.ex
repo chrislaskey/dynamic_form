@@ -6,8 +6,8 @@ defmodule DynamicForm.NestedForms do
   its value is a list of entries, one map per repetition. This module owns
   the entry machinery shared by validation and rendering:
 
-    * `entries/1` — normalize a raw value into an ordered entry list
-    * `entry_changesets/3` — build one child changeset per entry
+    * `list_entries/1` — normalize a raw value into an ordered entry list
+    * `list_entry_changesets/3` — build one child changeset per entry
     * `new_entry/1` — seed params for a newly added entry
     * `validate/3` — validate a parent changeset's paneldynamic questions
 
@@ -16,7 +16,7 @@ defmodule DynamicForm.NestedForms do
   (no `cast_embed`/`inputs_for`) involved. Because entries aren't tracked
   inside the parent changeset, they are *derived state*: a pure function of
   the question and the parent's raw params. Validation and rendering both
-  call `entry_changesets/3`, so the errors they see are always identical.
+  call `list_entry_changesets/3`, so the errors they see are always identical.
 
   SurveyJS vocabulary ("panel") appears only at the boundary — the question
   type string, the `Instance.Question` fields, and `{panel.field}`
@@ -71,7 +71,7 @@ defmodule DynamicForm.NestedForms do
   read from it under the question's name (either a list or a
   `%{"0" => ...}`-indexed map as submitted by the browser).
   """
-  def entry_changesets(
+  def list_entry_changesets(
         %Instance.Question{type: "paneldynamic"} = question,
         parent_params,
         opts \\ []
@@ -84,7 +84,7 @@ defmodule DynamicForm.NestedForms do
     children =
       parent_params
       |> Map.get(question.name)
-      |> entries()
+      |> list_entries()
       |> Enum.map(fn entry ->
         entry = if is_map(entry), do: entry, else: %{}
 
@@ -112,7 +112,7 @@ defmodule DynamicForm.NestedForms do
   %{...}}`, possibly with non-integer bookkeeping keys such as the always-
   present `__empty__` hidden input); programmatic values are already lists.
   """
-  def entries(value) do
+  def list_entries(value) do
     case value do
       list when is_list(list) ->
         list
@@ -174,7 +174,7 @@ defmodule DynamicForm.NestedForms do
   names) and list indexes (entries).
   """
   def update_entry_list(params, [name], fun) when is_map(params) do
-    current_entries = params |> Map.get(name) |> entries()
+    current_entries = params |> Map.get(name) |> list_entries()
     Map.put(params, name, fun.(current_entries))
   end
 
@@ -206,7 +206,7 @@ defmodule DynamicForm.NestedForms do
           acc
 
         value ->
-          Map.put(acc, question.name, Enum.map(entries(value), &seed_entry(&1, question)))
+          Map.put(acc, question.name, Enum.map(list_entries(value), &seed_entry(&1, question)))
       end
     end)
   end
@@ -226,15 +226,15 @@ defmodule DynamicForm.NestedForms do
   defp put_entry_id(entry, question) do
     cond do
       not generate_ids?(question) -> entry
-      present?(Map.get(entry, @id_field)) -> entry
-      present?(Map.get(entry, "id")) -> Map.put(entry, @id_field, to_string(entry["id"]))
+      not blank?(Map.get(entry, @id_field)) -> entry
+      not blank?(Map.get(entry, "id")) -> Map.put(entry, @id_field, to_string(entry["id"]))
       true -> Map.put(entry, @id_field, Ecto.UUID.generate())
     end
   end
 
-  defp present?(nil), do: false
-  defp present?(""), do: false
-  defp present?(_value), do: true
+  defp blank?(nil), do: true
+  defp blank?(""), do: true
+  defp blank?(_value), do: false
 
   # The id is cast as an ordinary template field so it round-trips with the
   # entry, but it is not part of templateElements — the renderer emits its
@@ -260,7 +260,7 @@ defmodule DynamicForm.NestedForms do
     |> Enum.reduce(params, fn question, acc ->
       case Map.get(acc, question.name) do
         nil -> acc
-        value -> Map.put(acc, question.name, entries(value))
+        value -> Map.put(acc, question.name, list_entries(value))
       end
     end)
   end
@@ -294,7 +294,7 @@ defmodule DynamicForm.NestedForms do
 
   defp validate_question(changeset, question, opts) do
     field = String.to_atom(question.name)
-    children = entry_changesets(question, changeset.params, opts)
+    children = list_entry_changesets(question, changeset.params, opts)
 
     changeset
     |> put_applied_entries(question, field, children)

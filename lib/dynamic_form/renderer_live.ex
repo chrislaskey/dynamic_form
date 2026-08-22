@@ -215,7 +215,7 @@ defmodule DynamicForm.RendererLive do
 
   use Phoenix.LiveComponent
   import Phoenix.LiveView, only: [cancel_upload: 3]
-  alias DynamicForm.{Renderer, Changeset, Helpers, Instance, NestedForms, Payload}
+  alias DynamicForm.{Changeset, Helpers, Instance, NestedForms, Payload, Renderer}
   alias DynamicForm.Components.ValidationSummary
   alias DynamicForm.DirectUpload.Uploads
   alias DynamicForm.Instance.Elements
@@ -452,7 +452,7 @@ defmodule DynamicForm.RendererLive do
       |> Changeset.create_changeset(merged_params,
         custom_field_types: socket.assigns[:custom_field_types]
       )
-      |> build_payload(socket)
+      |> create_payload(socket)
       |> apply_callback(socket, :on_change)
 
     socket = send_message(socket, :change, changed)
@@ -552,7 +552,7 @@ defmodule DynamicForm.RendererLive do
 
   # Helpers - Handlers
 
-  defp build_payload(changeset, socket) do
+  defp create_payload(changeset, socket) do
     Payload.new(socket.assigns.id, changeset)
   end
 
@@ -600,7 +600,7 @@ defmodule DynamicForm.RendererLive do
   defp run_change(socket) do
     payload =
       socket.assigns.changeset
-      |> build_payload(socket)
+      |> create_payload(socket)
       |> apply_callback(socket, :on_change)
 
     socket
