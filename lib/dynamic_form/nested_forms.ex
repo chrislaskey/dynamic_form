@@ -24,6 +24,7 @@ defmodule DynamicForm.NestedForms do
   """
 
   alias DynamicForm.{Changeset, Instance}
+  alias DynamicForm.Instance.Elements
 
   @id_field "dynamic_form_id"
 
@@ -139,7 +140,7 @@ defmodule DynamicForm.NestedForms do
   def new_entry(%Instance.Question{type: "paneldynamic"} = question) do
     defaults =
       (question.templateElements || [])
-      |> Changeset.get_questions()
+      |> Elements.list_questions()
       |> Enum.reduce(%{}, fn template_question, acc ->
         case template_question.defaultValue do
           nil -> acc
@@ -182,7 +183,7 @@ defmodule DynamicForm.NestedForms do
   defp seed_entry(entry, question) when is_map(entry) do
     entry
     |> put_entry_id(question)
-    |> seed_entry_ids(Changeset.get_questions(question.templateElements || []))
+    |> seed_entry_ids(Elements.list_questions(question.templateElements || []))
   end
 
   defp seed_entry(entry, _question), do: entry
@@ -240,34 +241,9 @@ defmodule DynamicForm.NestedForms do
   question's `templateElements` — so questions in different scopes may
   share a name. Returns `nil` when the path doesn't resolve.
   """
-  def find_question(elements, path) when is_binary(path) do
-    find_question(elements, String.split(path, "."))
+  def find_question(elements, path) do
+    Elements.get_question_by_path(elements, path)
   end
-
-  def find_question(elements, [name]), do: find_in_scope(elements, name)
-
-  def find_question(elements, [name, _index | rest]) do
-    case find_in_scope(elements, name) do
-      %Instance.Question{templateElements: template} when is_list(template) ->
-        find_question(template, rest)
-
-      _ ->
-        nil
-    end
-  end
-
-  # Search one scope for a paneldynamic question by name, descending into
-  # static panel elements (visual containers share their parent's scope) but
-  # never into templates (a different scope).
-  defp find_in_scope(elements, name) when is_list(elements) do
-    Enum.find_value(elements, fn
-      %Instance.Question{type: "paneldynamic", name: ^name} = question -> question
-      %Instance.Element{elements: nested} when is_list(nested) -> find_in_scope(nested, name)
-      _ -> nil
-    end)
-  end
-
-  defp find_in_scope(_elements, _name), do: nil
 
   @doc """
   Validates every paneldynamic question on an already-cast parent changeset:

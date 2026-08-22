@@ -6,7 +6,8 @@ defmodule DynamicForm.Changeset do
   and form handling using Phoenix's standard patterns.
   """
 
-  alias DynamicForm.{FieldTypes, Instance, NestedForms}
+  alias DynamicForm.{CarryForward, FieldTypes, Instance, NestedForms}
+  alias DynamicForm.Instance.Elements
 
   @doc """
   Creates a changeset from a DynamicForm.Instance configuration.
@@ -48,7 +49,7 @@ defmodule DynamicForm.Changeset do
   """
   def create_changeset(%Instance{} = instance, params \\ %{}, opts \\ []) do
     field_types = FieldTypes.resolve(Keyword.get(opts, :custom_field_types))
-    questions = get_questions(instance.elements)
+    questions = Elements.list_questions(instance.elements)
     types = build_types_map(questions, field_types)
     visibility_params = Keyword.get(opts, :visibility_params) || params
     required_fields = get_required_fields(questions, visibility_params)
@@ -71,136 +72,10 @@ defmodule DynamicForm.Changeset do
 
     {%{}, types}
     |> Ecto.Changeset.cast(decoded_params, Map.keys(types))
-    |> prune_carried_values(questions, visibility_params, opts)
+    |> CarryForward.prune_values(questions, visibility_params, opts)
     |> Ecto.Changeset.validate_required(required_fields)
     |> apply_custom_validations(questions)
     |> NestedForms.validate(questions, opts)
-  end
-
-  # Drop values of a carried-forward question that its source no longer
-  # offers — the entry they referenced was deleted, or the option was taken
-  # out of the definition. Runs before validate_required so emptying a
-  # required field errors as it would have.
-  #
-  # A source that resolves to *nothing* still prunes: keeping ids for entries
-  # the same submission deletes would hand the application a payload that
-  # contradicts itself. Only a source we cannot observe is left alone — see
-  # carried_source_values/3.
-  #
-  # `visibility_params` carries entry-local values merged over form-level
-  # ones, so a source name resolves the same way it does when rendering.
-  defp prune_carried_values(changeset, questions, params, opts) do
-    scope = questions ++ Keyword.get(opts, :root_questions, [])
-
-    questions
-    |> Enum.filter(&(&1.choicesFromQuestion != nil))
-    |> Enum.reduce(changeset, fn question, acc ->
-      case carried_source_values(question, scope, params) do
-        :unobservable -> acc
-        valid -> prune_field(acc, question, valid)
-      end
-    end)
-  end
-
-  # The values a carried-forward field may hold: one per entry of a nested
-  # source, or the source's own choice values when it is another choice
-  # question (narrowed by choicesFromQuestionMode).
-  #
-  # `:unobservable` means we can't tell what the source offers, so the stored
-  # values stay: either the definition has no such question (a hand-edited
-  # JSON definition — declarative mode raises long before this), or it has one
-  # but this submission doesn't carry its values, as when `visible_if` hides
-  # it. An empty source is not unobservable: emptying it is a user action.
-  defp carried_source_values(question, scope, params) do
-    case Enum.find(scope, &(&1.name == question.choicesFromQuestion)) do
-      nil -> :unobservable
-      %Instance.Question{type: "paneldynamic"} -> entry_source_values(question, params)
-      %Instance.Question{} = source -> choice_source_values(question, source, params)
-    end
-  end
-
-  defp entry_source_values(question, params) do
-    value_field = question.choiceValuesFromQuestion || NestedForms.id_field()
-
-    entries =
-      params
-      |> Map.get(question.choicesFromQuestion)
-      |> NestedForms.entries()
-
-    values =
-      entries
-      |> Enum.map(&entry_value(&1, value_field))
-      |> Enum.reject(&(&1 in [nil, ""]))
-
-    cond do
-      not Map.has_key?(params, question.choicesFromQuestion) -> :unobservable
-      # Entries are present but carry no value to compare against — the
-      # submission omitted the source and its values came back from the
-      # initial data, which holds no ids. Not the same as an empty source.
-      entries != [] and values == [] -> :unobservable
-      true -> values
-    end
-  end
-
-  defp choice_source_values(question, source, params) do
-    values =
-      source.choices
-      |> List.wrap()
-      |> Enum.map(fn
-        {_text, value} -> to_string(value)
-        value -> to_string(value)
-      end)
-
-    cond do
-      question.choicesFromQuestionMode not in ["selected", "unselected"] ->
-        values
-
-      not Map.has_key?(params, source.name) ->
-        :unobservable
-
-      true ->
-        selected =
-          params
-          |> Map.get(source.name)
-          |> List.wrap()
-          |> Enum.map(&to_string/1)
-
-        mode = question.choicesFromQuestionMode
-        Enum.filter(values, &(&1 in selected == (mode == "selected")))
-    end
-  end
-
-  defp entry_value(entry, field) when is_map(entry) do
-    case Map.get(entry, field) do
-      nil -> entry |> Map.get(String.to_atom(field)) |> stringify_value()
-      value -> stringify_value(value)
-    end
-  end
-
-  defp entry_value(_entry, _field), do: nil
-
-  defp stringify_value(nil), do: nil
-  defp stringify_value(value), do: to_string(value)
-
-  defp prune_field(changeset, question, valid) do
-    field = String.to_atom(question.name)
-
-    case Ecto.Changeset.fetch_change(changeset, field) do
-      {:ok, values} when is_list(values) ->
-        Ecto.Changeset.put_change(
-          changeset,
-          field,
-          Enum.filter(values, &(to_string(&1) in valid))
-        )
-
-      {:ok, value} ->
-        if to_string(value) in valid,
-          do: changeset,
-          else: Ecto.Changeset.delete_change(changeset, field)
-
-      :error ->
-        changeset
-    end
   end
 
   @doc """
@@ -228,18 +103,7 @@ defmodule DynamicForm.Changeset do
       ]
   """
   def get_questions(elements) when is_list(elements) do
-    Enum.flat_map(elements, fn element ->
-      case element do
-        %Instance.Question{} = question ->
-          [question]
-
-        %Instance.Element{elements: nested_elements} when is_list(nested_elements) ->
-          get_questions(nested_elements)
-
-        %Instance.Element{} ->
-          []
-      end
-    end)
+    Elements.list_questions(elements)
   end
 
   @doc """

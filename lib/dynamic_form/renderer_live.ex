@@ -216,6 +216,7 @@ defmodule DynamicForm.RendererLive do
   use Phoenix.LiveComponent
   import Phoenix.LiveView, only: [allow_upload: 3, cancel_upload: 3, send_update_after: 3]
   alias DynamicForm.{Renderer, Changeset, Helpers, Instance, NestedForms, Payload}
+  alias DynamicForm.Instance.Elements
 
   @message_events [:success, :change, :submit]
 
@@ -473,7 +474,7 @@ defmodule DynamicForm.RendererLive do
     params = Helpers.Map.deep_stringify_keys(params)
 
     instance.elements
-    |> Changeset.get_questions()
+    |> Elements.list_questions()
     |> Enum.reduce(params, fn question, acc ->
       case question.defaultValue do
         nil -> acc
@@ -488,7 +489,7 @@ defmodule DynamicForm.RendererLive do
   # seeded separately so each gets its own id.
   defp seed_nested_entries(params, instance) do
     instance.elements
-    |> Changeset.get_questions()
+    |> Elements.list_questions()
     |> Enum.filter(&(&1.type == "paneldynamic"))
     |> Enum.reduce(params, fn question, acc ->
       count = max(question.panelCount || 0, question.minPanelCount || 0)
@@ -502,7 +503,7 @@ defmodule DynamicForm.RendererLive do
   # ids into it would make it differ every time and wipe in-progress input —
   # they are seeded into the changeset's params instead.
   defp seed_entry_ids(params, instance) do
-    NestedForms.seed_entry_ids(params, Changeset.get_questions(instance.elements))
+    NestedForms.seed_entry_ids(params, Elements.list_questions(instance.elements))
   end
 
   # Walk the params tree along a dot-separated entry path and update the
@@ -910,29 +911,11 @@ defmodule DynamicForm.RendererLive do
     field_name = to_string(field_atom)
 
     # Search through instance elements to find the question and get its title
-    case find_question_by_name(instance.elements, field_name) do
+    case Elements.get_question(instance.elements, field_name) do
       %{title: title} when is_binary(title) and title != "" -> title
       _ -> humanize_atom(field_atom)
     end
   end
-
-  # Helper to find a question by name in the instance elements
-  defp find_question_by_name(elements, name) when is_list(elements) do
-    Enum.find_value(elements, fn element ->
-      case element do
-        %Instance.Question{name: ^name} = question ->
-          question
-
-        %Instance.Element{elements: nested_elements} when is_list(nested_elements) ->
-          find_question_by_name(nested_elements, name)
-
-        _ ->
-          nil
-      end
-    end)
-  end
-
-  defp find_question_by_name(_, _), do: nil
 
   # Helper to humanize an atom (fallback when label not found)
   defp humanize_atom(atom) do
@@ -945,7 +928,7 @@ defmodule DynamicForm.RendererLive do
 
   # Helper to set up uploads for file upload questions
   defp allow_uploads_for_direct_upload_fields(socket, instance) do
-    file_upload_questions = find_file_upload_questions(instance.elements)
+    file_upload_questions = Elements.list_file_questions(instance.elements)
 
     Enum.reduce(file_upload_questions, socket, fn question, acc_socket ->
       metadata = question.metadata || %{}
@@ -967,21 +950,6 @@ defmodule DynamicForm.RendererLive do
           handle_upload_progress(entry, socket, question)
         end
       )
-    end)
-  end
-
-  defp find_file_upload_questions(elements) do
-    Enum.flat_map(elements, fn element ->
-      case element do
-        %Instance.Question{type: "file"} ->
-          [element]
-
-        %Instance.Element{elements: nested_elements} when is_list(nested_elements) ->
-          find_file_upload_questions(nested_elements)
-
-        _ ->
-          []
-      end
     end)
   end
 

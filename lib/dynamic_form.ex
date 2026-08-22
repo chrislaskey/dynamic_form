@@ -94,7 +94,7 @@ defmodule DynamicForm do
   # This module defines its own form/1 component, shadowing Phoenix.Component's
   import Phoenix.Component, except: [form: 1]
 
-  alias DynamicForm.{Changeset, Instance, Renderer}
+  alias DynamicForm.{Instance, Renderer}
 
   defdelegate submit_button(assigns), to: DynamicForm.RendererLive
 
@@ -675,9 +675,7 @@ defmodule DynamicForm do
     end
 
     file_questions =
-      assigns.resolved_instance.elements
-      |> Changeset.get_questions()
-      |> Enum.filter(&(&1.type == "file"))
+      Instance.Elements.list_file_questions(assigns.resolved_instance.elements)
 
     if file_questions != [] do
       raise ArgumentError,
