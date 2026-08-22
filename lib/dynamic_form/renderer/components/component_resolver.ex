@@ -1,4 +1,4 @@
-defmodule DynamicForm.Components do
+defmodule DynamicForm.ComponentResolver do
   @moduledoc """
   Resolution and dispatch for the pluggable components module.
 

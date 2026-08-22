@@ -17,6 +17,14 @@ deprecation path:
 - `DynamicForm.Instance.Decoder` → `DynamicForm.Parser.JSON`, absorbing the
   documented `Instance.decode!/1` as `Parser.JSON.parse!/1` — it accepts a
   JSON string, a map, or an already-parsed `%Instance{}` (pass-through)
+- `DynamicForm.Components` → `DynamicForm.ComponentResolver` — the
+  per-function override contract is unchanged; the module documenting and
+  dispatching it is now named for what it does
+- The internal renderer function components moved out of the public
+  `DynamicForm.Components` namespace: `Components.ContentElements`,
+  `Components.NestedEntries`, and `Components.ValidationSummary` are now
+  `DynamicForm.Renderer.Components.*`
+- `DynamicForm.DirectUpload.Uploads` → `DynamicForm.Renderer.LiveComponent.Uploads`
 - `NestedForms.entries/1` → `NestedForms.list_entries/1`
 - `NestedForms.entry_changesets/3` → `NestedForms.list_entry_changesets/3`
 - `Changeset.build_types_map/2` → `Changeset.create_types_map/2`

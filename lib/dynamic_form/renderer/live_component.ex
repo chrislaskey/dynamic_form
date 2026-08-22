@@ -37,7 +37,7 @@ defmodule DynamicForm.Renderer.LiveComponent do
     * `:validation_summary` - Display validation errors at top of form (string, `nil`, `"simple"`, or `"detailed"`, default: `nil`)
     * `:components` - Custom components module (e.g. the app's
       Phoenix-generated CoreComponents); functions it exports override the
-      built-ins per function — see `DynamicForm.Components` (atom, default:
+      built-ins per function — see `DynamicForm.ComponentResolver` (atom, default:
       `nil`, falling back to the `:dynamic_form, :components` config)
     * `:custom_field_types` - Custom field types map (type name => Ecto
       type), merged over the `:dynamic_form, :custom_field_types` config —
@@ -216,8 +216,6 @@ defmodule DynamicForm.Renderer.LiveComponent do
   use Phoenix.LiveComponent
   import Phoenix.LiveView, only: [cancel_upload: 3]
   alias DynamicForm.Changeset
-  alias DynamicForm.Components.ValidationSummary
-  alias DynamicForm.DirectUpload.Uploads
   alias DynamicForm.Helpers
   alias DynamicForm.Instance
   alias DynamicForm.Instance.Elements
@@ -225,7 +223,9 @@ defmodule DynamicForm.Renderer.LiveComponent do
   alias DynamicForm.Parser
   alias DynamicForm.Payload
   alias DynamicForm.Renderer.Component
+  alias DynamicForm.Renderer.Components.ValidationSummary
   alias DynamicForm.Renderer.LiveComponent.Debounce
+  alias DynamicForm.Renderer.LiveComponent.Uploads
 
   @message_events [:success, :change, :submit]
 

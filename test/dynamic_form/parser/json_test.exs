@@ -1,4 +1,4 @@
-defmodule DynamicForm.InstanceJsonTest do
+defmodule DynamicForm.Parser.JSONTest do
   use ExUnit.Case, async: true
 
   alias DynamicForm.Instance

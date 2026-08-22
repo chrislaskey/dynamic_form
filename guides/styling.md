@@ -111,7 +111,7 @@ per-type extras (`options`, `prompt`, `multiple`, `rows`, `placeholder`,
 `disabled`); the radio and checkbox group components get `field`, `label`,
 `options`, `style`, `disabled`; `dynamic_form_group/1` gets `type`, `title`,
 `name`, `disabled`, and an `inner_block` slot; `button/1` gets `type`,
-`disabled`, `rest`, and an `inner_block` slot. See `DynamicForm.Components`
+`disabled`, `rest`, and an `inner_block` slot. See `DynamicForm.ComponentResolver`
 for the full contract.
 
 `button/1` renders both the submit button and a nested form's add button, and

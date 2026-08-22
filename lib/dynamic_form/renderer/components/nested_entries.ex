@@ -1,4 +1,4 @@
-defmodule DynamicForm.Components.NestedEntries do
+defmodule DynamicForm.Renderer.Components.NestedEntries do
   @moduledoc """
   Rendering for `paneldynamic` questions: the repeating nested-form section —
   its header and add button, one namespaced child form per entry with its
@@ -9,7 +9,7 @@ defmodule DynamicForm.Components.NestedEntries do
 
   use Phoenix.Component
 
-  alias DynamicForm.Components
+  alias DynamicForm.ComponentResolver
   alias DynamicForm.Helpers
   alias DynamicForm.Instance
   alias DynamicForm.Instance.Elements
@@ -70,7 +70,7 @@ defmodule DynamicForm.Components.NestedEntries do
           </div>
         </div>
         <div :if={@show_add?} class="shrink-0">
-          {Components.render(@components, :button, %{
+          {ComponentResolver.render(@components, :button, %{
             type: "button",
             # The button only renders when the form is editable — show_add?
             # already accounts for the disabled state
@@ -95,7 +95,7 @@ defmodule DynamicForm.Components.NestedEntries do
         {@question.noEntriesText || "No entries yet."}
       </p>
       <%= for {child, index} <- Enum.with_index(@children) do %>
-        {Components.render(@components, :nested_entry, %{
+        {ComponentResolver.render(@components, :nested_entry, %{
           index: index,
           name: @question.name,
           inner_block: [
@@ -121,7 +121,7 @@ defmodule DynamicForm.Components.NestedEntries do
         })}
       <% end %>
       <%= for msg <- @errors do %>
-        {Components.render(@components, :error, %{
+        {ComponentResolver.render(@components, :error, %{
           inner_block: [%{__slot__: :inner_block, inner_block: fn _changed, _arg -> msg end}]
         })}
       <% end %>
@@ -261,7 +261,7 @@ defmodule DynamicForm.Components.NestedEntries do
 
     errors
     |> Enum.reject(fn {_msg, error_opts} -> error_opts[:validation] == :paneldynamic end)
-    |> Enum.map(&Components.translate_error(components, &1))
+    |> Enum.map(&ComponentResolver.translate_error(components, &1))
   end
 
   defp entry_confirm_text(%Instance.Question{confirmDelete: true} = question) do

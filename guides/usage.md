@@ -525,7 +525,7 @@ custom-control slot bodies fall back to the built-ins unless your module
 defines them (`input_radio_group/1`, `input_checkbox_group/1`,
 `dynamic_form_group/1`, `label/1`, `error/1`).
 
-See `DynamicForm.Components` for the full contract and the assigns each
+See `DynamicForm.ComponentResolver` for the full contract and the assigns each
 function receives, and the [Styling guide](styling.md) for the complete
 styling story — including writing partial modules and per-field overrides.
 A module that can't be loaded raises — a typo fails loudly rather than

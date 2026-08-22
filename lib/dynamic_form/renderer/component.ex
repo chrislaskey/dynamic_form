@@ -20,14 +20,14 @@ defmodule DynamicForm.Renderer.Component do
   use Phoenix.Component
 
   alias DynamicForm.CarryForward
-  alias DynamicForm.Components
-  alias DynamicForm.Components.ContentElements
-  alias DynamicForm.Components.NestedEntries
+  alias DynamicForm.ComponentResolver
   alias DynamicForm.FieldTypes
   alias DynamicForm.Helpers
   alias DynamicForm.Instance
   alias DynamicForm.Instance.Elements
   alias DynamicForm.Parser
+  alias DynamicForm.Renderer.Components.ContentElements
+  alias DynamicForm.Renderer.Components.NestedEntries
   alias DynamicForm.Visibility
 
   attr(:instance, :any,
@@ -73,7 +73,7 @@ defmodule DynamicForm.Renderer.Component do
     default: nil,
     doc:
       "Custom components module (e.g. the app's Phoenix-generated CoreComponents); " <>
-        "functions it exports override the built-ins per function — see DynamicForm.Components"
+        "functions it exports override the built-ins per function — see DynamicForm.ComponentResolver"
   )
 
   attr(:custom_field_types, :map,
@@ -88,7 +88,7 @@ defmodule DynamicForm.Renderer.Component do
     submit_text = assigns.submit_text || "Submit"
     uploads = Map.get(assigns, :uploads, %{})
     parent_id = Map.get(assigns, :parent_id)
-    components = Components.resolve(Map.get(assigns, :components))
+    components = ComponentResolver.resolve(Map.get(assigns, :components))
     field_types = FieldTypes.resolve(Map.get(assigns, :custom_field_types))
 
     assigns =
@@ -120,8 +120,8 @@ defmodule DynamicForm.Renderer.Component do
       <% end %>
 
       <div :if={!@hide_submit} class="mt-6 flex items-center justify-end gap-x-6">
-        <%= if Components.provides?(@components, :button) do %>
-          {Components.render(@components, :button, %{
+        <%= if ComponentResolver.provides?(@components, :button) do %>
+          {ComponentResolver.render(@components, :button, %{
             type: "submit",
             disabled: @disabled,
             rest: %{},
@@ -153,7 +153,7 @@ defmodule DynamicForm.Renderer.Component do
   end
 
   # Dispatch to the appropriate renderer based on element type. Public so
-  # DynamicForm.Components.NestedEntries and ContentElements can recurse back
+  # Renderer.Components.NestedEntries and ContentElements can recurse back
   # into it for their members — internal, not part of the public API.
   @doc false
   def render_element(%Instance.Question{} = question, form, opts) do
@@ -172,7 +172,7 @@ defmodule DynamicForm.Renderer.Component do
     <%= if @no_choices? do %>
       <div class="mb-4">
         <%= if @label do %>
-          {Components.render(@components, :label, %{
+          {ComponentResolver.render(@components, :label, %{
             required: @required,
             required_label: @required_label,
             inner_block: [
@@ -221,14 +221,14 @@ defmodule DynamicForm.Renderer.Component do
       label: question_label(question),
       required: !!question.isRequired,
       required_label: Instance.required_label_text(question),
-      errors: Enum.map(errors, &Components.translate_error(components, &1)),
+      errors: Enum.map(errors, &ComponentResolver.translate_error(components, &1)),
       components: components
     }
 
     ~H"""
     <div class="mb-4">
       <%= if @label do %>
-        {Components.render(@components, :label, %{
+        {ComponentResolver.render(@components, :label, %{
           for: @field.id,
           required: @required,
           required_label: @required_label,
@@ -239,7 +239,7 @@ defmodule DynamicForm.Renderer.Component do
       <% end %>
       {render_slot(@entry, @field)}
       <%= for msg <- @errors do %>
-        {Components.render(@components, :error, %{
+        {ComponentResolver.render(@components, :error, %{
           inner_block: [%{__slot__: :inner_block, inner_block: fn _changed, _arg -> msg end}]
         })}
       <% end %>
@@ -275,7 +275,7 @@ defmodule DynamicForm.Renderer.Component do
 
     ~H"""
     <div class="mb-4">
-      {Components.render(@components, :input, %{
+      {ComponentResolver.render(@components, :input, %{
         field: @form[@field_atom],
         type: @input_type,
         label: @label,
@@ -313,7 +313,7 @@ defmodule DynamicForm.Renderer.Component do
 
     ~H"""
     <div class="mb-4">
-      {Components.render(@components, :input, %{
+      {ComponentResolver.render(@components, :input, %{
         field: @form[@field_atom],
         type: "textarea",
         label: @label,
@@ -353,7 +353,7 @@ defmodule DynamicForm.Renderer.Component do
 
     ~H"""
     <div class="mb-4">
-      {Components.render(@components, :input, %{
+      {ComponentResolver.render(@components, :input, %{
         field: @form[@field_atom],
         type: "select",
         label: @label,
@@ -403,7 +403,7 @@ defmodule DynamicForm.Renderer.Component do
 
     ~H"""
     <div class="mb-4">
-      {Components.render(@components, :input_radio_group, %{
+      {ComponentResolver.render(@components, :input_radio_group, %{
         field: @form[@field_atom],
         label: @label,
         required: @required,
@@ -440,7 +440,7 @@ defmodule DynamicForm.Renderer.Component do
 
     ~H"""
     <div class="mb-4">
-      {Components.render(@components, :input, %{
+      {ComponentResolver.render(@components, :input, %{
         field: @form[@field_atom],
         type: "checkbox",
         label: @label,
@@ -508,7 +508,7 @@ defmodule DynamicForm.Renderer.Component do
 
     ~H"""
     <div class="mb-4">
-      {Components.render(@components, :input_checkbox_group, %{
+      {ComponentResolver.render(@components, :input_checkbox_group, %{
         field: @form[@field_atom],
         label: @label,
         required: @required,
@@ -545,7 +545,7 @@ defmodule DynamicForm.Renderer.Component do
 
     ~H"""
     <div class="mb-4">
-      {Components.render(@components, :input, %{
+      {ComponentResolver.render(@components, :input, %{
         field: @form[@field_atom],
         type: "select",
         label: @label,
@@ -592,7 +592,7 @@ defmodule DynamicForm.Renderer.Component do
 
     ~H"""
     <div class="mb-4">
-      {Components.render(@components, :input_radio_group, %{
+      {ComponentResolver.render(@components, :input_radio_group, %{
         field: @form[@field_atom],
         label: @label,
         required: @required,
@@ -657,7 +657,7 @@ defmodule DynamicForm.Renderer.Component do
 
     ~H"""
     <div class="mb-4">
-      {Components.render(@components, :input, %{
+      {ComponentResolver.render(@components, :input, %{
         field: @form[@field_atom],
         type: @question.type,
         label: @label,

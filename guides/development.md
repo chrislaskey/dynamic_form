@@ -10,7 +10,7 @@
   `get_*` returns one thing or `nil`, `create_*`/`update_*`/`delete_*` for
   the matching actions, predicates end in `?`. No
   `fetch_`/`find_`/`build_`/`retrieve_` synonyms for the same idea
-  (`resolve_*` is reserved for the Components/FieldTypes override-resolution
+  (`resolve_*` is reserved for the ComponentResolver/FieldTypes override-resolution
   pattern). HEEx function components are named after the thing they render,
   not with CRUD verbs.
 - `blank?` is the empty-value predicate everywhere; its exact semantics stay
@@ -114,15 +114,16 @@ Rendering:
 - `DynamicForm.Renderer.LiveComponent` — the stateful LiveComponent: lifecycle, events,
   callbacks, and messages. `Renderer.LiveComponent.Debounce` holds the change-pass
   timer/token mechanics.
-- `Components.NestedEntries` / `Components.ContentElements` /
-  `Components.ValidationSummary` — the paneldynamic sections, non-question
-  elements, and error summary; they recurse back through
+- `Renderer.Components.NestedEntries` / `Renderer.Components.ContentElements` /
+  `Renderer.Components.ValidationSummary` — the paneldynamic sections,
+  non-question elements, and error summary; they recurse back through
   `Renderer.Component.render_element/3`.
 - `DynamicForm.CoreComponents` — the built-in UI components;
-  `DynamicForm.Components` resolves per-function overrides from an app's own
+  `DynamicForm.ComponentResolver` resolves per-function overrides from an app's own
   components module.
 - `DynamicForm.DirectUpload` — the upload UI component and `sign/2`
-  behaviour; `DirectUpload.Uploads` wires LiveView uploads per file question.
+  behaviour; `Renderer.LiveComponent.Uploads` wires LiveView uploads per
+  file question.
 
 Directory layout: `contexts/` holds the domain logic (`instance/`,
 `direct_upload/`, `carry_forward.ex`), `parser/` the two definition parsers,

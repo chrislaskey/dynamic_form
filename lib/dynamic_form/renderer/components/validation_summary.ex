@@ -1,4 +1,4 @@
-defmodule DynamicForm.Components.ValidationSummary do
+defmodule DynamicForm.Renderer.Components.ValidationSummary do
   @moduledoc """
   A summary of a changeset's validation errors, rendered above the form when
   the `validation_summary` attribute of `DynamicForm.form/1` is set.

@@ -1,10 +1,10 @@
-defmodule DynamicForm.ComponentsTest do
+defmodule DynamicForm.ComponentResolverTest do
   # Not async: some tests set the :dynamic_form, :components application config
   use ExUnit.Case, async: false
 
   import Phoenix.LiveViewTest
 
-  alias DynamicForm.Components
+  alias DynamicForm.ComponentResolver
   alias DynamicForm.Instance
 
   # A partial components module: owns input/1, button/1, and
@@ -94,47 +94,47 @@ defmodule DynamicForm.ComponentsTest do
 
   describe "resolve/1" do
     test "nil without config resolves to nil (built-in only)" do
-      assert Components.resolve(nil) == nil
+      assert ComponentResolver.resolve(nil) == nil
     end
 
     test "nil falls back to the application config" do
       Application.put_env(:dynamic_form, :components, CustomComponents)
       on_exit(fn -> Application.delete_env(:dynamic_form, :components) end)
 
-      assert Components.resolve(nil) == CustomComponents
+      assert ComponentResolver.resolve(nil) == CustomComponents
     end
 
     test "a per-form module wins over the application config" do
       Application.put_env(:dynamic_form, :components, DynamicForm.CoreComponents)
       on_exit(fn -> Application.delete_env(:dynamic_form, :components) end)
 
-      assert Components.resolve(CustomComponents) == CustomComponents
+      assert ComponentResolver.resolve(CustomComponents) == CustomComponents
     end
 
     test "raises on a module that cannot be loaded" do
       assert_raise ArgumentError, ~r/could not be loaded/, fn ->
-        Components.resolve(DynamicForm.NoSuchComponents)
+        ComponentResolver.resolve(DynamicForm.NoSuchComponents)
       end
     end
   end
 
   describe "provides?/2" do
     test "true only for exported 1-arity functions" do
-      assert Components.provides?(CustomComponents, :input)
-      assert Components.provides?(CustomComponents, :translate_error)
-      refute Components.provides?(CustomComponents, :input_radio_group)
-      refute Components.provides?(nil, :input)
+      assert ComponentResolver.provides?(CustomComponents, :input)
+      assert ComponentResolver.provides?(CustomComponents, :translate_error)
+      refute ComponentResolver.provides?(CustomComponents, :input_radio_group)
+      refute ComponentResolver.provides?(nil, :input)
     end
   end
 
   describe "translate_error/3" do
     test "delegates when the module exports translate_error/1" do
-      assert Components.translate_error(CustomComponents, {"is invalid", []}) ==
+      assert ComponentResolver.translate_error(CustomComponents, {"is invalid", []}) ==
                "custom: is invalid"
     end
 
     test "falls back to the built-in translation" do
-      assert Components.translate_error(nil, {"is invalid", []}) == "is invalid"
+      assert ComponentResolver.translate_error(nil, {"is invalid", []}) == "is invalid"
     end
   end
 

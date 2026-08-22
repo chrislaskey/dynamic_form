@@ -31,7 +31,7 @@ defmodule DynamicForm.FieldTypes do
       normalization as the built-in checkbox/tagbox groups, so `required`
       works
     * **rendering dispatches to the components module** — define a matching
-      `input/1` clause (see `DynamicForm.Components`):
+      `input/1` clause (see `DynamicForm.ComponentResolver`):
 
           def input(%{type: "multiselect"} = assigns) do
             ~H\"\"\"

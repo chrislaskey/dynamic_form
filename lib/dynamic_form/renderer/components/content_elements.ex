@@ -1,4 +1,4 @@
-defmodule DynamicForm.Components.ContentElements do
+defmodule DynamicForm.Renderer.Components.ContentElements do
   @moduledoc """
   Rendering for non-question elements: `html` and `image` content blocks,
   fully custom slot elements, and `panel` containers (whose members render
@@ -9,7 +9,7 @@ defmodule DynamicForm.Components.ContentElements do
 
   use Phoenix.Component
 
-  alias DynamicForm.Components
+  alias DynamicForm.ComponentResolver
   alias DynamicForm.Helpers
   alias DynamicForm.Instance
   alias DynamicForm.Renderer.Component
@@ -105,7 +105,7 @@ defmodule DynamicForm.Components.ContentElements do
     }
 
     ~H"""
-    {Components.render(@components, :dynamic_form_group, %{
+    {ComponentResolver.render(@components, :dynamic_form_group, %{
       type: @group_type,
       name: @element.name,
       title: @title,

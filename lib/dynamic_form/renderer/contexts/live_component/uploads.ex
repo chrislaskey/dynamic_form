@@ -1,4 +1,4 @@
-defmodule DynamicForm.DirectUpload.Uploads do
+defmodule DynamicForm.Renderer.LiveComponent.Uploads do
   @moduledoc """
   LiveView upload wiring for `file` questions using direct-to-cloud uploads.
 

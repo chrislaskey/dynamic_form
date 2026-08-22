@@ -293,7 +293,7 @@ defmodule DynamicForm do
     doc:
       "Custom components module (e.g. the app's Phoenix-generated CoreComponents); " <>
         "functions it exports override the built-ins per function. Falls back to the " <>
-        ":dynamic_form, :components config — see DynamicForm.Components"
+        ":dynamic_form, :components config — see DynamicForm.ComponentResolver"
   )
 
   attr(:custom_field_types, :map,
