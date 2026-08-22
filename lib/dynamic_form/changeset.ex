@@ -99,13 +99,13 @@ defmodule DynamicForm.Changeset do
       ...>     ]
       ...>   }
       ...> ]
-      iex> DynamicForm.Changeset.get_questions(elements)
+      iex> DynamicForm.Changeset.list_questions(elements)
       [
         %DynamicForm.Instance.Question{name: "email", type: "text"},
         %DynamicForm.Instance.Question{name: "city", type: "text"}
       ]
   """
-  def get_questions(elements) when is_list(elements) do
+  def list_questions(elements) when is_list(elements) do
     Elements.list_questions(elements)
   end
 

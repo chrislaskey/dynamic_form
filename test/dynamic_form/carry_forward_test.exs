@@ -327,7 +327,7 @@ defmodule DynamicForm.CarryForwardTest do
       # Renderer.LiveComponent normally does is the parent's job — otherwise entries
       # have no dynamic_form_id and the default value resolves to nothing.
       instance = instance()
-      questions = DynamicForm.Changeset.get_questions(instance.elements)
+      questions = DynamicForm.Changeset.list_questions(instance.elements)
 
       form =
         @seeded

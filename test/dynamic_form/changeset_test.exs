@@ -428,7 +428,7 @@ defmodule DynamicForm.ChangesetTest do
     end
   end
 
-  describe "get_questions/1" do
+  describe "list_questions/1" do
     test "returns questions and recurses into panels, skipping other elements" do
       elements = [
         %Instance.Element{name: "intro", type: "html", html: "<p>Hi</p>"},
@@ -441,7 +441,7 @@ defmodule DynamicForm.ChangesetTest do
       ]
 
       assert [%Instance.Question{name: "email"}, %Instance.Question{name: "city"}] =
-               Changeset.get_questions(elements)
+               Changeset.list_questions(elements)
     end
   end
 end

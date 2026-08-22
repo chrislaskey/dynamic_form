@@ -371,7 +371,7 @@ does is the parent's job. Seed before building the changeset, or the default
 value resolves to nothing:
 
 ```elixir
-questions = DynamicForm.Changeset.get_questions(instance.elements)
+questions = DynamicForm.Changeset.list_questions(instance.elements)
 
 changeset =
   params

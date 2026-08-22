@@ -279,7 +279,7 @@ Functions the renderer dispatches through the `components` module
 | `DynamicForm.Instance.strip_slots/1` | Copy of an instance without slot bodies (definition-only comparison) |
 | `DynamicForm.Parser.Declarative.parse!/1` | Slot entries → `Instance` (used by `DynamicForm.form/1`) |
 | `DynamicForm.Changeset.create_changeset/2` | Instance + params → Ecto changeset |
-| `DynamicForm.Changeset.get_questions/1` | Flat list of questions, including nested panels |
+| `DynamicForm.Changeset.list_questions/1` | Flat list of questions, including nested panels |
 | `DynamicForm.Payload.add_error/4` | Add a changeset error, marking the submission invalid |
 | `DynamicForm.Payload.put_extra/3` | Stash derived data on the payload for the parent's `handle_info/2` |
 | `DynamicForm.form_data/1` | Inside a `<:field>` slot body: the whole form's current values, same shape as `payload.data` |
