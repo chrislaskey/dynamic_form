@@ -88,7 +88,11 @@ defmodule DynamicForm.Instance do
       iex> map = %{"id" => "my-form", "title" => "My Form", "elements" => []}
       iex> DynamicForm.Instance.decode!(map)
       %DynamicForm.Instance{id: "my-form", title: "My Form", elements: []}
+
+  An already-decoded `%DynamicForm.Instance{}` passes through unchanged.
   """
+  def decode!(%__MODULE__{} = instance), do: instance
+
   def decode!(data) when is_binary(data) do
     data
     |> Jason.decode!()
@@ -256,6 +260,8 @@ defmodule DynamicForm.Instance do
   end
 
   defimpl Jason.Encoder, for: Question do
+    import DynamicForm.Helpers.Map, only: [put_unless_nil: 3]
+
     def encode(question, opts) do
       # Build map with only non-nil values to match SurveyJS format
       map =
@@ -263,50 +269,47 @@ defmodule DynamicForm.Instance do
           name: question.name,
           type: question.type
         }
-        |> maybe_put(:inputType, question.inputType)
-        |> maybe_put(:title, question.title)
-        |> maybe_put(:placeholder, question.placeholder)
-        |> maybe_put(:description, question.description)
-        |> maybe_put(:defaultValue, question.defaultValue)
-        |> maybe_put(:choices, encode_choices(question.choices))
-        |> maybe_put(:validators, question.validators)
-        |> maybe_put(:isRequired, question.isRequired)
-        |> maybe_put(:requiredLabel, question.requiredLabel)
-        |> maybe_put(:requiredIf, question.requiredIf)
-        |> maybe_put(:readOnly, question.readOnly)
-        |> maybe_put(:enableIf, question.enableIf)
-        |> maybe_put(:visibleIf, question.visibleIf)
-        |> maybe_put(:rateMin, question.rateMin)
-        |> maybe_put(:rateMax, question.rateMax)
-        |> maybe_put(:rateStep, question.rateStep)
-        |> maybe_put(:templateElements, question.templateElements)
-        |> maybe_put(:templateTitle, question.templateTitle)
-        |> maybe_put(:panelCount, question.panelCount)
-        |> maybe_put(:minPanelCount, question.minPanelCount)
-        |> maybe_put(:maxPanelCount, question.maxPanelCount)
-        |> maybe_put(:allowAddPanel, question.allowAddPanel)
-        |> maybe_put(:allowRemovePanel, question.allowRemovePanel)
-        |> maybe_put(:addPanelText, question.addPanelText)
-        |> maybe_put(:removePanelText, question.removePanelText)
-        |> maybe_put(:noEntriesText, question.noEntriesText)
-        |> maybe_put(:confirmDelete, question.confirmDelete)
-        |> maybe_put(:confirmDeleteText, question.confirmDeleteText)
-        |> maybe_put(:keyName, question.keyName)
-        |> maybe_put(:keyDuplicationError, question.keyDuplicationError)
-        |> maybe_put(:defaultPanelValue, question.defaultPanelValue)
-        |> maybe_put(:generateIds, question.generateIds)
-        |> maybe_put(:choicesFromQuestion, question.choicesFromQuestion)
-        |> maybe_put(:choiceValuesFromQuestion, question.choiceValuesFromQuestion)
-        |> maybe_put(:choiceTextsFromQuestion, question.choiceTextsFromQuestion)
-        |> maybe_put(:choicesFromQuestionMode, question.choicesFromQuestionMode)
-        |> maybe_put(:noChoicesText, question.noChoicesText)
-        |> maybe_put(:metadata, question.metadata)
+        |> put_unless_nil(:inputType, question.inputType)
+        |> put_unless_nil(:title, question.title)
+        |> put_unless_nil(:placeholder, question.placeholder)
+        |> put_unless_nil(:description, question.description)
+        |> put_unless_nil(:defaultValue, question.defaultValue)
+        |> put_unless_nil(:choices, encode_choices(question.choices))
+        |> put_unless_nil(:validators, question.validators)
+        |> put_unless_nil(:isRequired, question.isRequired)
+        |> put_unless_nil(:requiredLabel, question.requiredLabel)
+        |> put_unless_nil(:requiredIf, question.requiredIf)
+        |> put_unless_nil(:readOnly, question.readOnly)
+        |> put_unless_nil(:enableIf, question.enableIf)
+        |> put_unless_nil(:visibleIf, question.visibleIf)
+        |> put_unless_nil(:rateMin, question.rateMin)
+        |> put_unless_nil(:rateMax, question.rateMax)
+        |> put_unless_nil(:rateStep, question.rateStep)
+        |> put_unless_nil(:templateElements, question.templateElements)
+        |> put_unless_nil(:templateTitle, question.templateTitle)
+        |> put_unless_nil(:panelCount, question.panelCount)
+        |> put_unless_nil(:minPanelCount, question.minPanelCount)
+        |> put_unless_nil(:maxPanelCount, question.maxPanelCount)
+        |> put_unless_nil(:allowAddPanel, question.allowAddPanel)
+        |> put_unless_nil(:allowRemovePanel, question.allowRemovePanel)
+        |> put_unless_nil(:addPanelText, question.addPanelText)
+        |> put_unless_nil(:removePanelText, question.removePanelText)
+        |> put_unless_nil(:noEntriesText, question.noEntriesText)
+        |> put_unless_nil(:confirmDelete, question.confirmDelete)
+        |> put_unless_nil(:confirmDeleteText, question.confirmDeleteText)
+        |> put_unless_nil(:keyName, question.keyName)
+        |> put_unless_nil(:keyDuplicationError, question.keyDuplicationError)
+        |> put_unless_nil(:defaultPanelValue, question.defaultPanelValue)
+        |> put_unless_nil(:generateIds, question.generateIds)
+        |> put_unless_nil(:choicesFromQuestion, question.choicesFromQuestion)
+        |> put_unless_nil(:choiceValuesFromQuestion, question.choiceValuesFromQuestion)
+        |> put_unless_nil(:choiceTextsFromQuestion, question.choiceTextsFromQuestion)
+        |> put_unless_nil(:choicesFromQuestionMode, question.choicesFromQuestionMode)
+        |> put_unless_nil(:noChoicesText, question.noChoicesText)
+        |> put_unless_nil(:metadata, question.metadata)
 
       Jason.Encode.map(map, opts)
     end
-
-    defp maybe_put(map, _key, nil), do: map
-    defp maybe_put(map, key, value), do: Map.put(map, key, value)
 
     # Encode choices in SurveyJS format
     defp encode_choices(nil), do: nil
@@ -420,6 +423,8 @@ defmodule DynamicForm.Instance do
   end
 
   defimpl Jason.Encoder, for: Element do
+    import DynamicForm.Helpers.Map, only: [put_unless_nil: 3]
+
     def encode(element, opts) do
       # Build map with only non-nil values to match SurveyJS format
       map =
@@ -427,23 +432,20 @@ defmodule DynamicForm.Instance do
           name: element.name,
           type: element.type
         }
-        |> maybe_put(:title, element.title)
-        |> maybe_put(:groupType, element.groupType)
-        |> maybe_put(:html, element.html)
-        |> maybe_put(:elements, element.elements)
-        |> maybe_put(:visibleIf, element.visibleIf)
-        |> maybe_put(:enableIf, element.enableIf)
-        |> maybe_put(:imageLink, element.imageLink)
-        |> maybe_put(:imageWidth, element.imageWidth)
-        |> maybe_put(:imageHeight, element.imageHeight)
-        |> maybe_put(:imageFit, element.imageFit)
-        |> maybe_put(:metadata, element.metadata)
+        |> put_unless_nil(:title, element.title)
+        |> put_unless_nil(:groupType, element.groupType)
+        |> put_unless_nil(:html, element.html)
+        |> put_unless_nil(:elements, element.elements)
+        |> put_unless_nil(:visibleIf, element.visibleIf)
+        |> put_unless_nil(:enableIf, element.enableIf)
+        |> put_unless_nil(:imageLink, element.imageLink)
+        |> put_unless_nil(:imageWidth, element.imageWidth)
+        |> put_unless_nil(:imageHeight, element.imageHeight)
+        |> put_unless_nil(:imageFit, element.imageFit)
+        |> put_unless_nil(:metadata, element.metadata)
 
       Jason.Encode.map(map, opts)
     end
-
-    defp maybe_put(map, _key, nil), do: map
-    defp maybe_put(map, key, value), do: Map.put(map, key, value)
   end
 
   defmodule Validator do

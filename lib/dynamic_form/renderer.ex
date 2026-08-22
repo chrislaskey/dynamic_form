@@ -44,7 +44,7 @@ defmodule DynamicForm.Renderer do
 
   use Phoenix.Component
 
-  alias DynamicForm.{Components, FieldTypes, Instance, NestedForms}
+  alias DynamicForm.{Components, FieldTypes, Helpers, Instance, NestedForms}
 
   # A group with no groupType of its own lays its members out in a row
   @default_group_type "horizontal"
@@ -103,8 +103,7 @@ defmodule DynamicForm.Renderer do
   )
 
   def render(assigns) do
-    # Decode instance if needed
-    instance = decode_instance(assigns.instance)
+    instance = Instance.decode!(assigns.instance)
     submit_text = assigns.submit_text || "Submit"
     uploads = Map.get(assigns, :uploads, %{})
     parent_id = Map.get(assigns, :parent_id)
@@ -1033,8 +1032,8 @@ defmodule DynamicForm.Renderer do
     context =
       parent_form
       |> get_form_params()
-      |> stringify_keys()
-      |> Map.merge(stringify_keys(child.changes))
+      |> Helpers.Map.stringify_keys()
+      |> Map.merge(Helpers.Map.stringify_keys(child.changes))
 
     child_opts =
       opts
@@ -1119,23 +1118,6 @@ defmodule DynamicForm.Renderer do
     else
       String.replace(question.templateTitle, "{panelIndex}", to_string(index + 1))
     end
-  end
-
-  defp stringify_keys(%_{} = struct) do
-    struct
-    |> Map.from_struct()
-    |> stringify_keys()
-  end
-
-  defp stringify_keys(map) when is_map(map) do
-    Map.new(map, fn {key, value} -> {to_string(key), value} end)
-  end
-
-  # Helper to decode instance from various formats
-  defp decode_instance(%Instance{} = instance), do: instance
-
-  defp decode_instance(data) when is_binary(data) or is_map(data) do
-    Instance.decode!(data)
   end
 
   # A checkbox shows its label inline, with the description under it rather than

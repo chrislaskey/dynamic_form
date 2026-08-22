@@ -238,6 +238,16 @@ defmodule DynamicForm.InstanceJsonTest do
       assert %Instance{id: "map-form", elements: []} = Instance.decode!(map)
     end
 
+    test "passes an already-decoded instance through unchanged" do
+      instance =
+        Instance.decode!(%{
+          "id" => "existing",
+          "elements" => [%{"type" => "text", "name" => "email"}]
+        })
+
+      assert Instance.decode!(instance) == instance
+    end
+
     test "generates an id when missing" do
       instance = Instance.decode!(%{"elements" => []})
       assert is_binary(instance.id)

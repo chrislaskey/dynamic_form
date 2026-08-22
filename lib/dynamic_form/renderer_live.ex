@@ -215,7 +215,7 @@ defmodule DynamicForm.RendererLive do
 
   use Phoenix.LiveComponent
   import Phoenix.LiveView, only: [allow_upload: 3, cancel_upload: 3, send_update_after: 3]
-  alias DynamicForm.{Renderer, Changeset, Instance, NestedForms, Payload}
+  alias DynamicForm.{Renderer, Changeset, Helpers, Instance, NestedForms, Payload}
 
   @message_events [:success, :change, :submit]
 
@@ -243,8 +243,7 @@ defmodule DynamicForm.RendererLive do
   end
 
   defp handle_normal_update(assigns, socket) do
-    # Decode instance if needed
-    instance = decode_instance(assigns.instance)
+    instance = Instance.decode!(assigns.instance)
 
     form_name = Map.get(assigns, :form_name, "dynamic_form")
 
@@ -471,7 +470,7 @@ defmodule DynamicForm.RendererLive do
   # Seed initial data with each question's defaultValue. Explicitly provided
   # params always win over defaults.
   defp apply_default_values(params, instance) do
-    params = recursively_convert_to_string_keys(params)
+    params = Helpers.Map.deep_stringify_keys(params)
 
     instance.elements
     |> Changeset.get_questions()
@@ -562,9 +561,9 @@ defmodule DynamicForm.RendererLive do
   # the form (see definition_unchanged?/4), so the new data still wins.
   defp merge_data(socket, form_params) do
     socket.assigns.initial_data
-    |> recursively_convert_to_string_keys()
+    |> Helpers.Map.deep_stringify_keys()
     |> Map.merge(held_params(socket))
-    |> Map.merge(recursively_convert_to_string_keys(form_params))
+    |> Map.merge(Helpers.Map.deep_stringify_keys(form_params))
   end
 
   # The params the current changeset was built from — already string-keyed,
@@ -576,29 +575,6 @@ defmodule DynamicForm.RendererLive do
       _ -> %{}
     end
   end
-
-  defp recursively_convert_to_string_keys(%Decimal{} = value), do: value
-
-  defp recursively_convert_to_string_keys(%_{} = struct) do
-    struct
-    |> Map.from_struct()
-    |> recursively_convert_to_string_keys()
-  end
-
-  defp recursively_convert_to_string_keys(map) when is_map(map) do
-    Map.new(map, fn {key, value} ->
-      string_key = to_string(key)
-      converted_value = recursively_convert_to_string_keys(value)
-
-      {string_key, converted_value}
-    end)
-  end
-
-  defp recursively_convert_to_string_keys(list) when is_list(list) do
-    Enum.map(list, &recursively_convert_to_string_keys/1)
-  end
-
-  defp recursively_convert_to_string_keys(value), do: value
 
   # Helpers - Handlers
 
@@ -913,13 +889,6 @@ defmodule DynamicForm.RendererLive do
       {render_slot(@inner_block)}
     </button>
     """
-  end
-
-  # Helper to decode instance from various formats
-  defp decode_instance(%Instance{} = instance), do: instance
-
-  defp decode_instance(data) when is_binary(data) or is_map(data) do
-    Instance.decode!(data)
   end
 
   # Helper to extract errors from changeset
