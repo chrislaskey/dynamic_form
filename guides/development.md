@@ -1,5 +1,22 @@
 # Development
 
+## Architecture overview
+
+There are four major pieces to DynamicForm:
+
+- Parsing the inputs
+- Defining the instance
+- Rendering the instance
+- Managing the lifecycle (skipped if using `render_only`)
+
+Visualized, it looks like:
+
+```
+JSON / stored map ──▶ Parser.JSON ─────────┐
+                                           ├──▶ %Instance{} ──▶ Renderer ──▶ Lifecycle
+<:field> slots ─────▶ Parser.Declarative ──┘
+```
+
 ## Code conventions
 
 - **Public API is what the USAGE and REFERENCE guides document.** Every other
@@ -49,16 +66,7 @@ definition above the rendered form, and the "Input Preservation Test" button
 re-renders the parent LiveView to verify in-progress input survives (see the
 update guard below).
 
-## Architecture overview
-
-Both definition modes converge on `DynamicForm.Instance` before any stateful
-code runs:
-
-```
-JSON / stored map ──▶ Parser.JSON ─────────┐
-                                           ├──▶ %Instance{} ──▶ Renderer ──▶ Lifecycle
-<:field> slots ─────▶ Parser.Declarative ──┘
-```
+## Code notes
 
 - `Parser.JSON` normalizes untrusted external data (string keys, safe
   atom conversion); `Parser.Declarative` normalizes compiler-produced slot
@@ -77,75 +85,6 @@ JSON / stored map ──▶ Parser.JSON ─────────┐
   slot-stripped instance, initial params, and form name are unchanged, while
   still assigning the fresh instance so slot bodies re-render with current
   parent assigns.
-- The original design document lives in `dynamic_form_library.md` at the repo
-  root — it predates the SurveyJS migration, so its code examples use the old
-  bespoke format, but the rationale still applies.
-
-## Module map
-
-Definition (building and querying an `%Instance{}`):
-
-- `DynamicForm.Instance` — the structs (`Question`, `Element`, `Validator`)
-  and their JSON encoding.
-- `DynamicForm.Parser.JSON` — untrusted external data (JSON, string-keyed
-  maps) → `%Instance{}`.
-- `DynamicForm.Parser.Declarative` — slot entries → `%Instance{}`;
-  `Parser.Declarative.Validator` raises on definition mistakes and owns the
-  slot type vocabulary.
-- `Instance.Elements` — queries over the element tree (`list_questions/1`,
-  `get_question/2`, `get_question_by_path/2`, ...). One scope rule
-  everywhere: static panels are transparent, `templateElements` are their
-  own scope.
-
-Lifecycle (validation, events, and messaging):
-
-- `DynamicForm.Changeset` — instance + params → Ecto changeset.
-- `DynamicForm.Payload` — the message contract: what
-  `{:dynamic_form, event, payload}` carries to the parent.
-- `DynamicForm.NestedForms` — entry machinery for `paneldynamic` questions:
-  normalizing, seeding, entry changesets, entry-list validation.
-- `DynamicForm.Visibility` — the SurveyJS conditional expression engine
-  (`visibleIf`/`enableIf`/`requiredIf`) plus element filtering.
-- `DynamicForm.CarryForward` — choices carried from another
-  question: `resolve_choices/2` at render time, `prune_values/4` at cast time.
-- `DynamicForm.FieldTypes` — the question-type → Ecto-type registry,
-  including custom field types.
-- `Lifecycle.Debounce` — the change-pass timer/token mechanics behind
-  `change_debounce_in_ms`.
-- `Lifecycle.Uploads` — wires LiveView uploads per `file` question and folds
-  completed uploads into the changeset.
-
-Rendering:
-
-- `DynamicForm.Renderer.Component` — the form shell, element dispatch
-  (`render_element/3`), and the per-question-type controls.
-- `DynamicForm.Renderer.LiveComponent` — the stateful LiveComponent and the
-  orchestrator between the two halves: it drives the lifecycle machinery
-  (changesets, debounce, uploads, messages) and delegates drawing to
-  `Renderer.Component`.
-- `Renderer.Components.NestedEntries` / `Renderer.Components.ContentElements` /
-  `Renderer.Components.ValidationSummary` — the paneldynamic sections,
-  non-question elements, and error summary; they recurse back through
-  `Renderer.Component.render_element/3`.
-- `DynamicForm.CoreComponents` — the built-in UI components;
-  `DynamicForm.ComponentResolver` resolves per-function overrides from an app's own
-  components module.
-- `DynamicForm.DirectUpload` — the upload UI component and `sign/2`
-  behaviour (its lifecycle-side wiring is `Lifecycle.Uploads`).
-
-Directory layout: `instance/` holds the definition structs and queries,
-`parser/` the two definition parsers, `lifecycle/` the form-state machinery
-(validation, events, messaging), `renderer/` the two renderers and their
-function components, and `helpers/` the generic plumbing (`Helpers.Map`,
-`Helpers.Form`) — mechanics only, with no knowledge of questions or
-instances. The dependency rule between the two big directories: rendering
-consumes lifecycle output, never the reverse — `lifecycle/` holds no
-rendering logic. (One deliberate back-reference: `Lifecycle.Debounce`
-names `Renderer.LiveComponent` as its `send_update_after` target, a callback
-to the orchestrator that owns the timer.) Module
-names don't always mirror file paths (`DynamicForm.CoreComponents` lives in
-`renderer/components/core_components.ex`), the same way Phoenix organizes
-its own modules.
 
 ## Testing
 
