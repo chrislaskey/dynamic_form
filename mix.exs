@@ -1,7 +1,7 @@
 defmodule DynamicForm.MixProject do
   use Mix.Project
 
-  @version "0.23.15"
+  @version "0.23.16"
   @source_url "https://github.com/chrislaskey/dynamic_form"
 
   def project do
