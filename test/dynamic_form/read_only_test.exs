@@ -3,7 +3,8 @@ defmodule DynamicForm.ReadOnlyTest do
 
   import Phoenix.LiveViewTest
 
-  alias DynamicForm.{Instance, RendererLive}
+  alias DynamicForm.Instance
+  alias DynamicForm.RendererLive
 
   defp mount_component(instance, data) do
     {:ok, socket} =

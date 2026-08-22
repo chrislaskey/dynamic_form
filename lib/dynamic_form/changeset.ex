@@ -6,8 +6,11 @@ defmodule DynamicForm.Changeset do
   and form handling using Phoenix's standard patterns.
   """
 
-  alias DynamicForm.{CarryForward, FieldTypes, Instance, NestedForms}
+  alias DynamicForm.CarryForward
+  alias DynamicForm.FieldTypes
+  alias DynamicForm.Instance
   alias DynamicForm.Instance.Elements
+  alias DynamicForm.NestedForms
 
   @doc """
   Creates a changeset from a DynamicForm.Instance configuration.

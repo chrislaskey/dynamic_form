@@ -3,7 +3,8 @@ defmodule DynamicForm.CarryForwardTest do
 
   import Phoenix.LiveViewTest
 
-  alias DynamicForm.{Instance, RendererLive}
+  alias DynamicForm.Instance
+  alias DynamicForm.RendererLive
 
   # Two nested forms: age groups, and programs that each pick which age
   # groups they serve — the motivating shape for carry forward.

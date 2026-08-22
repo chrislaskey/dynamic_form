@@ -3,7 +3,9 @@ defmodule DynamicForm.EntryIdsTest do
 
   import Phoenix.LiveViewTest
 
-  alias DynamicForm.{Instance, NestedForms, RendererLive}
+  alias DynamicForm.Instance
+  alias DynamicForm.NestedForms
+  alias DynamicForm.RendererLive
 
   defp instance(overrides \\ []) do
     question =

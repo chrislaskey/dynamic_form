@@ -3,7 +3,9 @@ defmodule DynamicForm.SendMessageOnTest do
 
   import Phoenix.LiveViewTest
 
-  alias DynamicForm.{Instance, Payload, RendererLive}
+  alias DynamicForm.Instance
+  alias DynamicForm.Payload
+  alias DynamicForm.RendererLive
 
   @instance %Instance{
     id: "signup",

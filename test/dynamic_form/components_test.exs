@@ -4,7 +4,8 @@ defmodule DynamicForm.ComponentsTest do
 
   import Phoenix.LiveViewTest
 
-  alias DynamicForm.{Components, Instance}
+  alias DynamicForm.Components
+  alias DynamicForm.Instance
 
   # A partial components module: owns input/1, button/1, and
   # translate_error/1; everything else (radio groups, labels, errors,

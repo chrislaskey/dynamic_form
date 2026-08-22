@@ -94,7 +94,8 @@ defmodule DynamicForm do
   # This module defines its own form/1 component, shadowing Phoenix.Component's
   import Phoenix.Component, except: [form: 1]
 
-  alias DynamicForm.{Instance, Renderer}
+  alias DynamicForm.Instance
+  alias DynamicForm.Renderer
 
   defdelegate submit_button(assigns), to: DynamicForm.RendererLive
 

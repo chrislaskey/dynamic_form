@@ -3,7 +3,9 @@ defmodule DynamicForm.RequiredLabelTest do
 
   import Phoenix.LiveViewTest
 
-  alias DynamicForm.{Changeset, Instance, Renderer}
+  alias DynamicForm.Changeset
+  alias DynamicForm.Instance
+  alias DynamicForm.Renderer
 
   @mark ~s(<span class="ml-0.5 text-red-500">*</span>)
 

@@ -3,7 +3,8 @@ defmodule DynamicForm.ChangeDebounceTest do
 
   import Phoenix.LiveViewTest
 
-  alias DynamicForm.{Instance, RendererLive}
+  alias DynamicForm.Instance
+  alias DynamicForm.RendererLive
 
   @instance %Instance{
     id: "signup",

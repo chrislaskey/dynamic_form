@@ -3,7 +3,9 @@ defmodule DynamicForm.FormDataTest do
 
   import Phoenix.LiveViewTest
 
-  alias DynamicForm.{Changeset, Instance, Renderer}
+  alias DynamicForm.Changeset
+  alias DynamicForm.Instance
+  alias DynamicForm.Renderer
 
   defp slot_entry(attrs, inner_block) do
     attrs |> Map.new() |> Map.merge(%{__slot__: :field, inner_block: inner_block})

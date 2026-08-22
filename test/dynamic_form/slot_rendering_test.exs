@@ -3,7 +3,9 @@ defmodule DynamicForm.SlotRenderingTest do
 
   import Phoenix.LiveViewTest
 
-  alias DynamicForm.{Changeset, Instance, Renderer}
+  alias DynamicForm.Changeset
+  alias DynamicForm.Instance
+  alias DynamicForm.Renderer
 
   defp render_instance(instance, params \\ %{}) do
     changeset = Changeset.create_changeset(instance, params)

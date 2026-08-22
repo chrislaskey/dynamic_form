@@ -215,10 +215,15 @@ defmodule DynamicForm.RendererLive do
 
   use Phoenix.LiveComponent
   import Phoenix.LiveView, only: [cancel_upload: 3]
-  alias DynamicForm.{Changeset, Helpers, Instance, NestedForms, Payload, Renderer}
+  alias DynamicForm.Changeset
   alias DynamicForm.Components.ValidationSummary
   alias DynamicForm.DirectUpload.Uploads
+  alias DynamicForm.Helpers
+  alias DynamicForm.Instance
   alias DynamicForm.Instance.Elements
+  alias DynamicForm.NestedForms
+  alias DynamicForm.Payload
+  alias DynamicForm.Renderer
   alias DynamicForm.RendererLive.Debounce
 
   @message_events [:success, :change, :submit]

@@ -14,7 +14,8 @@ defmodule DynamicForm.CarryForward do
   Internal module — not part of the public API.
   """
 
-  alias DynamicForm.{Instance, NestedForms}
+  alias DynamicForm.Instance
+  alias DynamicForm.NestedForms
 
   @doc """
   A question's choices as `{text, value}` tuples: its own `choices`, or —

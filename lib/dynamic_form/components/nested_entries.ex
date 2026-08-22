@@ -9,8 +9,13 @@ defmodule DynamicForm.Components.NestedEntries do
 
   use Phoenix.Component
 
-  alias DynamicForm.{Components, Helpers, Instance, NestedForms, Renderer, Visibility}
+  alias DynamicForm.Components
+  alias DynamicForm.Helpers
+  alias DynamicForm.Instance
   alias DynamicForm.Instance.Elements
+  alias DynamicForm.NestedForms
+  alias DynamicForm.Renderer
+  alias DynamicForm.Visibility
 
   @doc """
   Renders the nested-form section for a `paneldynamic` question. `disabled`

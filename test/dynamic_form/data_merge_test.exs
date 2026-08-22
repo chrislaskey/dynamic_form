@@ -1,7 +1,8 @@
 defmodule DynamicForm.DataMergeTest do
   use ExUnit.Case, async: true
 
-  alias DynamicForm.{Instance, RendererLive}
+  alias DynamicForm.Instance
+  alias DynamicForm.RendererLive
 
   # A section the user can hide, plus a question disabled by the same switch.
   @instance %Instance{

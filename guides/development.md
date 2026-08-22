@@ -2,7 +2,7 @@
 
 ## Code conventions
 
-- **Public API s what the USAGE and REFERENCE guides document.** Every other
+- **Public API is what the USAGE and REFERENCE guides document.** Every other
   function — public or private — is internal and subject to change without
   notice. Cross-module calls justify a public function; they don't make it
   part of the API.
@@ -16,6 +16,8 @@
 - `blank?` is the empty-value predicate everywhere; its exact semantics stay
   local to each module (e.g. `Instance.blank?/1` also treats `false` as
   blank, for labels).
+- **One `alias` per line** — no `alias Foo.{Bar, Baz}` brace groups, and each
+  contiguous alias block stays alphabetized.
 
 ## Demo app
 
@@ -60,9 +62,10 @@ JSON / stored map ──▶ Instance.Decoder ────┐
 
 - `Instance.Decoder` normalizes untrusted external data (string keys, safe
   atom conversion); `Instance.FromSlots` normalizes compiler-produced slot
-  entries (atom keys) and holds all declarative-mode validation. Conversion
-  runs in the `DynamicForm.form/1` function component — the LiveComponent's
-  contract stays "give me an Instance".
+  entries (atom keys), with all declarative-mode validation in
+  `Instance.FromSlots.Validator`. Conversion runs in the `DynamicForm.form/1`
+  function component — the LiveComponent's contract stays "give me an
+  Instance".
 - **Slot carriage**: elements defined with a slot body keep the raw slot
   entry (including its `inner_block` closure) in their `:slot` field so the
   renderer can call `render_slot/2`. The `:slot` field is dropped from JSON
@@ -74,9 +77,9 @@ JSON / stored map ──▶ Instance.Decoder ────┐
   slot-stripped instance, initial params, and form name are unchanged, while
   still assigning the fresh instance so slot bodies re-render with current
   parent assigns.
-- The design rationale for the declarative mode lives in
-  `heex_form_definition_exploration.md` (UX options) and
-  `heex_form_backend_implementation.md` (backend options) at the repo root.
+- The original design document lives in `dynamic_form_library.md` at the repo
+  root — it predates the SurveyJS migration, so its code examples use the old
+  bespoke format, but the rationale still applies.
 
 ## Module map
 
@@ -101,7 +104,7 @@ Validation:
   normalizing, seeding, entry changesets, entry-list validation.
 - `DynamicForm.Visibility` — the SurveyJS conditional expression engine
   (`visibleIf`/`enableIf`/`requiredIf`) plus element filtering.
-- `DynamicForm.CarryForward` (`contexts/`) — choices carried from another
+- `DynamicForm.CarryForward` — choices carried from another
   question: `resolve_choices/2` at render time, `prune_values/4` at cast time.
 
 Rendering:
@@ -121,10 +124,13 @@ Rendering:
 - `DynamicForm.DirectUpload` — the upload UI component and `sign/2`
   behaviour; `DirectUpload.Uploads` wires LiveView uploads per file question.
 
-Generic plumbing lives in `DynamicForm.Helpers.*` (`Helpers.Map`,
-`Helpers.Form`) — mechanics only, no knowledge of questions or instances.
-Domain logic goes in domain modules (under `contexts/` when it has no better
-home).
+Directory layout: `contexts/` holds the domain logic (`instance/`,
+`direct_upload/`, `carry_forward.ex`), `renderer/` the two renderers and the
+debounce module, `components/` the function components, and `helpers/` the
+generic plumbing (`Helpers.Map`, `Helpers.Form`) — mechanics only, with no
+knowledge of questions or instances. Module names don't always mirror file
+paths (`DynamicForm.CoreComponents` lives in `components/core_components.ex`),
+the same way Phoenix organizes its own modules.
 
 ## Testing
 

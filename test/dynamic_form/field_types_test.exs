@@ -4,7 +4,9 @@ defmodule DynamicForm.FieldTypesTest do
 
   import Phoenix.LiveViewTest
 
-  alias DynamicForm.{Changeset, FieldTypes, Instance}
+  alias DynamicForm.Changeset
+  alias DynamicForm.FieldTypes
+  alias DynamicForm.Instance
 
   # A components module implementing one custom field type; select_with_search
   # has no clause here, exercising the input/1 catch-all degradation path

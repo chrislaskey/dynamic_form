@@ -44,9 +44,15 @@ defmodule DynamicForm.Renderer do
 
   use Phoenix.Component
 
-  alias DynamicForm.{CarryForward, Components, FieldTypes, Helpers, Instance, Visibility}
-  alias DynamicForm.Components.{ContentElements, NestedEntries}
+  alias DynamicForm.CarryForward
+  alias DynamicForm.Components
+  alias DynamicForm.Components.ContentElements
+  alias DynamicForm.Components.NestedEntries
+  alias DynamicForm.FieldTypes
+  alias DynamicForm.Helpers
+  alias DynamicForm.Instance
   alias DynamicForm.Instance.Elements
+  alias DynamicForm.Visibility
 
   attr(:instance, :any,
     required: true,

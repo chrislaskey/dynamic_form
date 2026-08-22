@@ -23,7 +23,8 @@ defmodule DynamicForm.NestedForms do
   expression scoping. Internally these are entries of a nested form.
   """
 
-  alias DynamicForm.{Changeset, Instance}
+  alias DynamicForm.Changeset
+  alias DynamicForm.Instance
   alias DynamicForm.Instance.Elements
 
   @id_field "dynamic_form_id"

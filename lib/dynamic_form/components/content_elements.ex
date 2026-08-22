@@ -9,7 +9,11 @@ defmodule DynamicForm.Components.ContentElements do
 
   use Phoenix.Component
 
-  alias DynamicForm.{Components, Helpers, Instance, Renderer, Visibility}
+  alias DynamicForm.Components
+  alias DynamicForm.Helpers
+  alias DynamicForm.Instance
+  alias DynamicForm.Renderer
+  alias DynamicForm.Visibility
 
   # A group with no groupType of its own lays its members out in a row
   @default_group_type "horizontal"
