@@ -61,6 +61,17 @@ defmodule DynamicForm.Visibility do
   end
 
   @doc """
+  Filters elements (questions and containers) to those whose `visibleIf`
+  expression is met by the given params.
+  """
+  def visible_elements(elements, params) do
+    Enum.filter(elements, fn
+      %Instance.Question{} = question -> question_visible?(question, params)
+      %Instance.Element{} = element -> element_visible?(element, params)
+    end)
+  end
+
+  @doc """
   Evaluates an optional condition expression, returning a default when absent.
 
   Used for `visibleIf` (default: visible), `requiredIf` (default: not

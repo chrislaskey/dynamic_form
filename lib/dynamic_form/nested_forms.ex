@@ -154,6 +154,39 @@ defmodule DynamicForm.NestedForms do
   end
 
   @doc """
+  Seeds paneldynamic questions without initial data with `panelCount` fresh
+  entries (at least `minPanelCount`), mirroring SurveyJS. Every entry is
+  seeded separately so each gets its own id.
+  """
+  def seed_entries(params, questions) when is_map(params) do
+    questions
+    |> Enum.filter(&(&1.type == "paneldynamic"))
+    |> Enum.reduce(params, fn question, acc ->
+      count = max(question.panelCount || 0, question.minPanelCount || 0)
+      new_entries = Enum.map(1..count//1, fn _ -> new_entry(question) end)
+      Map.put_new(acc, question.name, new_entries)
+    end)
+  end
+
+  @doc """
+  Walks the params tree along an entry path and updates the entry list at
+  its end with `fun`. Path segments alternate between map keys (question
+  names) and list indexes (entries).
+  """
+  def update_entry_list(params, [name], fun) when is_map(params) do
+    current_entries = params |> Map.get(name) |> entries()
+    Map.put(params, name, fun.(current_entries))
+  end
+
+  def update_entry_list(params, [name | rest], fun) when is_map(params) do
+    Map.put(params, name, update_entry_list(Map.get(params, name) || %{}, rest, fun))
+  end
+
+  def update_entry_list(current_entries, [index | rest], fun) when is_list(current_entries) do
+    List.update_at(current_entries, String.to_integer(index), &update_entry_list(&1, rest, fun))
+  end
+
+  @doc """
   Seeds `dynamic_form_id` on every entry of the given questions' values.
 
   Runs over string-keyed params when a form is built or reset, recursing

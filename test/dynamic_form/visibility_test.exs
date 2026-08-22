@@ -46,6 +46,21 @@ defmodule DynamicForm.VisibilityTest do
     end
   end
 
+  describe "visible_elements/2" do
+    test "keeps questions and elements whose visibleIf is met, preserving order" do
+      always = %Instance.Question{name: "name", type: "text"}
+      shown = %Instance.Question{name: "email", type: "text", visibleIf: "{opted_in} = true"}
+      hidden = %Instance.Element{name: "note", type: "html", visibleIf: "{opted_in} = false"}
+
+      assert Visibility.visible_elements([always, shown, hidden], %{"opted_in" => "true"}) ==
+               [always, shown]
+    end
+
+    test "returns an empty list for no elements" do
+      assert Visibility.visible_elements([], %{}) == []
+    end
+  end
+
   describe "condition_met?/3" do
     test "returns the default when expression is nil or empty" do
       assert Visibility.condition_met?(nil, %{})

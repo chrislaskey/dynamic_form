@@ -214,9 +214,12 @@ defmodule DynamicForm.RendererLive do
   """
 
   use Phoenix.LiveComponent
-  import Phoenix.LiveView, only: [allow_upload: 3, cancel_upload: 3, send_update_after: 3]
+  import Phoenix.LiveView, only: [cancel_upload: 3]
   alias DynamicForm.{Renderer, Changeset, Helpers, Instance, NestedForms, Payload}
+  alias DynamicForm.Components.ValidationSummary
+  alias DynamicForm.DirectUpload.Uploads
   alias DynamicForm.Instance.Elements
+  alias DynamicForm.RendererLive.Debounce
 
   @message_events [:success, :change, :submit]
 
@@ -287,8 +290,8 @@ defmodule DynamicForm.RendererLive do
         |> assign(:submitting, false)
         # The form starts over, so a debounced change scheduled against the
         # previous definition or data no longer applies.
-        |> cancel_debounced_change()
-        |> allow_uploads_for_direct_upload_fields(instance)
+        |> Debounce.cancel()
+        |> Uploads.allow(instance)
 
       {:ok, socket}
     end
@@ -334,7 +337,7 @@ defmodule DynamicForm.RendererLive do
   # recall a message already sitting in the process mailbox, so a run whose
   # token no longer matches is dropped instead of applied over newer state.
   defp handle_run_change_update(%{token: token}, socket) do
-    if token == socket.assigns[:change_token] do
+    if Debounce.current?(socket, token) do
       {:ok, socket |> assign(:change_timer, nil) |> run_change()}
     else
       {:ok, socket}
@@ -362,7 +365,7 @@ defmodule DynamicForm.RendererLive do
     ~H"""
     <div>
       <%= if @validation_summary && @changeset.action do %>
-        <.validation_summary_component
+        <ValidationSummary.validation_summary
           changeset={@changeset}
           mode={@validation_summary}
           instance={@instance}
@@ -412,7 +415,7 @@ defmodule DynamicForm.RendererLive do
     seed = NestedForms.new_entry(question)
 
     params =
-      update_entry_list(socket.assigns.changeset.params, segments, fn entries ->
+      NestedForms.update_entry_list(socket.assigns.changeset.params, segments, fn entries ->
         entries ++ [seed]
       end)
 
@@ -425,7 +428,7 @@ defmodule DynamicForm.RendererLive do
     index = String.to_integer(index)
 
     params =
-      update_entry_list(socket.assigns.changeset.params, segments, fn entries ->
+      NestedForms.update_entry_list(socket.assigns.changeset.params, segments, fn entries ->
         List.delete_at(entries, index)
       end)
 
@@ -441,7 +444,7 @@ defmodule DynamicForm.RendererLive do
     # inline here, so a submit during the quiet period can't skip it.
     socket =
       socket
-      |> cancel_debounced_change()
+      |> Debounce.cancel()
       |> assign(:submitting, true)
 
     changed =
@@ -472,30 +475,16 @@ defmodule DynamicForm.RendererLive do
   # params always win over defaults.
   defp apply_default_values(params, instance) do
     params = Helpers.Map.deep_stringify_keys(params)
+    questions = Elements.list_questions(instance.elements)
 
-    instance.elements
-    |> Elements.list_questions()
+    questions
     |> Enum.reduce(params, fn question, acc ->
       case question.defaultValue do
         nil -> acc
         default -> Map.put_new(acc, question.name, default)
       end
     end)
-    |> seed_nested_entries(instance)
-  end
-
-  # Paneldynamic questions without initial data start with panelCount seeded
-  # entries (at least minPanelCount), mirroring SurveyJS. Every entry is
-  # seeded separately so each gets its own id.
-  defp seed_nested_entries(params, instance) do
-    instance.elements
-    |> Elements.list_questions()
-    |> Enum.filter(&(&1.type == "paneldynamic"))
-    |> Enum.reduce(params, fn question, acc ->
-      count = max(question.panelCount || 0, question.minPanelCount || 0)
-      entries = Enum.map(1..count//1, fn _ -> NestedForms.new_entry(question) end)
-      Map.put_new(acc, question.name, entries)
-    end)
+    |> NestedForms.seed_entries(questions)
   end
 
   # Entry ids are form state, not initial data. `initial_data` is compared on
@@ -504,22 +493,6 @@ defmodule DynamicForm.RendererLive do
   # they are seeded into the changeset's params instead.
   defp seed_entry_ids(params, instance) do
     NestedForms.seed_entry_ids(params, Elements.list_questions(instance.elements))
-  end
-
-  # Walk the params tree along a dot-separated entry path and update the
-  # entry list at its end. Intermediate segments alternate between map keys
-  # (question names) and list indexes (entries).
-  defp update_entry_list(params, [name], fun) when is_map(params) do
-    entries = params |> Map.get(name) |> NestedForms.entries()
-    Map.put(params, name, fun.(entries))
-  end
-
-  defp update_entry_list(params, [name | rest], fun) when is_map(params) do
-    Map.put(params, name, update_entry_list(Map.get(params, name) || %{}, rest, fun))
-  end
-
-  defp update_entry_list(entries, [index | rest], fun) when is_list(entries) do
-    List.update_at(entries, String.to_integer(index), &update_entry_list(&1, rest, fun))
   end
 
   # Revalidate after an entry add/remove: adding or removing an entry
@@ -616,9 +589,9 @@ defmodule DynamicForm.RendererLive do
   defp apply_change(socket, changeset) do
     socket = assign_changeset(socket, changeset)
 
-    case change_debounce(socket) do
+    case Debounce.interval(socket) do
       nil -> run_change(socket)
-      interval -> schedule_debounced_change(socket, interval)
+      interval -> Debounce.schedule(socket, interval)
     end
   end
 
@@ -633,61 +606,6 @@ defmodule DynamicForm.RendererLive do
     socket
     |> assign_changeset(payload.changeset)
     |> send_message(:change, payload)
-  end
-
-  # The debounce interval for the change pass, or nil when it runs inline:
-  # nothing to defer, no interval, or an interval of zero.
-  defp change_debounce(socket) do
-    case socket.assigns[:change_debounce_in_ms] do
-      nil ->
-        nil
-
-      0 ->
-        nil
-
-      interval when is_integer(interval) and interval > 0 ->
-        if deferrable_change?(socket), do: interval, else: nil
-
-      other ->
-        raise ArgumentError,
-              "change_debounce_in_ms must be a non-negative integer of milliseconds, " <>
-                "got: #{inspect(other)}"
-    end
-  end
-
-  defp deferrable_change?(socket) do
-    not is_nil(socket.assigns[:on_change]) or :change in socket.assigns.send_message_on
-  end
-
-  # Debounce the change pass: drop the run this change supersedes and
-  # schedule a fresh one. LiveComponents have no handle_info/2, so the timer
-  # arrives back through update/2 as a :run_change action.
-  defp schedule_debounced_change(socket, interval) do
-    socket = cancel_debounced_change(socket)
-    token = socket.assigns.change_token
-
-    timer =
-      send_update_after(
-        __MODULE__,
-        [id: socket.assigns.id, action: :run_change, token: token],
-        interval
-      )
-
-    assign(socket, :change_timer, timer)
-  end
-
-  # Drop any pending debounced run and issue the token the next one will
-  # carry. Canceling the timer is the fast path; the token is what makes a
-  # run already in the mailbox a no-op when it arrives.
-  defp cancel_debounced_change(socket) do
-    case socket.assigns[:change_timer] do
-      nil -> :ok
-      timer -> Process.cancel_timer(timer)
-    end
-
-    socket
-    |> assign(:change_timer, nil)
-    |> assign(:change_token, (socket.assigns[:change_token] || 0) + 1)
   end
 
   # Helpers - Messages
@@ -767,64 +685,6 @@ defmodule DynamicForm.RendererLive do
 
   # Public API
 
-  # Renders a validation summary component showing form errors.
-  #
-  # This component displays validation errors at the top of the form when the changeset
-  # has errors and an action has been set (indicating validation has been triggered).
-  #
-  # Modes:
-  #   * "simple" - Shows a generic message about filling out required fields
-  #   * "detailed" - Shows the generic message plus a list of specific field errors
-  defp validation_summary_component(assigns) do
-    errors = get_changeset_errors(assigns.changeset)
-    has_errors = length(errors) > 0
-
-    assigns =
-      assigns
-      |> assign(:has_errors, has_errors)
-      |> assign(:errors, errors)
-
-    ~H"""
-    <%= if @has_errors do %>
-      <div class="rounded-md bg-red-50 p-4 mb-6">
-        <div class="flex">
-          <div class="flex-shrink-0">
-            <svg
-              class="h-5 w-5 text-red-400"
-              viewBox="0 0 20 20"
-              fill="currentColor"
-              aria-hidden="true"
-            >
-              <path
-                fill-rule="evenodd"
-                d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z"
-                clip-rule="evenodd"
-              />
-            </svg>
-          </div>
-          <div class="ml-3">
-            <h3 class="text-sm font-medium text-red-800">
-              You must fill out all required fields before marking the section as complete.
-            </h3>
-            <%= if @mode == "detailed" do %>
-              <div class="mt-2 text-sm text-red-700">
-                <ul role="list" class="list-disc space-y-1 pl-5">
-                  <%= for {field, message} <- @errors do %>
-                    <li>
-                      <span class="font-medium"><%= humanize_field_name(field, @instance) %>:</span>
-                      <%= message %>
-                    </li>
-                  <% end %>
-                </ul>
-              </div>
-            <% end %>
-          </div>
-        </div>
-      </div>
-    <% end %>
-    """
-  end
-
   @doc """
   Renders a submit button that can be placed outside a form element.
 
@@ -890,146 +750,5 @@ defmodule DynamicForm.RendererLive do
       {render_slot(@inner_block)}
     </button>
     """
-  end
-
-  # Helper to extract errors from changeset
-  defp get_changeset_errors(changeset) do
-    Ecto.Changeset.traverse_errors(changeset, fn {msg, opts} ->
-      Regex.replace(~r"%{(\w+)}", msg, fn _, key ->
-        opts |> Keyword.get(String.to_existing_atom(key), key) |> to_string()
-      end)
-    end)
-    |> Enum.flat_map(fn {field, messages} ->
-      messages
-      |> List.wrap()
-      |> Enum.map(fn message -> {field, message} end)
-    end)
-  end
-
-  # Helper to humanize field names by looking up the title in the instance
-  defp humanize_field_name(field_atom, instance) do
-    field_name = to_string(field_atom)
-
-    # Search through instance elements to find the question and get its title
-    case Elements.get_question(instance.elements, field_name) do
-      %{title: title} when is_binary(title) and title != "" -> title
-      _ -> humanize_atom(field_atom)
-    end
-  end
-
-  # Helper to humanize an atom (fallback when label not found)
-  defp humanize_atom(atom) do
-    atom
-    |> to_string()
-    |> String.replace("_", " ")
-    |> String.split()
-    |> Enum.map_join(" ", &String.capitalize/1)
-  end
-
-  # Helper to set up uploads for file upload questions
-  defp allow_uploads_for_direct_upload_fields(socket, instance) do
-    file_upload_questions = Elements.list_file_questions(instance.elements)
-
-    Enum.reduce(file_upload_questions, socket, fn question, acc_socket ->
-      metadata = question.metadata || %{}
-      max_entries = get_in(metadata, ["max_entries"]) || 3
-      max_file_size = get_in(metadata, ["max_file_size"]) || 10_000_000
-      accept = get_in(metadata, ["accept"]) || :any
-
-      upload_name = String.to_atom("upload_#{question.name}")
-
-      allow_upload(acc_socket, upload_name,
-        accept: accept,
-        max_entries: max_entries,
-        max_file_size: max_file_size,
-        auto_upload: true,
-        external: fn entry, socket ->
-          presign_upload_entry(entry, socket, question, metadata)
-        end,
-        progress: fn _upload_name, entry, socket ->
-          handle_upload_progress(entry, socket, question)
-        end
-      )
-    end)
-  end
-
-  defp presign_upload_entry(entry, socket, question, metadata) do
-    presigner_config = get_in(metadata, ["presigner"]) || %{}
-    presigner_module = get_in(presigner_config, ["module"])
-    presigner_function = get_in(presigner_config, ["function"]) || "sign"
-
-    # Build context for presigner
-    context = %{
-      bucket: get_in(metadata, ["bucket"]),
-      prefix: get_in(metadata, ["object_name_prefix"]) || "",
-      field_name: question.name
-    }
-
-    # Generate presigned URL
-    url =
-      if presigner_module do
-        module = String.to_existing_atom("Elixir.#{presigner_module}")
-        function = String.to_existing_atom(presigner_function)
-        apply(module, function, [entry.client_name, context])
-      else
-        require Logger
-
-        Logger.warning(
-          "No presigner configured for file upload question '#{question.name}'. Upload will fail."
-        )
-
-        ""
-      end
-
-    {:ok, %{uploader: "GoogleStorage", url: url}, socket}
-  end
-
-  defp handle_upload_progress(entry, socket, question) do
-    if entry.done? do
-      # Get current uploaded files for this question
-      field_atom = String.to_atom(question.name)
-      current_files = Phoenix.HTML.Form.input_value(socket.assigns.form, field_atom) || []
-
-      # Add new file metadata
-      metadata = question.metadata || %{}
-      bucket = get_in(metadata, ["bucket"])
-      prefix = get_in(metadata, ["object_name_prefix"]) || ""
-      object_name = "#{prefix}#{entry.client_name}"
-
-      {:ok, uploaded_on} = DateTime.shift_zone(DateTime.utc_now(), "America/Denver")
-      uploaded_on_display = Calendar.strftime(uploaded_on, "%m/%d/%Y")
-
-      file_data = %{
-        "filename" => entry.client_name,
-        "cloud_bucket" => bucket,
-        "cloud_path" => object_name,
-        "cloud_provider" => "gcp",
-        "uploaded_on" => uploaded_on_display
-      }
-
-      # Remove duplicates and add new file
-      updated_files =
-        Enum.reject(current_files, &(&1["filename"] == entry.client_name)) ++ [file_data]
-
-      # Note: We don't need to explicitly consume the entry for external uploads
-      # The entry is automatically consumed when the external upload completes
-
-      # Update the form with the new file data
-      current_params =
-        socket.assigns.changeset
-        |> Ecto.Changeset.apply_changes()
-        |> Map.put(field_atom, updated_files)
-
-      changeset =
-        DynamicForm.Changeset.create_changeset(socket.assigns.instance, current_params,
-          custom_field_types: socket.assigns[:custom_field_types]
-        )
-
-      form = to_form(changeset, as: socket.assigns.form_name)
-
-      {:noreply, assign(socket, changeset: changeset, form: form)}
-    else
-      {:noreply, socket}
-    end
   end
 end

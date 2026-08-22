@@ -358,6 +358,94 @@ defmodule DynamicForm.NestedFormsTest do
     end
   end
 
+  describe "seed_entries/2" do
+    test "seeds panelCount entries for a paneldynamic without a value" do
+      question = addresses_question(panelCount: 2)
+
+      assert %{"addresses" => [%{}, %{}]} = NestedForms.seed_entries(%{}, [question])
+    end
+
+    test "seeds at least minPanelCount entries" do
+      question = addresses_question(panelCount: 1, minPanelCount: 3)
+
+      assert %{"addresses" => [_, _, _]} = NestedForms.seed_entries(%{}, [question])
+    end
+
+    test "seeds no entries when both counts are unset" do
+      assert NestedForms.seed_entries(%{}, [addresses_question()]) == %{"addresses" => []}
+    end
+
+    test "leaves an existing value untouched" do
+      params = %{"addresses" => [%{"street" => "Main St"}]}
+      question = addresses_question(panelCount: 2)
+
+      assert NestedForms.seed_entries(params, [question]) == params
+    end
+
+    test "ignores non-paneldynamic questions" do
+      question = %Instance.Question{name: "name", type: "text"}
+
+      assert NestedForms.seed_entries(%{}, [question]) == %{}
+    end
+
+    test "seeds each entry with template defaults" do
+      question =
+        addresses_question(
+          panelCount: 2,
+          templateElements: [
+            %Instance.Question{name: "city", type: "text", defaultValue: "Portland"}
+          ]
+        )
+
+      assert NestedForms.seed_entries(%{}, [question]) ==
+               %{"addresses" => [%{"city" => "Portland"}, %{"city" => "Portland"}]}
+    end
+  end
+
+  describe "update_entry_list/3" do
+    test "updates the entry list at a top-level question" do
+      params = %{"addresses" => [%{"street" => "A"}]}
+
+      result =
+        NestedForms.update_entry_list(params, ["addresses"], fn entries ->
+          entries ++ [%{"street" => "B"}]
+        end)
+
+      assert result == %{"addresses" => [%{"street" => "A"}, %{"street" => "B"}]}
+    end
+
+    test "treats a missing value as an empty entry list" do
+      result = NestedForms.update_entry_list(%{}, ["addresses"], fn entries -> entries end)
+
+      assert result == %{"addresses" => []}
+    end
+
+    test "walks name/index segments into nested entry lists" do
+      params = %{"contacts" => [%{"phones" => [%{"number" => "1"}]}]}
+
+      result =
+        NestedForms.update_entry_list(params, ["contacts", "0", "phones"], fn entries ->
+          entries ++ [%{"number" => "2"}]
+        end)
+
+      assert result == %{
+               "contacts" => [%{"phones" => [%{"number" => "1"}, %{"number" => "2"}]}]
+             }
+    end
+
+    test "normalizes an indexed-map value into an entry list" do
+      # Phoenix params encode lists of maps as %{"0" => ..., "1" => ...}
+      params = %{"addresses" => %{"0" => %{"street" => "A"}, "1" => %{"street" => "B"}}}
+
+      result =
+        NestedForms.update_entry_list(params, ["addresses"], fn entries ->
+          List.delete_at(entries, 0)
+        end)
+
+      assert result == %{"addresses" => [%{"street" => "B"}]}
+    end
+  end
+
   describe "JSON decoding and encoding" do
     test "decodes SurveyJS paneldynamic JSON" do
       json = """
