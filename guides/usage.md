@@ -495,8 +495,8 @@ meaning without the managed lifecycle and raise, and file upload questions
 require the stateful component.
 
 The Render Only section of the `/slot-forms` demo page shows the complete
-pattern. `DynamicForm.Renderer.Component.render/1` is the underlying function
-component if you need to drive it directly.
+pattern. `DynamicForm.Renderer.Component.render/1` is the internal-only
+module called.
 
 ### Custom components
 

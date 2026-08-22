@@ -3,7 +3,6 @@ defmodule DynamicForm.Renderer.Component do
   A pure functional form component
 
   This component renders the form HTML based on a DynamicForm.Instance configuration.
-  Use this for advanced cases where you want custom state management.
 
   ## Example
 
@@ -16,30 +15,6 @@ defmodule DynamicForm.Renderer.Component do
         form_id="my-dynamic-form"
       />
 
-  ## External Submit Button
-
-  You can place a submit button outside the form element by:
-
-  1. Setting `hide_submit` to `true`
-  2. Using `DynamicForm.submit_button/1` anywhere on the page with the form's ID
-
-  ### Example
-
-      # Form without submit button
-      <DynamicForm.Renderer.Component.render
-        instance={@form_instance}
-        form={@form}
-        form_id="my-form"
-        hide_submit={true}
-        phx_submit="submit"
-      />
-
-      # Submit button elsewhere on the page
-      <div class="sticky bottom-0">
-        <DynamicForm.submit_button form="my-form">
-          Save Changes
-        </DynamicForm.submit_button>
-      </div>
   """
 
   use Phoenix.Component

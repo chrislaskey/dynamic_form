@@ -440,8 +440,8 @@ end
 ## Standalone renderer events
 
 `DynamicForm.form/1` and `DynamicForm.Renderer.LiveComponent` handle adding and
-removing entries automatically. When driving `DynamicForm.Renderer.Component`
-manually, handle the events in your own LiveView:
+removing entries automatically. When using a `render_only` form handle the
+events in your own LiveView:
 
 - `"add_nested_entry"` with `%{"path" => path}`
 - `"remove_nested_entry"` with `%{"path" => path, "index" => index}`
