@@ -1,4 +1,4 @@
-defmodule DynamicForm.Instance.Decoder do
+defmodule DynamicForm.Parser.JSON do
   @moduledoc """
   Decodes SurveyJS-compatible JSON data or maps into DynamicForm.Instance structs.
 
@@ -7,14 +7,14 @@ defmodule DynamicForm.Instance.Decoder do
 
   ## SurveyJS Format
 
-  This decoder accepts SurveyJS-compatible JSON format. See:
+  This parser accepts SurveyJS-compatible JSON format. See:
   https://surveyjs.io/form-library/documentation
 
   ## Examples
 
       iex> json = ~s({"id": "my-form", "title": "My Form", "elements": []})
       iex> map = Jason.decode!(json)
-      iex> DynamicForm.Instance.Decoder.decode_instance(map)
+      iex> DynamicForm.Parser.JSON.decode_instance(map)
       %DynamicForm.Instance{id: "my-form", title: "My Form", elements: []}
   """
 

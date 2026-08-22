@@ -120,7 +120,7 @@ defmodule DynamicForm do
   ## Declarative mode
 
   `<:field>` entries convert to a `DynamicForm.Instance` in template order
-  (see `DynamicForm.Instance.FromSlots`). Question types collect input;
+  (see `DynamicForm.Parser.Declarative`). Question types collect input;
   `html`, `image`, and `custom` render static or custom content:
 
       <DynamicForm.form id="signup">
@@ -517,7 +517,7 @@ defmodule DynamicForm do
   end
 
   def form(%{render_only: true} = assigns) do
-    assigns = assign(assigns, :resolved_instance, resolve_instance(assigns))
+    assigns = assign(assigns, :dynamic_form_instance, get_instance(assigns))
     validate_form_assigns!(:render_only_form, assigns)
 
     assigns =
@@ -527,7 +527,7 @@ defmodule DynamicForm do
 
     ~H"""
     <DynamicForm.Renderer.Component.render
-      instance={@resolved_instance}
+      instance={@dynamic_form_instance}
       form={@form}
       phx_change={@phx_change}
       phx_submit={@phx_submit}
@@ -542,14 +542,14 @@ defmodule DynamicForm do
   end
 
   def form(assigns) do
-    assigns = assign(assigns, :resolved_instance, resolve_instance(assigns))
+    assigns = assign(assigns, :dynamic_form_instance, get_instance(assigns))
     validate_form_assigns!(:default_form, assigns)
 
     ~H"""
     <.live_component
       module={DynamicForm.Renderer.LiveComponent}
       id={@id}
-      instance={@resolved_instance}
+      instance={@dynamic_form_instance}
       on_change={@on_change}
       change_debounce_in_ms={@change_debounce_in_ms}
       on_submit={@on_submit}
@@ -648,7 +648,7 @@ defmodule DynamicForm do
     end
 
     file_questions =
-      DynamicForm.Instance.Elements.list_file_questions(assigns.resolved_instance.elements)
+      DynamicForm.Instance.Elements.list_file_questions(assigns.dynamic_form_instance.elements)
 
     if file_questions != [] do
       raise ArgumentError,
@@ -676,7 +676,7 @@ defmodule DynamicForm do
 
   # The form definition comes from exactly one of three modes: the instance
   # attribute, the json attribute, or <:field>/<:group> slots.
-  defp resolve_instance(assigns) do
+  defp get_instance(assigns) do
     case definition_modes(assigns) do
       [:instance] ->
         assigns.instance
@@ -685,7 +685,7 @@ defmodule DynamicForm do
         decode_json!(assigns)
 
       [:slots] ->
-        DynamicForm.Instance.FromSlots.convert!(assigns)
+        DynamicForm.Parser.Declarative.convert!(assigns)
 
       [] ->
         raise ArgumentError,

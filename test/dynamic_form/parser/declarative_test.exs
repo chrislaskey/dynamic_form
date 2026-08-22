@@ -1,8 +1,8 @@
-defmodule DynamicForm.Instance.FromSlotsTest do
+defmodule DynamicForm.Parser.DeclarativeTest do
   use ExUnit.Case, async: true
 
   alias DynamicForm.Instance
-  alias DynamicForm.Instance.FromSlots
+  alias DynamicForm.Parser.Declarative
 
   defp field(attrs) do
     Map.merge(%{__slot__: :field, inner_block: nil}, Map.new(attrs))
@@ -15,7 +15,7 @@ defmodule DynamicForm.Instance.FromSlotsTest do
   defp convert(fields, groups \\ [], assigns \\ %{}) do
     assigns
     |> Map.merge(%{id: "test-form", field: fields, group: groups})
-    |> FromSlots.convert!()
+    |> Declarative.convert!()
   end
 
   describe "instance attributes" do
@@ -541,7 +541,7 @@ defmodule DynamicForm.Instance.FromSlotsTest do
     defp convert_nested(fields, groups, nesteds, assigns \\ %{}) do
       assigns
       |> Map.merge(%{id: "test-form", field: fields, group: groups, nested: nesteds})
-      |> FromSlots.convert!()
+      |> Declarative.convert!()
     end
 
     test "collects nested= fields into a paneldynamic question's template" do

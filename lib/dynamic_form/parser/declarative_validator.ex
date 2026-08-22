@@ -1,7 +1,7 @@
-defmodule DynamicForm.Instance.FromSlots.Validator do
+defmodule DynamicForm.Parser.Declarative.Validator do
   @moduledoc """
   Validates the slot declarations handed to `DynamicForm.form/1` before
-  `DynamicForm.Instance.FromSlots` builds an `Instance` from them, raising
+  `DynamicForm.Parser.Declarative` builds an `Instance` from them, raising
   `ArgumentError` with a specific message for each definition mistake.
 
   Also owns the slot type vocabulary — the question and element type names a

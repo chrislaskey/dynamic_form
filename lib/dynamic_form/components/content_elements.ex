@@ -18,7 +18,7 @@ defmodule DynamicForm.Components.ContentElements do
   # A group with no groupType of its own lays its members out in a row
   @default_group_type "horizontal"
 
-  # Render HTML elements defined with a slot body (see Instance.FromSlots).
+  # Render HTML elements defined with a slot body (see Parser.Declarative).
   # The body is compile-checked HEEx, so unlike the html-string clause below it
   # is escaped by default and can read the defining template's assigns.
   def render(%Instance.Element{type: "html", slot: entry}, _form, _opts)

@@ -55,15 +55,15 @@ Both definition modes converge on `DynamicForm.Instance` before any stateful
 code runs:
 
 ```
-JSON / stored map ──▶ Instance.Decoder ────┐
-                                            ├──▶ %Instance{} ──▶ Renderer.LiveComponent ──▶ Renderer.Component
-<:field> slots ─────▶ Instance.FromSlots ──┘
+JSON / stored map ──▶ Parser.JSON ─────────┐
+                                           ├──▶ %Instance{} ──▶ Renderer.LiveComponent ──▶ Renderer.Component
+<:field> slots ─────▶ Parser.Declarative ──┘
 ```
 
-- `Instance.Decoder` normalizes untrusted external data (string keys, safe
-  atom conversion); `Instance.FromSlots` normalizes compiler-produced slot
+- `Parser.JSON` normalizes untrusted external data (string keys, safe
+  atom conversion); `Parser.Declarative` normalizes compiler-produced slot
   entries (atom keys), with all declarative-mode validation in
-  `Instance.FromSlots.Validator`. Conversion runs in the `DynamicForm.form/1`
+  `Parser.Declarative.Validator`. Conversion runs in the `DynamicForm.form/1`
   function component — the LiveComponent's contract stays "give me an
   Instance".
 - **Slot carriage**: elements defined with a slot body keep the raw slot
@@ -87,10 +87,10 @@ Definition (building and querying an `%Instance{}`):
 
 - `DynamicForm.Instance` — the structs (`Question`, `Element`, `Validator`)
   and their JSON encoding.
-- `Instance.Decoder` — untrusted external data (JSON, string-keyed maps) →
-  `%Instance{}`.
-- `Instance.FromSlots` — slot entries → `%Instance{}`;
-  `Instance.FromSlots.Validator` raises on definition mistakes and owns the
+- `DynamicForm.Parser.JSON` — untrusted external data (JSON, string-keyed
+  maps) → `%Instance{}`.
+- `DynamicForm.Parser.Declarative` — slot entries → `%Instance{}`;
+  `Parser.Declarative.Validator` raises on definition mistakes and owns the
   slot type vocabulary.
 - `Instance.Elements` — queries over the element tree (`list_questions/1`,
   `get_question/2`, `get_question_by_path/2`, ...). One scope rule
@@ -125,7 +125,8 @@ Rendering:
   behaviour; `DirectUpload.Uploads` wires LiveView uploads per file question.
 
 Directory layout: `contexts/` holds the domain logic (`instance/`,
-`direct_upload/`, `carry_forward.ex`), `renderer/` the two renderers and the
+`direct_upload/`, `carry_forward.ex`), `parser/` the two definition parsers,
+`renderer/` the two renderers and the
 debounce module, `components/` the function components, and `helpers/` the
 generic plumbing (`Helpers.Map`, `Helpers.Form`) — mechanics only, with no
 knowledge of questions or instances. Module names don't always mirror file

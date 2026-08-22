@@ -11,6 +11,10 @@ Undocumented public functions are internal (see the new Conventions section
 in the Development guide) and several were renamed or moved with no
 deprecation path:
 
+- `DynamicForm.Instance.FromSlots` → `DynamicForm.Parser.Declarative`
+  (including the documented `convert!/1`) and
+  `Instance.FromSlots.Validator` → `Parser.Declarative.Validator`
+- `DynamicForm.Instance.Decoder` → `DynamicForm.Parser.JSON`
 - `NestedForms.entries/1` → `NestedForms.list_entries/1`
 - `NestedForms.entry_changesets/3` → `NestedForms.list_entry_changesets/3`
 - `Changeset.build_types_map/2` → `Changeset.create_types_map/2`

@@ -1,10 +1,10 @@
-defmodule DynamicForm.Instance.FromSlots do
+defmodule DynamicForm.Parser.Declarative do
   @moduledoc """
-  Converts `<:field>`, `<:group>`, and `<:nested>` slot entries from
+  Parses `<:field>`, `<:group>`, and `<:nested>` slot entries from
   `DynamicForm.form/1` into a `DynamicForm.Instance` struct.
 
-  This is the slot-mode counterpart to `DynamicForm.Instance.Decoder`: the
-  decoder normalizes untrusted external data (JSON, string-keyed maps), while
+  This is the slot-mode counterpart to `DynamicForm.Parser.JSON`: the
+  JSON parser normalizes untrusted external data (JSON, string-keyed maps), while
   this module normalizes compiler-produced slot entries (atom-keyed maps).
   Both produce the same `%Instance{}` structs consumed by the rest of the
   library.
@@ -49,7 +49,7 @@ defmodule DynamicForm.Instance.FromSlots do
   ## Validation
 
   `convert!/1` raises `ArgumentError` with a descriptive message for invalid
-  definitions — see `DynamicForm.Instance.FromSlots.Validator` for the full
+  definitions — see `DynamicForm.Parser.Declarative.Validator` for the full
   set of checks: missing names, duplicate names within a scope, unknown
   types, choice questions without options, `custom` fields without a body,
   references to undeclared groups or nested forms, group/member nested-scope
@@ -58,7 +58,7 @@ defmodule DynamicForm.Instance.FromSlots do
   """
 
   alias DynamicForm.Instance
-  alias DynamicForm.Instance.FromSlots.Validator
+  alias DynamicForm.Parser.Declarative.Validator
 
   @doc """
   Validates slot entries and builds a `%DynamicForm.Instance{}`.
