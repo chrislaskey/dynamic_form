@@ -100,11 +100,12 @@ defmodule DynamicForm.Renderer.LiveComponent do
   ### External Submit Button
 
   You can place a submit button outside the form element by using the `hide_submit`
-  option and `DynamicForm.Renderer.LiveComponent.submit_button/1`:
+  option and `DynamicForm.Renderer.LiveComponent.submit_button/1` (which is
+  aliased in the top level so can be called via `DynamicForm.submit_button/1`):
 
-      <DynamicForm.Renderer.LiveComponent.submit_button form="my-form-form">
+      <DynamicForm.submit_button form="my-form-form">
         Save Changes
-      </DynamicForm.Renderer.LiveComponent.submit_button>
+      </DynamicForm.submit_button>
 
       <.live_component
         module={DynamicForm.Renderer.LiveComponent}
@@ -219,13 +220,13 @@ defmodule DynamicForm.Renderer.LiveComponent do
   alias DynamicForm.Helpers
   alias DynamicForm.Instance
   alias DynamicForm.Instance.Elements
+  alias DynamicForm.Lifecycle.Debounce
+  alias DynamicForm.Lifecycle.Uploads
   alias DynamicForm.NestedForms
   alias DynamicForm.Parser
   alias DynamicForm.Payload
   alias DynamicForm.Renderer.Component
   alias DynamicForm.Renderer.Components.ValidationSummary
-  alias DynamicForm.Renderer.LiveComponent.Debounce
-  alias DynamicForm.Renderer.LiveComponent.Uploads
 
   @message_events [:success, :change, :submit]
 
@@ -705,9 +706,9 @@ defmodule DynamicForm.Renderer.LiveComponent do
   ## Examples
 
       # LiveComponent with external submit button
-      <DynamicForm.Renderer.LiveComponent.submit_button form="contact-form-form">
+      <DynamicForm.submit_button form="contact-form-form">
         Submit Contact Form
-      </DynamicForm.Renderer.LiveComponent.submit_button>
+      </DynamicForm.submit_button>
 
       <.live_component
         module={DynamicForm.Renderer.LiveComponent}
@@ -725,9 +726,9 @@ defmodule DynamicForm.Renderer.LiveComponent do
           hide_submit={true}
         />
         <:actions>
-          <DynamicForm.Renderer.LiveComponent.submit_button form="user-profile-form">
+          <DynamicForm.submit_button form="user-profile-form">
             Save Profile
-          </DynamicForm.Renderer.LiveComponent.submit_button>
+          </DynamicForm.submit_button>
         </:actions>
       </.modal>
 

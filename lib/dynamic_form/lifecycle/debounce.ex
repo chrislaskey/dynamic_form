@@ -1,4 +1,4 @@
-defmodule DynamicForm.Renderer.LiveComponent.Debounce do
+defmodule DynamicForm.Lifecycle.Debounce do
   @moduledoc """
   Timer and token mechanics for debouncing `DynamicForm.Renderer.LiveComponent`'s
   change pass (`change_debounce_in_ms`).

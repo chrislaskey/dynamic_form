@@ -24,7 +24,10 @@ deprecation path:
   `DynamicForm.Components` namespace: `Components.ContentElements`,
   `Components.NestedEntries`, and `Components.ValidationSummary` are now
   `DynamicForm.Renderer.Components.*`
-- `DynamicForm.DirectUpload.Uploads` → `DynamicForm.Renderer.LiveComponent.Uploads`
+- `DynamicForm.DirectUpload.Uploads` → `DynamicForm.Lifecycle.Uploads` and
+  `DynamicForm.Renderer.LiveComponent.Debounce` → `DynamicForm.Lifecycle.Debounce`,
+  as part of splitting the internal directory layout into `renderer/`
+  (drawing) and `lifecycle/` (validation, events, messaging)
 - `NestedForms.entries/1` → `NestedForms.list_entries/1`
 - `NestedForms.entry_changesets/3` → `NestedForms.list_entry_changesets/3`
 - `Changeset.build_types_map/2` → `Changeset.create_types_map/2`

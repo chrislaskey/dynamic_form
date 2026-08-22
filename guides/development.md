@@ -97,23 +97,32 @@ Definition (building and querying an `%Instance{}`):
   everywhere: static panels are transparent, `templateElements` are their
   own scope.
 
-Validation:
+Lifecycle (validation, events, and messaging):
 
 - `DynamicForm.Changeset` — instance + params → Ecto changeset.
+- `DynamicForm.Payload` — the message contract: what
+  `{:dynamic_form, event, payload}` carries to the parent.
 - `DynamicForm.NestedForms` — entry machinery for `paneldynamic` questions:
   normalizing, seeding, entry changesets, entry-list validation.
 - `DynamicForm.Visibility` — the SurveyJS conditional expression engine
   (`visibleIf`/`enableIf`/`requiredIf`) plus element filtering.
 - `DynamicForm.CarryForward` — choices carried from another
   question: `resolve_choices/2` at render time, `prune_values/4` at cast time.
+- `DynamicForm.FieldTypes` — the question-type → Ecto-type registry,
+  including custom field types.
+- `Lifecycle.Debounce` — the change-pass timer/token mechanics behind
+  `change_debounce_in_ms`.
+- `Lifecycle.Uploads` — wires LiveView uploads per `file` question and folds
+  completed uploads into the changeset.
 
 Rendering:
 
 - `DynamicForm.Renderer.Component` — the form shell, element dispatch
   (`render_element/3`), and the per-question-type controls.
-- `DynamicForm.Renderer.LiveComponent` — the stateful LiveComponent: lifecycle, events,
-  callbacks, and messages. `Renderer.LiveComponent.Debounce` holds the change-pass
-  timer/token mechanics.
+- `DynamicForm.Renderer.LiveComponent` — the stateful LiveComponent and the
+  orchestrator between the two halves: it drives the lifecycle machinery
+  (changesets, debounce, uploads, messages) and delegates drawing to
+  `Renderer.Component`.
 - `Renderer.Components.NestedEntries` / `Renderer.Components.ContentElements` /
   `Renderer.Components.ValidationSummary` — the paneldynamic sections,
   non-question elements, and error summary; they recurse back through
@@ -122,17 +131,21 @@ Rendering:
   `DynamicForm.ComponentResolver` resolves per-function overrides from an app's own
   components module.
 - `DynamicForm.DirectUpload` — the upload UI component and `sign/2`
-  behaviour; `Renderer.LiveComponent.Uploads` wires LiveView uploads per
-  file question.
+  behaviour (its lifecycle-side wiring is `Lifecycle.Uploads`).
 
-Directory layout: `contexts/` holds the domain logic (`instance/`,
-`direct_upload/`, `carry_forward.ex`), `parser/` the two definition parsers,
-`renderer/` the two renderers and the
-debounce module, `components/` the function components, and `helpers/` the
-generic plumbing (`Helpers.Map`, `Helpers.Form`) — mechanics only, with no
-knowledge of questions or instances. Module names don't always mirror file
-paths (`DynamicForm.CoreComponents` lives in `components/core_components.ex`),
-the same way Phoenix organizes its own modules.
+Directory layout: `instance/` holds the definition structs and queries,
+`parser/` the two definition parsers, `lifecycle/` the form-state machinery
+(validation, events, messaging), `renderer/` the two renderers and their
+function components, and `helpers/` the generic plumbing (`Helpers.Map`,
+`Helpers.Form`) — mechanics only, with no knowledge of questions or
+instances. The dependency rule between the two big directories: rendering
+consumes lifecycle output, never the reverse — `lifecycle/` holds no
+rendering logic. (One deliberate back-reference: `Lifecycle.Debounce`
+names `Renderer.LiveComponent` as its `send_update_after` target, a callback
+to the orchestrator that owns the timer.) Module
+names don't always mirror file paths (`DynamicForm.CoreComponents` lives in
+`renderer/components/core_components.ex`), the same way Phoenix organizes
+its own modules.
 
 ## Testing
 
