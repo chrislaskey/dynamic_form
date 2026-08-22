@@ -12,7 +12,7 @@ in the Development guide) and several were renamed or moved with no
 deprecation path:
 
 - `DynamicForm.Instance.FromSlots` → `DynamicForm.Parser.Declarative`
-  (including the documented `convert!/1`) and
+  (including the documented `parse!/1`) and
   `Instance.FromSlots.Validator` → `Parser.Declarative.Validator`
 - `DynamicForm.Instance.Decoder` → `DynamicForm.Parser.JSON`
 - `NestedForms.entries/1` → `NestedForms.list_entries/1`

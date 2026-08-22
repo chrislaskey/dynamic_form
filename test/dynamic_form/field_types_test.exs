@@ -184,7 +184,7 @@ defmodule DynamicForm.FieldTypesTest do
       }
 
       instance =
-        Declarative.convert!(%{
+        Declarative.parse!(%{
           id: "slots-test",
           field: [field],
           group: [],
@@ -201,7 +201,7 @@ defmodule DynamicForm.FieldTypesTest do
       field = %{__slot__: :field, inner_block: nil, type: "multiselect", name: "days"}
 
       assert_raise ArgumentError, ~r/unknown type "multiselect".*custom field type/s, fn ->
-        Declarative.convert!(%{id: "slots-test", field: [field], group: []})
+        Declarative.parse!(%{id: "slots-test", field: [field], group: []})
       end
     end
   end

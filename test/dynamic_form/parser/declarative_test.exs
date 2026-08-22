@@ -12,16 +12,16 @@ defmodule DynamicForm.Parser.DeclarativeTest do
     Map.merge(%{__slot__: :group, inner_block: nil}, Map.new(attrs))
   end
 
-  defp convert(fields, groups \\ [], assigns \\ %{}) do
+  defp parse(fields, groups \\ [], assigns \\ %{}) do
     assigns
     |> Map.merge(%{id: "test-form", field: fields, group: groups})
-    |> Declarative.convert!()
+    |> Declarative.parse!()
   end
 
   describe "instance attributes" do
     test "builds an instance with id, title, and description" do
       instance =
-        convert(
+        parse(
           [field(type: "text", name: "email")],
           [],
           %{title: "Contact", description: "Get in touch"}
@@ -34,7 +34,7 @@ defmodule DynamicForm.Parser.DeclarativeTest do
   describe "question conversion" do
     test "maps snake_case slot attrs to SurveyJS-style struct fields" do
       instance =
-        convert([
+        parse([
           field(
             type: "text",
             name: "email",
@@ -71,7 +71,7 @@ defmodule DynamicForm.Parser.DeclarativeTest do
 
     test "required_label keeps blank distinct from unset" do
       [unset, custom, suppressed] =
-        convert([
+        parse([
           field(type: "text", name: "a", required: true),
           field(type: "text", name: "b", required: true, required_label: "(required)"),
           field(type: "text", name: "c", required: true, required_label: false)
@@ -85,7 +85,7 @@ defmodule DynamicForm.Parser.DeclarativeTest do
 
     test "preserves template order across mixed types" do
       instance =
-        convert([
+        parse([
           field(type: "html", name: "intro", html: "<h2>Hi</h2>"),
           field(type: "text", name: "email"),
           field(type: "dropdown", name: "subject", options: ["a", "b"]),
@@ -97,14 +97,14 @@ defmodule DynamicForm.Parser.DeclarativeTest do
 
     test "maps rating attrs" do
       instance =
-        convert([field(type: "rating", name: "score", rate_min: 2, rate_max: 8, rate_step: 2)])
+        parse([field(type: "rating", name: "score", rate_min: 2, rate_max: 8, rate_step: 2)])
 
       assert [%Instance.Question{rateMin: 2, rateMax: 8, rateStep: 2}] = instance.elements
     end
 
     test "keeps options as given for choice questions" do
       instance =
-        convert([
+        parse([
           field(type: "dropdown", name: "subject", options: [{"Support", "support"}, "other"])
         ])
 
@@ -115,7 +115,7 @@ defmodule DynamicForm.Parser.DeclarativeTest do
   describe "validators" do
     test "builds validators from flattened attrs" do
       instance =
-        convert([
+        parse([
           field(type: "text", name: "username", min_length: 2, max_length: 20),
           field(type: "text", name: "age", input_type: "number", min: 18, max: 130),
           field(type: "text", name: "slug", pattern: "^[a-z-]+$"),
@@ -135,7 +135,7 @@ defmodule DynamicForm.Parser.DeclarativeTest do
 
     test "accepts explicit validator structs and maps, combined with flattened attrs" do
       instance =
-        convert([
+        parse([
           field(
             type: "text",
             name: "code",
@@ -160,13 +160,13 @@ defmodule DynamicForm.Parser.DeclarativeTest do
     end
 
     test "questions without validation attrs get nil validators" do
-      instance = convert([field(type: "text", name: "email")])
+      instance = parse([field(type: "text", name: "email")])
       assert [%Instance.Question{validators: nil}] = instance.elements
     end
 
     test "flattened validators produce a working changeset" do
       instance =
-        convert([field(type: "text", name: "username", required: true, min_length: 3)])
+        parse([field(type: "text", name: "username", required: true, min_length: 3)])
 
       changeset = DynamicForm.Changeset.create_changeset(instance, %{"username" => "ab"})
       refute changeset.valid?
@@ -177,20 +177,20 @@ defmodule DynamicForm.Parser.DeclarativeTest do
 
     test "raises on unknown format" do
       assert_raise ArgumentError, ~r/unknown format "phone"/, fn ->
-        convert([field(type: "text", name: "phone", format: "phone")])
+        parse([field(type: "text", name: "phone", format: "phone")])
       end
     end
   end
 
   describe "elements" do
-    test "converts html fields with an html attribute" do
-      instance = convert([field(type: "html", name: "intro", html: "<h2>Hi</h2>")])
+    test "parses html fields with an html attribute" do
+      instance = parse([field(type: "html", name: "intro", html: "<h2>Hi</h2>")])
       assert [%Instance.Element{type: "html", html: "<h2>Hi</h2>", slot: nil}] = instance.elements
     end
 
     test "auto-generates names for elements without one" do
       instance =
-        convert([
+        parse([
           field(type: "html", html: "<p>a</p>"),
           field(type: "text", name: "email"),
           field(type: "image", src: "/logo.png")
@@ -201,7 +201,7 @@ defmodule DynamicForm.Parser.DeclarativeTest do
 
     test "maps image attrs" do
       instance =
-        convert([
+        parse([
           field(type: "image", name: "logo", src: "/logo.png", width: "300px", fit: "cover")
         ])
 
@@ -219,21 +219,21 @@ defmodule DynamicForm.Parser.DeclarativeTest do
   describe "slot bodies" do
     test "keeps the raw slot entry when a body is present" do
       entry = field(type: "html", name: "intro", inner_block: fn _, _ -> "content" end)
-      instance = convert([entry])
+      instance = parse([entry])
 
       assert [%Instance.Element{type: "html", slot: ^entry}] = instance.elements
     end
 
     test "keeps slot entries on questions with bodies" do
       entry = field(type: "text", name: "amount", inner_block: fn _, _ -> "control" end)
-      instance = convert([entry])
+      instance = parse([entry])
 
       assert [%Instance.Question{slot: ^entry}] = instance.elements
     end
 
     test "strip_slots removes slot entries recursively and enables definition equality" do
       build = fn closure ->
-        convert(
+        parse(
           [
             field(type: "text", name: "amount", inner_block: closure),
             field(type: "text", name: "street", group: "address", inner_block: closure)
@@ -258,7 +258,7 @@ defmodule DynamicForm.Parser.DeclarativeTest do
 
     test "instances with slot bodies JSON-encode without them" do
       instance =
-        convert([field(type: "text", name: "amount", inner_block: fn _, _ -> "x" end)])
+        parse([field(type: "text", name: "amount", inner_block: fn _, _ -> "x" end)])
 
       json = Jason.encode!(instance)
       decoded = Jason.decode!(json)
@@ -272,7 +272,7 @@ defmodule DynamicForm.Parser.DeclarativeTest do
   describe "groups" do
     test "emits the panel at the position of its first member with all members" do
       instance =
-        convert(
+        parse(
           [
             field(type: "text", name: "email"),
             field(type: "text", name: "street", group: "address"),
@@ -292,7 +292,7 @@ defmodule DynamicForm.Parser.DeclarativeTest do
 
     test "type maps to the panel's groupType" do
       instance =
-        convert(
+        parse(
           [field(type: "text", name: "min", group: "age_range")],
           [group(name: "age_range", type: "vertical")]
         )
@@ -302,7 +302,7 @@ defmodule DynamicForm.Parser.DeclarativeTest do
 
     test "a group with no type leaves groupType unset, for the renderer's default" do
       instance =
-        convert(
+        parse(
           [field(type: "text", name: "min", group: "age_range")],
           [group(name: "age_range")]
         )
@@ -312,7 +312,7 @@ defmodule DynamicForm.Parser.DeclarativeTest do
 
     test "a group inside a group nests the panels" do
       instance =
-        convert(
+        parse(
           [
             field(type: "text", name: "street", group: "address"),
             field(type: "text", name: "state", group: "region")
@@ -332,7 +332,7 @@ defmodule DynamicForm.Parser.DeclarativeTest do
 
     test "a nested group renders once, inside its parent only" do
       instance =
-        convert(
+        parse(
           [field(type: "text", name: "state", group: "region")],
           [group(name: "address"), group(name: "region", group: "address")]
         )
@@ -344,7 +344,7 @@ defmodule DynamicForm.Parser.DeclarativeTest do
 
     test "a parent group anchors at its child group's first field" do
       instance =
-        convert(
+        parse(
           [
             field(type: "text", name: "name"),
             field(type: "text", name: "state", group: "region"),
@@ -363,7 +363,7 @@ defmodule DynamicForm.Parser.DeclarativeTest do
 
     test "a group nests three deep" do
       instance =
-        convert(
+        parse(
           [field(type: "text", name: "zip", group: "inner")],
           [
             group(name: "outer"),
@@ -380,7 +380,7 @@ defmodule DynamicForm.Parser.DeclarativeTest do
 
     test "a memberless nested group emits nothing, and empties its parent" do
       instance =
-        convert(
+        parse(
           [field(type: "text", name: "name")],
           [group(name: "address"), group(name: "region", group: "address")]
         )
@@ -390,7 +390,7 @@ defmodule DynamicForm.Parser.DeclarativeTest do
 
     test "a nested group must declare its parent's scope" do
       assert_raise ArgumentError, ~r/must declare the group's nested scope/, fn ->
-        convert(
+        parse(
           [field(type: "text", name: "start", nested: "milestones", group: "dates")],
           [
             group(name: "schedule", nested: "milestones"),
@@ -405,7 +405,7 @@ defmodule DynamicForm.Parser.DeclarativeTest do
 
     test "a group inside a group inside a nested form" do
       instance =
-        convert(
+        parse(
           [field(type: "text", name: "start", nested: "milestones", group: "dates")],
           [
             group(name: "schedule", nested: "milestones"),
@@ -423,7 +423,7 @@ defmodule DynamicForm.Parser.DeclarativeTest do
 
     test "a group referencing an undeclared group raises" do
       assert_raise ArgumentError, ~r/<:group/, fn ->
-        convert(
+        parse(
           [field(type: "text", name: "state", group: "region")],
           [group(name: "region", group: "nope")]
         )
@@ -432,7 +432,7 @@ defmodule DynamicForm.Parser.DeclarativeTest do
 
     test "cyclic group references raise instead of recursing forever" do
       assert_raise ArgumentError, ~r/cyclic <:group> references/, fn ->
-        convert(
+        parse(
           [field(type: "text", name: "state", group: "a")],
           [group(name: "a", group: "b"), group(name: "b", group: "a")]
         )
@@ -441,7 +441,7 @@ defmodule DynamicForm.Parser.DeclarativeTest do
 
     test "a group containing itself raises" do
       assert_raise ArgumentError, ~r/cyclic <:group> references/, fn ->
-        convert(
+        parse(
           [field(type: "text", name: "state", group: "a")],
           [group(name: "a", group: "a")]
         )
@@ -450,7 +450,7 @@ defmodule DynamicForm.Parser.DeclarativeTest do
 
     test "grouped questions are included in the changeset" do
       instance =
-        convert(
+        parse(
           [field(type: "text", name: "street", group: "address", required: true)],
           [group(name: "address")]
         )
@@ -464,23 +464,23 @@ defmodule DynamicForm.Parser.DeclarativeTest do
   describe "validation errors" do
     test "raises when a question has no name" do
       assert_raise ArgumentError, ~r/requires a name/, fn ->
-        convert([field(type: "text")])
+        parse([field(type: "text")])
       end
     end
 
     test "raises on unknown type" do
       assert_raise ArgumentError, ~r/unknown type "carousel"/, fn ->
-        convert([field(type: "carousel", name: "x")])
+        parse([field(type: "carousel", name: "x")])
       end
     end
 
     test "raises on duplicate names, including group names" do
       assert_raise ArgumentError, ~r/duplicate names.*email/s, fn ->
-        convert([field(type: "text", name: "email"), field(type: "comment", name: "email")])
+        parse([field(type: "text", name: "email"), field(type: "comment", name: "email")])
       end
 
       assert_raise ArgumentError, ~r/group name="address".*collides/s, fn ->
-        convert(
+        parse(
           [
             field(type: "text", name: "address"),
             field(type: "text", name: "street", group: "address")
@@ -492,23 +492,23 @@ defmodule DynamicForm.Parser.DeclarativeTest do
 
     test "raises when a choice question has no options" do
       assert_raise ArgumentError, ~r/requires an options list/, fn ->
-        convert([field(type: "dropdown", name: "subject")])
+        parse([field(type: "dropdown", name: "subject")])
       end
     end
 
     test "raises when a custom field has no body" do
       assert_raise ArgumentError, ~r/requires a slot body/, fn ->
-        convert([field(type: "custom", name: "summary")])
+        parse([field(type: "custom", name: "summary")])
       end
     end
 
     test "raises when an html field has neither html attr nor body, or both" do
       assert_raise ArgumentError, ~r/requires either an html attribute or a slot body/, fn ->
-        convert([field(type: "html", name: "intro")])
+        parse([field(type: "html", name: "intro")])
       end
 
       assert_raise ArgumentError, ~r/cannot have both/, fn ->
-        convert([
+        parse([
           field(type: "html", name: "intro", html: "<p>a</p>", inner_block: fn _, _ -> "b" end)
         ])
       end
@@ -516,19 +516,19 @@ defmodule DynamicForm.Parser.DeclarativeTest do
 
     test "raises when an image field has no src" do
       assert_raise ArgumentError, ~r/requires a src/, fn ->
-        convert([field(type: "image", name: "logo")])
+        parse([field(type: "image", name: "logo")])
       end
     end
 
     test "raises when a field references an undeclared group" do
       assert_raise ArgumentError, ~r/references group "address"/, fn ->
-        convert([field(type: "text", name: "street", group: "address")])
+        parse([field(type: "text", name: "street", group: "address")])
       end
     end
 
     test "raises on invalid validators entries" do
       assert_raise ArgumentError, ~r/invalid entry in :validators/, fn ->
-        convert([field(type: "text", name: "x", validators: ["email"])])
+        parse([field(type: "text", name: "x", validators: ["email"])])
       end
     end
   end
@@ -541,7 +541,7 @@ defmodule DynamicForm.Parser.DeclarativeTest do
     defp convert_nested(fields, groups, nesteds, assigns \\ %{}) do
       assigns
       |> Map.merge(%{id: "test-form", field: fields, group: groups, nested: nesteds})
-      |> Declarative.convert!()
+      |> Declarative.parse!()
     end
 
     test "collects nested= fields into a paneldynamic question's template" do
@@ -719,7 +719,7 @@ defmodule DynamicForm.Parser.DeclarativeTest do
   describe "nested form validation errors" do
     test "raises when a field references an undeclared nested form" do
       assert_raise ArgumentError, ~r/references nested "addresses"/, fn ->
-        convert([field(type: "text", name: "street", nested: "addresses")])
+        parse([field(type: "text", name: "street", nested: "addresses")])
       end
     end
 

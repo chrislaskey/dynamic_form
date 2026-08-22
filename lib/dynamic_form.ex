@@ -119,7 +119,7 @@ defmodule DynamicForm do
 
   ## Declarative mode
 
-  `<:field>` entries convert to a `DynamicForm.Instance` in template order
+  `<:field>` entries parse to a `DynamicForm.Instance` in template order
   (see `DynamicForm.Parser.Declarative`). Question types collect input;
   `html`, `image`, and `custom` render static or custom content:
 
@@ -685,7 +685,7 @@ defmodule DynamicForm do
         decode_json!(assigns)
 
       [:slots] ->
-        DynamicForm.Parser.Declarative.convert!(assigns)
+        DynamicForm.Parser.Declarative.parse!(assigns)
 
       [] ->
         raise ArgumentError,

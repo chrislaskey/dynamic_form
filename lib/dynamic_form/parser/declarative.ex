@@ -48,7 +48,7 @@ defmodule DynamicForm.Parser.Declarative do
 
   ## Validation
 
-  `convert!/1` raises `ArgumentError` with a descriptive message for invalid
+  `parse!/1` raises `ArgumentError` with a descriptive message for invalid
   definitions — see `DynamicForm.Parser.Declarative.Validator` for the full
   set of checks: missing names, duplicate names within a scope, unknown
   types, choice questions without options, `custom` fields without a body,
@@ -67,7 +67,7 @@ defmodule DynamicForm.Parser.Declarative do
   `:group`, and `:nested` slot lists (and optional `:title` and
   `:description`).
   """
-  def convert!(assigns) do
+  def parse!(assigns) do
     fields = Map.get(assigns, :field, [])
     groups = Map.get(assigns, :group, [])
     nesteds = Map.get(assigns, :nested, [])
