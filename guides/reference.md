@@ -15,7 +15,7 @@ a way to surface it as a stable public function moving forward.
 |---|---|---|---|
 | `id` | string | required | Component ID; also the instance id in declarative mode |
 | `instance` | any | `nil` | Data mode: `Instance` struct, JSON string, or map |
-| `json` | string | `nil` | Data mode: SurveyJS-compatible JSON string, decoded via `Instance.decode!/1` |
+| `json` | string | `nil` | Data mode: SurveyJS-compatible JSON string, parsed via `Parser.JSON.parse!/1` |
 | `title` | string | `nil` | Instance title (declarative mode) |
 | `description` | string | `nil` | Instance description (declarative mode) |
 | `on_change` | function | `nil` | 1-arity `(payload) -> payload`, after built-in validations on every change and during the submit validation pass |
@@ -275,7 +275,7 @@ Functions the renderer dispatches through the `components` module
 
 | Function | Description |
 |---|---|
-| `DynamicForm.Instance.decode!/1` | JSON string or map → `Instance` struct |
+| `DynamicForm.Parser.JSON.parse!/1` | JSON string or map → `Instance` struct |
 | `DynamicForm.Instance.strip_slots/1` | Copy of an instance without slot bodies (definition-only comparison) |
 | `DynamicForm.Parser.Declarative.parse!/1` | Slot entries → `Instance` (used by `DynamicForm.form/1`) |
 | `DynamicForm.Changeset.create_changeset/2` | Instance + params → Ecto changeset |

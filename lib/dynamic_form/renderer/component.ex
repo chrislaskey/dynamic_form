@@ -52,6 +52,7 @@ defmodule DynamicForm.Renderer.Component do
   alias DynamicForm.Helpers
   alias DynamicForm.Instance
   alias DynamicForm.Instance.Elements
+  alias DynamicForm.Parser
   alias DynamicForm.Visibility
 
   attr(:instance, :any,
@@ -108,7 +109,7 @@ defmodule DynamicForm.Renderer.Component do
   )
 
   def render(assigns) do
-    instance = Instance.decode!(assigns.instance)
+    instance = Parser.JSON.parse!(assigns.instance)
     submit_text = assigns.submit_text || "Submit"
     uploads = Map.get(assigns, :uploads, %{})
     parent_id = Map.get(assigns, :parent_id)

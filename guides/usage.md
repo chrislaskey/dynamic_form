@@ -282,11 +282,11 @@ A JSON string passes straight in via the `json` attribute:
 <DynamicForm.form id="contact-form" json={@json} />
 ```
 
-Or decode at the edge (e.g. in `mount/3`) to work with the definition
+Or parse at the edge (e.g. in `mount/3`) to work with the definition
 programmatically, and pass the instance to the same component:
 
 ```elixir
-instance = DynamicForm.Instance.decode!(~S({
+instance = DynamicForm.Parser.JSON.parse!(~S({
   "title": "Contact Form",
   "elements": [
     {

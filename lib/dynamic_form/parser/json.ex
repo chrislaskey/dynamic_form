@@ -13,8 +13,11 @@ defmodule DynamicForm.Parser.JSON do
   ## Examples
 
       iex> json = ~s({"id": "my-form", "title": "My Form", "elements": []})
-      iex> map = Jason.decode!(json)
-      iex> DynamicForm.Parser.JSON.decode_instance(map)
+      iex> DynamicForm.Parser.JSON.parse!(json)
+      %DynamicForm.Instance{id: "my-form", title: "My Form", elements: []}
+
+      iex> map = %{"id" => "my-form", "title" => "My Form", "elements" => []}
+      iex> DynamicForm.Parser.JSON.parse!(map)
       %DynamicForm.Instance{id: "my-form", title: "My Form", elements: []}
   """
 
@@ -27,11 +30,20 @@ defmodule DynamicForm.Parser.JSON do
   @element_types ~w(html panel image)
 
   @doc """
-  Decodes a map into a DynamicForm.Instance struct.
+  Parses a JSON string or map into a DynamicForm.Instance struct.
 
   Supports SurveyJS format with `pages` array or flat `elements` array.
+  An already-parsed `%DynamicForm.Instance{}` passes through unchanged.
   """
-  def decode_instance(data) when is_map(data) do
+  def parse!(%Instance{} = instance), do: instance
+
+  def parse!(data) when is_binary(data) do
+    data
+    |> Jason.decode!()
+    |> parse!()
+  end
+
+  def parse!(data) when is_map(data) do
     # Handle SurveyJS pages format - flatten all pages into a single elements list
     elements =
       case Map.get(data, "pages") do

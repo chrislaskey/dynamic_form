@@ -12,14 +12,14 @@ in the Development guide) and several were renamed or moved with no
 deprecation path:
 
 - `DynamicForm.Instance.FromSlots` → `DynamicForm.Parser.Declarative`
-  (including the documented `parse!/1`) and
+  (its documented `convert!/1` is now `parse!/1`) and
   `Instance.FromSlots.Validator` → `Parser.Declarative.Validator`
-- `DynamicForm.Instance.Decoder` → `DynamicForm.Parser.JSON`
+- `DynamicForm.Instance.Decoder` → `DynamicForm.Parser.JSON`, absorbing the
+  documented `Instance.decode!/1` as `Parser.JSON.parse!/1` — it accepts a
+  JSON string, a map, or an already-parsed `%Instance{}` (pass-through)
 - `NestedForms.entries/1` → `NestedForms.list_entries/1`
 - `NestedForms.entry_changesets/3` → `NestedForms.list_entry_changesets/3`
 - `Changeset.build_types_map/2` → `Changeset.create_types_map/2`
-- `Instance.decode!/1` now also accepts an already-decoded `%Instance{}`
-  (pass-through)
 
 ## 0.23.0
 

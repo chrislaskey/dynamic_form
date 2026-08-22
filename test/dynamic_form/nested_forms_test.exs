@@ -4,6 +4,7 @@ defmodule DynamicForm.NestedFormsTest do
   alias DynamicForm.Changeset
   alias DynamicForm.Instance
   alias DynamicForm.NestedForms
+  alias DynamicForm.Parser
 
   defp addresses_question(overrides \\ []) do
     struct!(
@@ -476,7 +477,7 @@ defmodule DynamicForm.NestedFormsTest do
       }
       """
 
-      instance = Instance.decode!(json)
+      instance = Parser.JSON.parse!(json)
 
       assert [%Instance.Question{type: "paneldynamic"} = question] = instance.elements
       assert question.name == "addresses"
@@ -513,7 +514,7 @@ defmodule DynamicForm.NestedFormsTest do
       }
       """
 
-      assert [question] = Instance.decode!(json).elements
+      assert [question] = Parser.JSON.parse!(json).elements
       assert [%Instance.Question{name: "label"}] = question.templateElements
       assert question.addPanelText == "Add"
       assert question.removePanelText == "Delete"
@@ -522,7 +523,7 @@ defmodule DynamicForm.NestedFormsTest do
     test "round-trips through JSON" do
       instance = instance_with(addresses_question(minPanelCount: 1, addPanelText: "Add"))
 
-      decoded = instance |> Jason.encode!() |> Instance.decode!()
+      decoded = instance |> Jason.encode!() |> Parser.JSON.parse!()
 
       assert decoded == instance
     end

@@ -222,6 +222,7 @@ defmodule DynamicForm.Renderer.LiveComponent do
   alias DynamicForm.Instance
   alias DynamicForm.Instance.Elements
   alias DynamicForm.NestedForms
+  alias DynamicForm.Parser
   alias DynamicForm.Payload
   alias DynamicForm.Renderer.Component
   alias DynamicForm.Renderer.LiveComponent.Debounce
@@ -252,7 +253,7 @@ defmodule DynamicForm.Renderer.LiveComponent do
   end
 
   defp handle_normal_update(assigns, socket) do
-    instance = Instance.decode!(assigns.instance)
+    instance = Parser.JSON.parse!(assigns.instance)
 
     form_name = Map.get(assigns, :form_name, "dynamic_form")
 

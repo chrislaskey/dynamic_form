@@ -17,6 +17,7 @@ defmodule DemoWeb.DataFormLive do
   import DemoWeb.DemoComponents
 
   alias DynamicForm.Instance
+  alias DynamicForm.Parser
 
   @impl true
   def mount(_params, _session, socket) do
@@ -27,7 +28,7 @@ defmodule DemoWeb.DataFormLive do
     {:ok,
      assign(socket,
        payment_json: payment_json,
-       payment_form: Instance.decode!(payment_json),
+       payment_form: Parser.JSON.parse!(payment_json),
        section_form: section_form,
        section_json: Jason.encode!(section_form),
        section_json_pretty: Jason.encode!(section_form, pretty: true),
@@ -97,7 +98,7 @@ defmodule DemoWeb.DataFormLive do
         </h2>
         <p class="text-sm text-gray-500 mb-6">
           This payment form is decoded from a SurveyJS-compatible JSON file with
-          <code>DynamicForm.Instance.decode!/1</code>
+          <code>DynamicForm.Parser.JSON.parse!/1</code>
           and passed via the <code>instance</code>
           attribute. Change the payment
           method to see <code>visibleIf</code>

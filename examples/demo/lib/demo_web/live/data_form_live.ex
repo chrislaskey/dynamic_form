@@ -17,6 +17,7 @@ defmodule DemoWeb.DataFormLive do
   import DemoWeb.DemoComponents
 
   alias DynamicForm.Instance
+  alias DynamicForm.Parser
 
   @impl true
   def mount(_params, _session, socket) do
@@ -27,7 +28,7 @@ defmodule DemoWeb.DataFormLive do
     {:ok,
      assign(socket,
        payment_json: payment_json,
-       payment_form: Instance.decode!(payment_json),
+       payment_form: Parser.JSON.parse!(payment_json),
        section_form: section_form,
        section_json: Jason.encode!(section_form),
        section_json_pretty: Jason.encode!(section_form, pretty: true),
@@ -97,7 +98,7 @@ defmodule DemoWeb.DataFormLive do
         </h2>
         <p class="text-sm text-gray-500 mb-6">
           This payment form is decoded from a SurveyJS-compatible JSON file with
-          <code>DynamicForm.Instance.decode!/1</code>
+          <code>DynamicForm.Parser.JSON.parse!/1</code>
           and passed via the <code>instance</code>
           attribute. Change the payment
           method to see <code>visibleIf</code>
@@ -188,62 +189,42 @@ defmodule DemoWeb.DataFormLive do
                 Create mode — empty form, default message on success
               </option>
               <option value="edit" selected={@mode == :edit}>
-                Edit mode — prefilled via data map, readOnly email, on_success callback
-              </option>
-              <option value="edit_struct" selected={@mode == :edit_struct}>
-                Edit mode — prefilled via data struct, readOnly email, on_success callback
+                Edit mode — prefilled via data, readOnly email, on_success callback
               </option>
             </select>
           </.form>
         </div>
 
-        <%= if @mode in [:edit, :edit_struct] do %>
+        <%= if @mode == :edit do %>
           <.definition
             title="Initial Params (edit mode)"
             subtitle="Passed as data={...}; the definition stays the same, with the email field switched to readOnly"
-            code={
-              inspect(
-                if(@mode == :edit_struct, do: sample_edit_struct_data(), else: sample_edit_data()),
-                pretty: true
-              )
-            }
+            code={inspect(sample_edit_data(), pretty: true)}
           />
         <% end %>
 
         <.definition
           title="Form Definition (Instance structs)"
-          code={
-            inspect((@mode in [:edit, :edit_struct] && @edit_form) || @contact_form, pretty: true)
-          }
+          code={inspect((@mode == :edit && @edit_form) || @contact_form, pretty: true)}
         />
 
         <div class="rounded-lg bg-white shadow-sm ring-1 ring-gray-900/5 p-6">
-          <%= cond do %>
-            <% @mode == :create -> %>
-              <DynamicForm.form
-                id="contact-create"
-                instance={@contact_form}
-                on_submit={&Demo.Submissions.verify/1}
-                submit_text="Create Contact"
-              />
-            <% @mode == :edit -> %>
-              <DynamicForm.form
-                id="contact-edit"
-                instance={@edit_form}
-                on_submit={&Demo.Submissions.verify/1}
-                on_success={fn payload -> send(self(), {:contact_updated, payload.data}) end}
-                data={sample_edit_data()}
-                submit_text="Update Contact"
-              />
-            <% @mode == :edit_struct -> %>
-              <DynamicForm.form
-                id="contact-edit"
-                instance={@edit_form}
-                on_submit={&Demo.Submissions.verify/1}
-                on_success={fn payload -> send(self(), {:contact_updated, payload.data}) end}
-                data={sample_edit_struct_data()}
-                submit_text="Update Contact"
-              />
+          <%= if @mode == :create do %>
+            <DynamicForm.form
+              id="contact-create"
+              instance={@contact_form}
+              on_submit={&Demo.Submissions.verify/1}
+              submit_text="Create Contact"
+            />
+          <% else %>
+            <DynamicForm.form
+              id="contact-edit"
+              instance={@edit_form}
+              on_submit={&Demo.Submissions.verify/1}
+              on_success={fn payload -> send(self(), {:contact_updated, payload.data}) end}
+              data={sample_edit_data()}
+              submit_text="Update Contact"
+            />
           <% end %>
         </div>
 
@@ -274,13 +255,6 @@ defmodule DemoWeb.DataFormLive do
       "subscribe" => "true",
       "newsletter_frequency" => "weekly"
     }
-  end
-
-  defp sample_edit_struct_data do
-    struct(
-      Demo.SampleContact,
-      Map.new(sample_edit_data(), fn {k, v} -> {String.to_atom(k), v} end)
-    )
   end
 
   # Edit mode reuses the create definition with the email field locked

@@ -34,16 +34,14 @@ defmodule DynamicForm.Instance do
 
   ## JSON Encoding/Decoding
 
-  Instances can be encoded to JSON and decoded back:
+  Instances can be encoded to JSON and parsed back:
 
       # Encode to JSON
       json = Jason.encode!(instance)
 
-      # Decode from JSON
-      instance = DynamicForm.Instance.decode!(json)
-
-      # Decode from map
-      instance = DynamicForm.Instance.decode!(map)
+      # Parse from a JSON string or map
+      instance = DynamicForm.Parser.JSON.parse!(json)
+      instance = DynamicForm.Parser.JSON.parse!(map)
 
   ## Slot-Defined Instances
 
@@ -75,33 +73,6 @@ defmodule DynamicForm.Instance do
           inserted_at: DateTime.t() | nil,
           updated_at: DateTime.t() | nil
         }
-
-  @doc """
-  Decodes a JSON string or map into a DynamicForm.Instance struct.
-
-  ## Examples
-
-      iex> json = ~s({"id": "my-form", "title": "My Form", "elements": []})
-      iex> DynamicForm.Instance.decode!(json)
-      %DynamicForm.Instance{id: "my-form", title: "My Form", elements: []}
-
-      iex> map = %{"id" => "my-form", "title" => "My Form", "elements" => []}
-      iex> DynamicForm.Instance.decode!(map)
-      %DynamicForm.Instance{id: "my-form", title: "My Form", elements: []}
-
-  An already-decoded `%DynamicForm.Instance{}` passes through unchanged.
-  """
-  def decode!(%__MODULE__{} = instance), do: instance
-
-  def decode!(data) when is_binary(data) do
-    data
-    |> Jason.decode!()
-    |> decode!()
-  end
-
-  def decode!(data) when is_map(data) do
-    DynamicForm.Parser.JSON.decode_instance(data)
-  end
 
   defmodule Question do
     @moduledoc """

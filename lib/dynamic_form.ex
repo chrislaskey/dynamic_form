@@ -233,7 +233,7 @@ defmodule DynamicForm do
   attr(:json, :string,
     default: nil,
     doc:
-      "Data mode: a SurveyJS-compatible JSON string, decoded with Instance.decode!/1. " <>
+      "Data mode: a SurveyJS-compatible JSON string, parsed with Parser.JSON.parse!/1. " <>
         "Mutually exclusive with instance and <:field> slots."
   )
 
@@ -613,6 +613,41 @@ defmodule DynamicForm do
 
   # Helpers
 
+  defp get_instance(assigns) do
+    # The form definition comes from exactly one of three modes: the instance
+    # attribute, the json attribute, or <:field>/<:group> slots.
+    case definition_modes(assigns) do
+      [:instance] ->
+        assigns.instance
+
+      [:json] ->
+        DynamicForm.Parser.JSON.parse!(assigns[:json])
+
+      [:slots] ->
+        DynamicForm.Parser.Declarative.parse!(assigns)
+
+      [] ->
+        raise ArgumentError,
+              "DynamicForm.form id=#{inspect(assigns.id)} requires a form definition: " <>
+                "an instance attribute, a json attribute, or <:field> slots"
+
+      modes ->
+        raise ArgumentError,
+              "DynamicForm.form id=#{inspect(assigns.id)} received multiple form " <>
+                "definitions (#{Enum.map_join(modes, " and ", &inspect/1)}) — provide exactly one"
+    end
+  end
+
+  defp definition_modes(assigns) do
+    [
+      instance: not is_nil(assigns.instance),
+      json: not is_nil(assigns.json),
+      slots: assigns.field != [] or assigns.group != [] or assigns[:nested] not in [nil, []]
+    ]
+    |> Enum.filter(fn {_mode, present?} -> present? end)
+    |> Enum.map(fn {mode, _present?} -> mode end)
+  end
+
   defp validate_form_assigns!(:render_only_form, assigns) do
     # Render-only mode renders markup against a parent-owned form — attributes
     # that configure the managed lifecycle have no meaning there and raise.
@@ -672,49 +707,5 @@ defmodule DynamicForm do
               "#{Enum.join(invalid, ", ")} without render_only — the component owns the " <>
               "form and its events unless render_only is set"
     end
-  end
-
-  # The form definition comes from exactly one of three modes: the instance
-  # attribute, the json attribute, or <:field>/<:group> slots.
-  defp get_instance(assigns) do
-    case definition_modes(assigns) do
-      [:instance] ->
-        assigns.instance
-
-      [:json] ->
-        decode_json!(assigns)
-
-      [:slots] ->
-        DynamicForm.Parser.Declarative.parse!(assigns)
-
-      [] ->
-        raise ArgumentError,
-              "DynamicForm.form id=#{inspect(assigns.id)} requires a form definition: " <>
-                "an instance attribute, a json attribute, or <:field> slots"
-
-      modes ->
-        raise ArgumentError,
-              "DynamicForm.form id=#{inspect(assigns.id)} received multiple form " <>
-                "definitions (#{Enum.map_join(modes, " and ", &inspect/1)}) — provide exactly one"
-    end
-  end
-
-  defp definition_modes(assigns) do
-    [
-      instance: not is_nil(assigns.instance),
-      json: not is_nil(assigns.json),
-      slots: assigns.field != [] or assigns.group != [] or assigns[:nested] not in [nil, []]
-    ]
-    |> Enum.filter(fn {_mode, present?} -> present? end)
-    |> Enum.map(fn {mode, _present?} -> mode end)
-  end
-
-  defp decode_json!(%{json: json}) when is_binary(json), do: DynamicForm.Instance.decode!(json)
-
-  defp decode_json!(%{json: other} = assigns) do
-    raise ArgumentError,
-          "DynamicForm.form id=#{inspect(assigns.id)} json attribute must be a JSON " <>
-            "string — for maps or Instance structs use the instance attribute. " <>
-            "Got: #{inspect(other)}"
   end
 end

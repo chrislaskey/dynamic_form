@@ -56,7 +56,7 @@ code runs:
 
 ```
 JSON / stored map ──▶ Parser.JSON ─────────┐
-                                           ├──▶ %Instance{} ──▶ Renderer.LiveComponent ──▶ Renderer.Component
+                                           ├──▶ %Instance{} ──▶ Renderer
 <:field> slots ─────▶ Parser.Declarative ──┘
 ```
 
@@ -66,7 +66,7 @@ JSON / stored map ──▶ Parser.JSON ─────────┐
   `Parser.Declarative.Validator`. Conversion runs in the `DynamicForm.form/1`
   function component — the LiveComponent's contract stays "give me an
   Instance".
-- **Slot carriage**: elements defined with a slot body keep the raw slot
+- **Slots**: elements defined with a slot body keep the raw slot
   entry (including its `inner_block` closure) in their `:slot` field so the
   renderer can call `render_slot/2`. The `:slot` field is dropped from JSON
   encoding, and `Instance.strip_slots/1` removes it for definition-only

@@ -4,6 +4,7 @@ defmodule DynamicForm.CarryForwardTest do
   import Phoenix.LiveViewTest
 
   alias DynamicForm.Instance
+  alias DynamicForm.Parser
   alias DynamicForm.Renderer
 
   # Two nested forms: age groups, and programs that each pick which age
@@ -677,7 +678,7 @@ defmodule DynamicForm.CarryForwardTest do
 
   describe "JSON round trip" do
     test "the carry-forward fields survive encoding and decoding" do
-      json = instance() |> Jason.encode!() |> Instance.decode!()
+      json = instance() |> Jason.encode!() |> Parser.JSON.parse!()
 
       [_age_groups, programs] = json.elements
       [_name, consuming] = programs.templateElements
