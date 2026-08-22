@@ -56,7 +56,7 @@ code runs:
 
 ```
 JSON / stored map ──▶ Parser.JSON ─────────┐
-                                           ├──▶ %Instance{} ──▶ Renderer
+                                           ├──▶ %Instance{} ──▶ Renderer ──▶ Lifecycle
 <:field> slots ─────▶ Parser.Declarative ──┘
 ```
 
