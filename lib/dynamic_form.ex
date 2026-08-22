@@ -24,60 +24,14 @@ defmodule DynamicForm do
 
       <%!-- Data: Instance struct or map --%>
       <DynamicForm.form id="contact-form" instance={@form_instance} />
+
   """
 
   use Phoenix.Component
 
   import Phoenix.Component, except: [form: 1]
 
-  alias DynamicForm.Instance
-  alias DynamicForm.Renderer
-
   defdelegate submit_button(assigns), to: DynamicForm.RendererLive
-
-  @doc """
-  The whole form's current values, for reading inside a `<:field>` slot body.
-
-  Takes the `Phoenix.HTML.FormField` a custom control receives, or the
-  `Phoenix.HTML.Form` a `type="custom"` element receives, and returns the
-  applied changeset data — the same map a `:change` message delivers as
-  `payload.data`, with nested entries as lists of maps:
-
-      %{name: "Ada", addresses: [%{street: "110 Main St", city: "Portland"}]}
-
-  The map is always form-level, even inside a nested entry, so a control in
-  one nested form can read another's entries:
-
-      <:field :let={field} nested="rooms" type="checkbox" name="teachers">
-        <%= for teacher <- DynamicForm.form_data(field)[:staff] || [] do %>
-          <label>
-            <input type="checkbox" name={"\#{field.name}[]"} value={teacher[:id]} />
-            {teacher[:name]}
-          </label>
-        <% end %>
-      </:field>
-
-  Values the user hasn't entered are absent rather than `nil`, as with any
-  `Ecto.Changeset.apply_changes/1` result — default to `[]` or `%{}` when
-  reading. In [render-only mode](usage.md#render-only-mode) the parent owns
-  the changeset, so the shape is whatever that changeset applies to.
-
-  Raises when given a form DynamicForm didn't render.
-  """
-  @spec form_data(Phoenix.HTML.FormField.t() | Phoenix.HTML.Form.t()) :: map()
-  def form_data(%Phoenix.HTML.FormField{form: form}), do: form_data(form)
-
-  def form_data(%Phoenix.HTML.Form{options: options}) do
-    case Keyword.fetch(options, :form_data) do
-      {:ok, data} ->
-        data
-
-      :error ->
-        raise ArgumentError,
-              "DynamicForm.form_data/1 works on the field or form a <:field> slot body " <>
-                "receives, and this form was not rendered by DynamicForm"
-    end
-  end
 
   @doc """
   Renders a dynamic form from an instance, a SurveyJS-compatible JSON string,
@@ -528,7 +482,7 @@ defmodule DynamicForm do
 
   def form(%{render_only: true} = assigns) do
     assigns = assign(assigns, :resolved_instance, resolve_instance(assigns))
-    validate_render_only!(assigns)
+    validate_form_assigns!(:render_only_form, assigns)
 
     assigns =
       assigns
@@ -536,7 +490,7 @@ defmodule DynamicForm do
       |> assign(:phx_submit, assigns.phx_submit || "submit")
 
     ~H"""
-    <Renderer.render
+    <DynamicForm.Renderer.render
       instance={@resolved_instance}
       form={@form}
       phx_change={@phx_change}
@@ -553,7 +507,7 @@ defmodule DynamicForm do
 
   def form(assigns) do
     assigns = assign(assigns, :resolved_instance, resolve_instance(assigns))
-    validate_stateful!(assigns)
+    validate_form_assigns!(:default_form, assigns)
 
     ~H"""
     <.live_component
@@ -577,9 +531,55 @@ defmodule DynamicForm do
     """
   end
 
-  # Render-only mode renders markup against a parent-owned form — attributes
-  # that configure the managed lifecycle have no meaning there and raise.
-  defp validate_render_only!(assigns) do
+  @doc """
+  The whole form's current values, for reading inside a `<:field>` slot body.
+
+  Takes the `Phoenix.HTML.FormField` a custom control receives, or the
+  `Phoenix.HTML.Form` a `type="custom"` element receives, and returns the
+  applied changeset data — the same map a `:change` message delivers as
+  `payload.data`, with nested entries as lists of maps:
+
+      %{name: "Ada", addresses: [%{street: "110 Main St", city: "Portland"}]}
+
+  The map is always form-level, even inside a nested entry, so a control in
+  one nested form can read another's entries:
+
+      <:field :let={field} nested="rooms" type="checkbox" name="teachers">
+        <%= for teacher <- DynamicForm.form_data(field)[:staff] || [] do %>
+          <label>
+            <input type="checkbox" name={"\#{field.name}[]"} value={teacher[:id]} />
+            {teacher[:name]}
+          </label>
+        <% end %>
+      </:field>
+
+  Values the user hasn't entered are absent rather than `nil`, as with any
+  `Ecto.Changeset.apply_changes/1` result — default to `[]` or `%{}` when
+  reading. In [render-only mode](usage.md#render-only-mode) the parent owns
+  the changeset, so the shape is whatever that changeset applies to.
+
+  Raises when given a form DynamicForm didn't render.
+  """
+  @spec form_data(Phoenix.HTML.FormField.t() | Phoenix.HTML.Form.t()) :: map()
+  def form_data(%Phoenix.HTML.FormField{form: form}), do: form_data(form)
+
+  def form_data(%Phoenix.HTML.Form{options: options}) do
+    case Keyword.fetch(options, :form_data) do
+      {:ok, data} ->
+        data
+
+      :error ->
+        raise ArgumentError,
+              "DynamicForm.form_data/1 works on the field or form a <:field> slot body " <>
+                "receives, and this form was not rendered by DynamicForm"
+    end
+  end
+
+  # Helpers
+
+  defp validate_form_assigns!(:render_only_form, assigns) do
+    # Render-only mode renders markup against a parent-owned form — attributes
+    # that configure the managed lifecycle have no meaning there and raise.
     unless match?(%Phoenix.HTML.Form{}, assigns.form) do
       raise ArgumentError,
             "DynamicForm.form id=#{inspect(assigns.id)} render_only requires the form " <>
@@ -612,7 +612,7 @@ defmodule DynamicForm do
     end
 
     file_questions =
-      Instance.Elements.list_file_questions(assigns.resolved_instance.elements)
+      DynamicForm.Instance.Elements.list_file_questions(assigns.resolved_instance.elements)
 
     if file_questions != [] do
       raise ArgumentError,
@@ -622,9 +622,9 @@ defmodule DynamicForm do
     end
   end
 
-  # The stateful component owns the form and its events — the render-only
-  # attributes conflict with that and raise.
-  defp validate_stateful!(assigns) do
+  defp validate_form_assigns!(:default_form, assigns) do
+    # The stateful component owns the form and its events — the render-only
+    # attributes conflict with that and raise.
     invalid =
       [form: assigns.form, phx_change: assigns.phx_change, phx_submit: assigns.phx_submit]
       |> Enum.reject(fn {_attr, value} -> is_nil(value) end)
@@ -649,7 +649,7 @@ defmodule DynamicForm do
         decode_json!(assigns)
 
       [:slots] ->
-        Instance.FromSlots.convert!(assigns)
+        DynamicForm.Instance.FromSlots.convert!(assigns)
 
       [] ->
         raise ArgumentError,
@@ -673,7 +673,7 @@ defmodule DynamicForm do
     |> Enum.map(fn {mode, _present?} -> mode end)
   end
 
-  defp decode_json!(%{json: json}) when is_binary(json), do: Instance.decode!(json)
+  defp decode_json!(%{json: json}) when is_binary(json), do: DynamicForm.Instance.decode!(json)
 
   defp decode_json!(%{json: other} = assigns) do
     raise ArgumentError,
