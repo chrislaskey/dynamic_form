@@ -286,7 +286,7 @@ Or parse at the edge (e.g. in `mount/3`) to work with the definition
 programmatically, and pass the instance to the same component:
 
 ```elixir
-instance = DynamicForm.Parser.JSON.parse!(~S({
+instance = DynamicForm.Parser.FromData.parse!(~S({
   "title": "Contact Form",
   "elements": [
     {

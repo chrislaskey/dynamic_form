@@ -11,11 +11,11 @@ Undocumented public functions are internal (see the new Conventions section
 in the Development guide) and several were renamed or moved with no
 deprecation path:
 
-- `DynamicForm.Instance.FromSlots` → `DynamicForm.Parser.Declarative`
+- `DynamicForm.Instance.FromSlots` → `DynamicForm.Parser.FromComponent`
   (its documented `convert!/1` is now `parse!/1`) and
-  `Instance.FromSlots.Validator` → `Parser.Declarative.Validator`
-- `DynamicForm.Instance.Decoder` → `DynamicForm.Parser.JSON`, absorbing the
-  documented `Instance.decode!/1` as `Parser.JSON.parse!/1` — it accepts a
+  `Instance.FromSlots.Validator` → `Parser.FromComponent.Validator`
+- `DynamicForm.Instance.Decoder` → `DynamicForm.Parser.FromData`, absorbing the
+  documented `Instance.decode!/1` as `Parser.FromData.parse!/1` — it accepts a
   JSON string, a map, or an already-parsed `%Instance{}` (pass-through)
 - `DynamicForm.Components` → `DynamicForm.ComponentResolver` — the
   per-function override contract is unchanged; the module documenting and

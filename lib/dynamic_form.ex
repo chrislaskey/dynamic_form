@@ -8,13 +8,13 @@ defmodule DynamicForm do
   then render those forms using standard Phoenix LiveView patterns with robust
   validation and submission handling.
 
-  ## Declarative Forms
+  ## FromComponent Forms
 
   `DynamicForm.form/1` is the unified entry point for rendering forms. It
   accepts a declarative definition using `<:field>` slots, a
   SurveyJS-compatible JSON string, or an instance using Elixir data structures:
 
-      <%!-- Declarative --%>
+      <%!-- FromComponent --%>
       <DynamicForm.form id="contact-form">
         <:field type="text" input_type="email" name="email" label="Email" required />
       </DynamicForm.form>
@@ -117,10 +117,10 @@ defmodule DynamicForm do
         <:field type="text" name="username" label="Username" required />
       </DynamicForm.form>
 
-  ## Declarative mode
+  ## FromComponent mode
 
   `<:field>` entries parse to a `DynamicForm.Instance` in template order
-  (see `DynamicForm.Parser.Declarative`). Question types collect input;
+  (see `DynamicForm.Parser.FromComponent`). Question types collect input;
   `html`, `image`, and `custom` render static or custom content:
 
       <DynamicForm.form id="signup">
@@ -233,7 +233,7 @@ defmodule DynamicForm do
   attr(:json, :string,
     default: nil,
     doc:
-      "Data mode: a SurveyJS-compatible JSON string, parsed with Parser.JSON.parse!/1. " <>
+      "Data mode: a SurveyJS-compatible JSON string, parsed with Parser.FromData.parse!/1. " <>
         "Mutually exclusive with instance and <:field> slots."
   )
 
@@ -621,10 +621,10 @@ defmodule DynamicForm do
         assigns.instance
 
       [:json] ->
-        DynamicForm.Parser.JSON.parse!(assigns[:json])
+        DynamicForm.Parser.FromData.parse!(assigns[:json])
 
       [:slots] ->
-        DynamicForm.Parser.Declarative.parse!(assigns)
+        DynamicForm.Parser.FromComponent.parse!(assigns)
 
       [] ->
         raise ArgumentError,

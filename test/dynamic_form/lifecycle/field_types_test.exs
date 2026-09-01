@@ -7,7 +7,7 @@ defmodule DynamicForm.FieldTypesTest do
   alias DynamicForm.Changeset
   alias DynamicForm.FieldTypes
   alias DynamicForm.Instance
-  alias DynamicForm.Parser.Declarative
+  alias DynamicForm.Parser.FromComponent
 
   # A components module implementing one custom field type; select_with_search
   # has no clause here, exercising the input/1 catch-all degradation path
@@ -184,7 +184,7 @@ defmodule DynamicForm.FieldTypesTest do
       }
 
       instance =
-        Declarative.parse!(%{
+        FromComponent.parse!(%{
           id: "slots-test",
           field: [field],
           group: [],
@@ -201,7 +201,7 @@ defmodule DynamicForm.FieldTypesTest do
       field = %{__slot__: :field, inner_block: nil, type: "multiselect", name: "days"}
 
       assert_raise ArgumentError, ~r/unknown type "multiselect".*custom field type/s, fn ->
-        Declarative.parse!(%{id: "slots-test", field: [field], group: []})
+        FromComponent.parse!(%{id: "slots-test", field: [field], group: []})
       end
     end
   end

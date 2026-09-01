@@ -15,7 +15,7 @@ a way to surface it as a stable public function moving forward.
 |---|---|---|---|
 | `id` | string | required | Component ID; also the instance id in declarative mode |
 | `instance` | any | `nil` | Data mode: `Instance` struct, JSON string, or map |
-| `json` | string | `nil` | Data mode: SurveyJS-compatible JSON string, parsed via `Parser.JSON.parse!/1` |
+| `json` | string | `nil` | Data mode: SurveyJS-compatible JSON string, parsed via `Parser.FromData.parse!/1` |
 | `title` | string | `nil` | Instance title (declarative mode) |
 | `description` | string | `nil` | Instance description (declarative mode) |
 | `on_change` | function | `nil` | 1-arity `(payload) -> payload`, after built-in validations on every change and during the submit validation pass |
@@ -145,7 +145,7 @@ fields join it with `<:field nested="...">`. See the
 | `html` | Raw HTML or slot body | String attr goes through `Phoenix.HTML.raw/1`; slot bodies are escaped HEEx |
 | `panel` | Titled container | Declared via `<:group>` in declarative mode; nestable in both modes. `groupType` picks the layout: `"horizontal"` (default) or `"vertical"` |
 | `image` | `<img>` | `src` required |
-| `custom` | Slot body | Declarative-only; body receives the Phoenix form |
+| `custom` | Slot body | FromComponent-only; body receives the Phoenix form |
 
 ## Validators
 
@@ -275,9 +275,9 @@ Functions the renderer dispatches through the `components` module
 
 | Function | Description |
 |---|---|
-| `DynamicForm.Parser.JSON.parse!/1` | JSON string or map → `Instance` struct |
+| `DynamicForm.Parser.FromData.parse!/1` | JSON string or map → `Instance` struct |
 | `DynamicForm.Instance.strip_slots/1` | Copy of an instance without slot bodies (definition-only comparison) |
-| `DynamicForm.Parser.Declarative.parse!/1` | Slot entries → `Instance` (used by `DynamicForm.form/1`) |
+| `DynamicForm.Parser.FromComponent.parse!/1` | Slot entries → `Instance` (used by `DynamicForm.form/1`) |
 | `DynamicForm.Changeset.create_changeset/2` | Instance + params → Ecto changeset |
 | `DynamicForm.Changeset.list_questions/1` | Flat list of questions, including nested panels |
 | `DynamicForm.Payload.add_error/4` | Add a changeset error, marking the submission invalid |

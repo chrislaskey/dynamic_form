@@ -17,7 +17,7 @@ defmodule DemoWeb.ShowcaseFormLive do
     {:ok,
      assign(socket,
        json: json,
-       instance: DynamicForm.Parser.JSON.parse!(json),
+       instance: DynamicForm.Parser.FromData.parse!(json),
        submitted_data: nil
      )}
   end
@@ -54,7 +54,7 @@ defmodule DemoWeb.ShowcaseFormLive do
 
         <.definition
           title="Form Definition (JSON)"
-          subtitle="priv/surveyjs_test_form.json, parsed with DynamicForm.Parser.JSON.parse!/1"
+          subtitle="priv/surveyjs_test_form.json, parsed with DynamicForm.Parser.FromData.parse!/1"
           code={@json}
         />
 

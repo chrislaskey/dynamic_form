@@ -678,7 +678,7 @@ defmodule DynamicForm.CarryForwardTest do
 
   describe "JSON round trip" do
     test "the carry-forward fields survive encoding and decoding" do
-      json = instance() |> Jason.encode!() |> Parser.JSON.parse!()
+      json = instance() |> Jason.encode!() |> Parser.FromData.parse!()
 
       [_age_groups, programs] = json.elements
       [_name, consuming] = programs.templateElements

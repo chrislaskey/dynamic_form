@@ -40,13 +40,13 @@ defmodule DynamicForm.Instance do
       json = Jason.encode!(instance)
 
       # Parse from a JSON string or map
-      instance = DynamicForm.Parser.JSON.parse!(json)
-      instance = DynamicForm.Parser.JSON.parse!(map)
+      instance = DynamicForm.Parser.FromData.parse!(json)
+      instance = DynamicForm.Parser.FromData.parse!(map)
 
   ## Slot-Defined Instances
 
   Instances can also be built from `<:field>` slot entries via `DynamicForm.form/1`
-  (see `DynamicForm.Parser.Declarative`). Questions and elements defined with a
+  (see `DynamicForm.Parser.FromComponent`). Questions and elements defined with a
   slot body carry the raw slot entry in their `:slot` field so the renderer can
   call `Phoenix.Component.render_slot/2` on it. The `:slot` field holds a
   closure, so it is never JSON-encoded; use `strip_slots/1` to compare two
@@ -509,7 +509,7 @@ defmodule DynamicForm.Instance do
   @doc """
   Returns a copy of the instance with all `:slot` fields removed.
 
-  Slot-defined elements (see `DynamicForm.Parser.Declarative`) carry their raw
+  Slot-defined elements (see `DynamicForm.Parser.FromComponent`) carry their raw
   slot entry — including its `inner_block` closure — in the `:slot` field.
   Closures capture template assigns, so two otherwise-identical instances can
   compare unequal whenever those assigns change. Stripping the slots yields the

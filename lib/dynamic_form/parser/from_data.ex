@@ -1,4 +1,4 @@
-defmodule DynamicForm.Parser.JSON do
+defmodule DynamicForm.Parser.FromData do
   @moduledoc """
   Decodes SurveyJS-compatible JSON data or maps into DynamicForm.Instance structs.
 
@@ -13,11 +13,11 @@ defmodule DynamicForm.Parser.JSON do
   ## Examples
 
       iex> json = ~s({"id": "my-form", "title": "My Form", "elements": []})
-      iex> DynamicForm.Parser.JSON.parse!(json)
+      iex> DynamicForm.Parser.FromData.parse!(json)
       %DynamicForm.Instance{id: "my-form", title: "My Form", elements: []}
 
       iex> map = %{"id" => "my-form", "title" => "My Form", "elements" => []}
-      iex> DynamicForm.Parser.JSON.parse!(map)
+      iex> DynamicForm.Parser.FromData.parse!(map)
       %DynamicForm.Instance{id: "my-form", title: "My Form", elements: []}
   """
 

@@ -254,7 +254,7 @@ defmodule DynamicForm.Renderer.LiveComponent do
   end
 
   defp handle_normal_update(assigns, socket) do
-    instance = Parser.JSON.parse!(assigns.instance)
+    instance = Parser.FromData.parse!(assigns.instance)
 
     form_name = Map.get(assigns, :form_name, "dynamic_form")
 

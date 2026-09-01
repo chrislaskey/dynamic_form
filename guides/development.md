@@ -12,9 +12,9 @@ There are four major pieces to DynamicForm:
 Visualized, it looks like:
 
 ```
-JSON / stored map ──▶ Parser.JSON ─────────┐
+JSON / stored map ──▶ Parser.FromData ─────────┐
                                            ├──▶ %Instance{} ──▶ Renderer ──▶ Lifecycle
-<:field> slots ─────▶ Parser.Declarative ──┘
+<:field> slots ─────▶ Parser.FromComponent ──┘
 ```
 
 ## Code conventions
@@ -68,10 +68,10 @@ update guard below).
 
 ## Code notes
 
-- `Parser.JSON` normalizes untrusted external data (string keys, safe
-  atom conversion); `Parser.Declarative` normalizes compiler-produced slot
+- `Parser.FromData` normalizes untrusted external data (string keys, safe
+  atom conversion); `Parser.FromComponent` normalizes compiler-produced slot
   entries (atom keys), with all declarative-mode validation in
-  `Parser.Declarative.Validator`. Conversion runs in the `DynamicForm.form/1`
+  `Parser.FromComponent.Validator`. Conversion runs in the `DynamicForm.form/1`
   function component — the LiveComponent's contract stays "give me an
   Instance".
 - **Slots**: elements defined with a slot body keep the raw slot

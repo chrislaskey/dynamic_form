@@ -47,7 +47,7 @@ defmodule DynamicForm.Changeset do
   If you have JSON or a map, parse it to an Instance struct first:
 
       # Parse at the edge
-      instance = DynamicForm.Parser.JSON.parse!(json_or_map)
+      instance = DynamicForm.Parser.FromData.parse!(json_or_map)
       changeset = DynamicForm.Changeset.create_changeset(instance, params)
   """
   def create_changeset(%Instance{} = instance, params \\ %{}, opts \\ []) do

@@ -1,4 +1,4 @@
-defmodule DynamicForm.Parser.JSONTest do
+defmodule DynamicForm.Parser.FromDataTest do
   use ExUnit.Case, async: true
 
   alias DynamicForm.Instance
@@ -63,7 +63,7 @@ defmodule DynamicForm.Parser.JSONTest do
       decoded =
         instance
         |> Jason.encode!()
-        |> Parser.JSON.parse!()
+        |> Parser.FromData.parse!()
 
       assert decoded.id == instance.id
       assert decoded.title == instance.title
@@ -90,7 +90,7 @@ defmodule DynamicForm.Parser.JSONTest do
 
       assert json =~ ~s("groupType":"vertical")
 
-      [decoded] = json |> Parser.JSON.parse!() |> Map.get(:elements)
+      [decoded] = json |> Parser.FromData.parse!() |> Map.get(:elements)
 
       assert decoded.groupType == "vertical"
     end
@@ -126,7 +126,7 @@ defmodule DynamicForm.Parser.JSONTest do
       json = Jason.encode!(instance)
       assert json =~ ~S|"requiredLabel":"(req)"|
 
-      [decoded] = json |> Parser.JSON.parse!() |> Map.get(:elements)
+      [decoded] = json |> Parser.FromData.parse!() |> Map.get(:elements)
       assert decoded.requiredLabel == "(req)"
 
       # SurveyJS spells the same property requiredMark
@@ -135,7 +135,7 @@ defmodule DynamicForm.Parser.JSONTest do
           "id" => "req",
           "elements" => [%{"type" => "text", "name" => "email", "requiredMark" => "(req)"}]
         }
-        |> Parser.JSON.parse!()
+        |> Parser.FromData.parse!()
         |> Map.get(:elements)
 
       assert from_surveyjs.requiredLabel == "(req)"
@@ -163,7 +163,7 @@ defmodule DynamicForm.Parser.JSONTest do
       [decoded] =
         instance
         |> Jason.encode!()
-        |> Parser.JSON.parse!()
+        |> Parser.FromData.parse!()
         |> Map.get(:elements)
 
       assert decoded.rateMin == 1
@@ -193,7 +193,7 @@ defmodule DynamicForm.Parser.JSONTest do
       [decoded] =
         instance
         |> Jason.encode!()
-        |> Parser.JSON.parse!()
+        |> Parser.FromData.parse!()
         |> Map.get(:elements)
 
       assert decoded.imageLink == "https://example.com/logo.png"
@@ -223,7 +223,7 @@ defmodule DynamicForm.Parser.JSONTest do
         ]
       })
 
-      instance = Parser.JSON.parse!(json)
+      instance = Parser.FromData.parse!(json)
 
       assert instance.id == "my-form"
       assert instance.title == "My Form"
@@ -236,21 +236,21 @@ defmodule DynamicForm.Parser.JSONTest do
 
     test "decodes a map with atom-free string keys" do
       map = %{"id" => "map-form", "elements" => []}
-      assert %Instance{id: "map-form", elements: []} = Parser.JSON.parse!(map)
+      assert %Instance{id: "map-form", elements: []} = Parser.FromData.parse!(map)
     end
 
     test "passes an already-decoded instance through unchanged" do
       instance =
-        Parser.JSON.parse!(%{
+        Parser.FromData.parse!(%{
           "id" => "existing",
           "elements" => [%{"type" => "text", "name" => "email"}]
         })
 
-      assert Parser.JSON.parse!(instance) == instance
+      assert Parser.FromData.parse!(instance) == instance
     end
 
     test "generates an id when missing" do
-      instance = Parser.JSON.parse!(%{"elements" => []})
+      instance = Parser.FromData.parse!(%{"elements" => []})
       assert is_binary(instance.id)
       assert instance.id != ""
     end
@@ -273,7 +273,7 @@ defmodule DynamicForm.Parser.JSONTest do
         ]
       })
 
-      instance = Parser.JSON.parse!(json)
+      instance = Parser.FromData.parse!(json)
       names = Enum.map(instance.elements, & &1.name)
 
       assert names == ["first_name", "page2-title", "employer", "job_title"]
@@ -291,7 +291,7 @@ defmodule DynamicForm.Parser.JSONTest do
         ]
       }|
 
-      instance = Parser.JSON.parse!(json)
+      instance = Parser.FromData.parse!(json)
       [heading] = instance.elements
       refute heading.html =~ "<script>"
     end
@@ -304,7 +304,7 @@ defmodule DynamicForm.Parser.JSONTest do
           %{"type" => type, "name" => "q-#{type}"}
         end)
 
-      instance = Parser.JSON.parse!(%{"id" => "types", "elements" => elements})
+      instance = Parser.FromData.parse!(%{"id" => "types", "elements" => elements})
 
       assert Enum.all?(instance.elements, &match?(%Instance.Question{}, &1))
       assert Enum.map(instance.elements, & &1.type) == types
@@ -328,7 +328,7 @@ defmodule DynamicForm.Parser.JSONTest do
         ]
       })
 
-      instance = Parser.JSON.parse!(json)
+      instance = Parser.FromData.parse!(json)
       [outer] = instance.elements
       [inner] = outer.elements
       [question] = inner.elements
@@ -338,7 +338,7 @@ defmodule DynamicForm.Parser.JSONTest do
 
     test "falls back to question for unknown types with question-like keys" do
       instance =
-        Parser.JSON.parse!(%{
+        Parser.FromData.parse!(%{
           "id" => "fallback",
           "elements" => [
             %{"type" => "customtype", "name" => "a", "choices" => ["x"]},
@@ -358,7 +358,7 @@ defmodule DynamicForm.Parser.JSONTest do
   describe "decode_choices" do
     test "decodes SurveyJS object choices to {text, value} tuples" do
       instance =
-        Parser.JSON.parse!(%{
+        Parser.FromData.parse!(%{
           "id" => "choices",
           "elements" => [
             %{
@@ -378,7 +378,7 @@ defmodule DynamicForm.Parser.JSONTest do
 
     test "passes through simple string and integer choices" do
       instance =
-        Parser.JSON.parse!(%{
+        Parser.FromData.parse!(%{
           "id" => "simple-choices",
           "elements" => [
             %{"type" => "dropdown", "name" => "pick", "choices" => ["Item 1", "Item 2"]},
@@ -395,7 +395,7 @@ defmodule DynamicForm.Parser.JSONTest do
   describe "decode validators" do
     test "decodes SurveyJS validator properties" do
       instance =
-        Parser.JSON.parse!(%{
+        Parser.FromData.parse!(%{
           "id" => "validators",
           "elements" => [
             %{
@@ -436,7 +436,7 @@ defmodule DynamicForm.Parser.JSONTest do
       decoded =
         instance
         |> Jason.encode!()
-        |> Parser.JSON.parse!()
+        |> Parser.FromData.parse!()
 
       assert decoded.inserted_at == dt
       assert decoded.updated_at == dt

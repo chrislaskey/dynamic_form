@@ -477,7 +477,7 @@ defmodule DynamicForm.NestedFormsTest do
       }
       """
 
-      instance = Parser.JSON.parse!(json)
+      instance = Parser.FromData.parse!(json)
 
       assert [%Instance.Question{type: "paneldynamic"} = question] = instance.elements
       assert question.name == "addresses"
@@ -514,7 +514,7 @@ defmodule DynamicForm.NestedFormsTest do
       }
       """
 
-      assert [question] = Parser.JSON.parse!(json).elements
+      assert [question] = Parser.FromData.parse!(json).elements
       assert [%Instance.Question{name: "label"}] = question.templateElements
       assert question.addPanelText == "Add"
       assert question.removePanelText == "Delete"
@@ -523,7 +523,7 @@ defmodule DynamicForm.NestedFormsTest do
     test "round-trips through JSON" do
       instance = instance_with(addresses_question(minPanelCount: 1, addPanelText: "Add"))
 
-      decoded = instance |> Jason.encode!() |> Parser.JSON.parse!()
+      decoded = instance |> Jason.encode!() |> Parser.FromData.parse!()
 
       assert decoded == instance
     end
