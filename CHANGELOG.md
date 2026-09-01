@@ -5,7 +5,7 @@ All notable changes to this project are documented here. For releases before
 
 ## 1.0.0
 
-First stable release. The public API is what the USAGE and REFERENCE guides
+First release. The public API is what the USAGE and REFERENCE guides
 document — those names now follow semantic versioning, and breaking changes
 to them will only ship in a new major version. Everything else is internal
 and remains subject to change without notice (see the Conventions section of
