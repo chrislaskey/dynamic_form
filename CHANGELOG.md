@@ -3,6 +3,22 @@
 All notable changes to this project are documented here. For releases before
 0.19.0, see the git history.
 
+## 1.0.0
+
+First stable release. The public API is what the USAGE and REFERENCE guides
+document — those names now follow semantic versioning, and breaking changes
+to them will only ship in a new major version. Everything else is internal
+and remains subject to change without notice (see the Conventions section of
+the Development guide).
+
+### Breaking
+
+- The parser modules are named for the definition mode they parse:
+  `DynamicForm.Parser.Declarative` → `DynamicForm.Parser.FromComponent` and
+  `DynamicForm.Parser.JSON` → `DynamicForm.Parser.FromData` (each module's
+  documented `parse!/1` is unchanged apart from the namespace);
+  `Parser.Declarative.Validator` is now `Parser.FromComponent.Validator`.
+
 ## 0.24.0
 
 ### Internal refactor
@@ -11,11 +27,11 @@ Undocumented public functions are internal (see the new Conventions section
 in the Development guide) and several were renamed or moved with no
 deprecation path:
 
-- `DynamicForm.Instance.FromSlots` → `DynamicForm.Parser.FromComponent`
+- `DynamicForm.Instance.FromSlots` → `DynamicForm.Parser.Declarative`
   (its documented `convert!/1` is now `parse!/1`) and
-  `Instance.FromSlots.Validator` → `Parser.FromComponent.Validator`
-- `DynamicForm.Instance.Decoder` → `DynamicForm.Parser.FromData`, absorbing the
-  documented `Instance.decode!/1` as `Parser.FromData.parse!/1` — it accepts a
+  `Instance.FromSlots.Validator` → `Parser.Declarative.Validator`
+- `DynamicForm.Instance.Decoder` → `DynamicForm.Parser.JSON`, absorbing the
+  documented `Instance.decode!/1` as `Parser.JSON.parse!/1` — it accepts a
   JSON string, a map, or an already-parsed `%Instance{}` (pass-through)
 - `DynamicForm.Components` → `DynamicForm.ComponentResolver` — the
   per-function override contract is unchanged; the module documenting and
