@@ -8,7 +8,7 @@ defmodule DynamicForm do
   then render those forms using standard Phoenix LiveView patterns with robust
   validation and submission handling.
 
-  ## FromComponent Forms
+  ## Dynamic Forms
 
   `DynamicForm.form/1` is the unified entry point for rendering forms. It
   accepts a declarative definition using `<:field>` slots, a

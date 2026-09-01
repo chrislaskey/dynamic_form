@@ -215,18 +215,16 @@ defmodule DynamicForm.Renderer.LiveComponent do
   """
 
   use Phoenix.LiveComponent
+
   import Phoenix.LiveView, only: [cancel_upload: 3]
+
   alias DynamicForm.Changeset
   alias DynamicForm.Helpers
   alias DynamicForm.Instance
   alias DynamicForm.Instance.Elements
   alias DynamicForm.Lifecycle.Debounce
-  alias DynamicForm.Lifecycle.Uploads
   alias DynamicForm.NestedForms
-  alias DynamicForm.Parser
   alias DynamicForm.Payload
-  alias DynamicForm.Renderer.Component
-  alias DynamicForm.Renderer.Components.ValidationSummary
 
   @message_events [:success, :change, :submit]
 
@@ -254,7 +252,7 @@ defmodule DynamicForm.Renderer.LiveComponent do
   end
 
   defp handle_normal_update(assigns, socket) do
-    instance = Parser.FromData.parse!(assigns.instance)
+    instance = DynamicForm.Parser.FromData.parse!(assigns.instance)
 
     form_name = Map.get(assigns, :form_name, "dynamic_form")
 
@@ -297,8 +295,8 @@ defmodule DynamicForm.Renderer.LiveComponent do
         |> assign(:submitting, false)
         # The form starts over, so a debounced change scheduled against the
         # previous definition or data no longer applies.
-        |> Debounce.cancel()
-        |> Uploads.allow(instance)
+        |> DynamicForm.Lifecycle.Debounce.cancel()
+        |> DynamicForm.Lifecycle.Uploads.allow(instance)
 
       {:ok, socket}
     end
@@ -372,13 +370,13 @@ defmodule DynamicForm.Renderer.LiveComponent do
     ~H"""
     <div>
       <%= if @validation_summary && @changeset.action do %>
-        <ValidationSummary.validation_summary
+        <DynamicForm.Renderer.Components.ValidationSummary.validation_summary
           changeset={@changeset}
           mode={@validation_summary}
           instance={@instance}
         />
       <% end %>
-      <Component.render
+      <DynamicForm.Renderer.Component.render
         instance={@instance}
         form={@form}
         submit_text={@submit_text}
