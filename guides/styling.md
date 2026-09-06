@@ -181,6 +181,13 @@ inventing a type per group, and `disabled` reflects the group's effective
 state — its own `enable_if`, or inherited from a disabled form or an
 enclosing group.
 
+The built-in wrapper also carries the name as `data-dynamic-form-group`, for
+the case where a page wants to place one group without owning the component
+— a form whose `"version"` group sits beside a preview, say. A CSS selector
+on the attribute (`[data-dynamic-form-group="version"]`, or Tailwind's
+`[&_[data-dynamic-form-group=version]]:...`) reaches it from outside the
+form, and keeps working however the markup around it changes.
+
 ## Per-field custom markup
 
 For one special field rather than a whole design system, give the `<:field>`

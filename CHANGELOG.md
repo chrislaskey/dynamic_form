@@ -3,6 +3,16 @@
 All notable changes to this project are documented here. For releases before
 0.19.0, see the git history.
 
+## Unreleased
+
+### Added
+
+- The built-in `dynamic_form_group/1` wrapper carries the group's `name` as
+  `data-dynamic-form-group`, so a page can lay one group out from outside
+  the form with a CSS selector — without owning the component or depending
+  on the markup around it. Custom `dynamic_form_group/1` clauses that want
+  the same hook add the attribute themselves.
+
 ## 1.0.0
 
 First public release. The public API is what the USAGE and REFERENCE guides

@@ -328,6 +328,10 @@ defmodule DynamicForm.Renderer.ComponentTest do
       assert html =~ "flex flex-wrap items-center gap-4"
     end
 
+    test "the wrapper names the group, so a page can lay it out from outside" do
+      assert render_instance(group_with([])) =~ ~s(data-dynamic-form-group="age_range")
+    end
+
     test "the members' own bottom margin is reset so gap owns the spacing" do
       # Rendered escaped; the browser decodes it back to [&>*]:mb-0
       assert render_instance(group_with([])) =~ "[&amp;&gt;*]:mb-0"

@@ -833,6 +833,10 @@ defmodule DynamicForm.CoreComponents do
     resolves as `auto`.
   - `"vertical"` — members stack.
 
+  The wrapper carries the group's `name` as `data-dynamic-form-group`, so a
+  page can lay one group out from outside the form — a CSS selector on the
+  attribute — without knowing anything else about the markup.
+
   ## Examples
 
       <.dynamic_form_group type="horizontal" title="Age range">
@@ -859,7 +863,7 @@ defmodule DynamicForm.CoreComponents do
     assigns = assign(assigns, :members_class, members_class(assigns.type))
 
     ~H"""
-    <div>
+    <div data-dynamic-form-group={@name}>
       <h3 :if={@title} class="text-lg font-semibold text-gray-900 mb-4">
         <%= @title %>
       </h3>
