@@ -3,7 +3,7 @@
 All notable changes to this project are documented here. For releases before
 0.19.0, see the git history.
 
-## Unreleased
+## 1.1.0
 
 ### Added
 
